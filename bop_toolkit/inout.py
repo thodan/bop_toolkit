@@ -101,7 +101,7 @@ def save_depth(path, im):
   """
   im_uint16 = np.round(im).astype(np.uint16)
 
-  # PyPNG library allows to save 16-bit PNG and is faster than imageio.imsave().
+  # PyPNG library can save 16-bit PNG and is faster than imageio.imwrite().
   w_depth = png.Writer(im.shape[1], im.shape[0], greyscale=True, bitdepth=16)
   with open(path, 'wb') as f:
     w_depth.write(f, np.reshape(im_uint16, (-1, im.shape[1])))
