@@ -1,0 +1,12 @@
+numpy
+matplotlib
+imageio
+scipy
+pypng
+ruamel.yaml
+cython
+pyopengl
+triangle
+glumpy
+opencv-python
+pillow
