@@ -82,19 +82,41 @@ def match_poses(errs, error_threshs, max_ests_count=None, gt_valid_mask=None):
   return matches
 
 
-def batch_match_poses(gts, gt_stats, errs, scene_id, visib_gt_min,
-                      error_threshs, n_top):
+def match_poses_scene(scene_id, gts, gt_stats, errs, visib_gt_min,
+                      error_obj_threshs, n_top):
+  """Matches the estimated poses to the ground-truth poses in one scene.
 
+  :param scene_id: Scene ID.
+  :param gts: Dictionary mapping image ID's to lists of dictionaries with:
+    - 'obj_id': Object ID of the ground-truth pose.
+  :param gt_stats: Dictionary mapping image ID's to lists of dictionaries with:
+    - 'visib_fract': Visible surface fraction in the ground-truth pose.
+  :param errs: List of dictionaries with:
+    - 'im_id': Image ID.
+    - 'obj_id': Object ID.
+    - 'est_id': ID of the pose estimate.
+    - 'score': Confidence score of the pose estimate.
+    - 'errors': Dictionary mapping ground-truth ID's to errors of the pose
+        estimate w.r.t. the ground-truth poses.
+  :param visib_gt_min: Minimum visible surface fraction of a GT pose to be
+    considered in the evaluation.
+  :param error_obj_threshs: Dictionary mapping object ID's to values of the
+    threshold of correctness.
+  :param n_top: Top N pose estimates (with the highest score) to be evaluated
+    for each object class in each image.
+  :return:
+  """
   # Organize the errors by image ID and object ID (for faster query).
   errs_org = {}
   for e in errs:
     errs_org.setdefault(e['im_id'], {}). \
       setdefault(e['obj_id'], []).append(e)
 
-  # Matching
+  # Matching of poses in individual images.
   matches = []
   for im_id, gts_im in gts.items():
     matches_im = []
+
     for gt_id, gt in enumerate(gts_im):
       valid = gt_stats[im_id][gt_id]['visib_fract'] >= visib_gt_min
       matches_im.append({
@@ -106,8 +128,8 @@ def batch_match_poses(gts, gt_stats, errs, scene_id, visib_gt_min,
         'score': -1,
         'error': -1,
         'error_norm': -1,
+        'valid': int(valid),
         # 'stats': gt_stats[im_id][gt_id],
-        'valid': int(valid)
       })
 
     # Mask of valid GT poses (i.e. GT poses with sufficient visibility).
@@ -118,11 +140,11 @@ def batch_match_poses(gts, gt_stats, errs, scene_id, visib_gt_min,
     for obj_id in im_obj_ids:
       if im_id in errs_org.keys() and obj_id in errs_org[im_id].keys():
 
-        # Greedily match the estimated poses to the ground truth
-        # poses in the order of decreasing score.
+        # Greedily match the estimated poses to the ground truth poses in order
+        # of decreasing score.
         errs_im_obj = errs_org[im_id][obj_id]
         ms = match_poses(
-          errs_im_obj, error_threshs[obj_id], n_top, gt_valid_mask)
+          errs_im_obj, error_obj_threshs[obj_id], n_top, gt_valid_mask)
 
         for m in ms:
           g = matches_im[m['gt_id']]

@@ -1,9 +1,12 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Calculates performance scores for the 6D localization task.
+"""Calculates performance scores for 6D object pose estimation tasks.
 
-For evaluation presented in the BOP paper (ECCV'18), the following parameters
+Currently supported tasks (see the BOP paper from ECCV'18):
+- SiSo (a single instance of a single object)
+
+For evaluation presented in the BOP paper from ECCV'18, the following parameters
 were used:
  - n_top = 1
  - visib_gt_min = 0.1
@@ -158,17 +161,17 @@ for error_dir_path in p['error_dir_paths']:
     im_ids_sets = None
 
   # Set threshold of correctness (might be different for each object).
-  error_ths = {}
+  error_obj_ths = {}
   if err_type in ['add', 'adi']:
     # Relative to object diameter.
     models_info = inout.load_yaml(dp['models_info_path'])
     for obj_id in obj_ids:
       diameter = models_info[obj_id]['diameter']
-      error_ths[obj_id] = [t * diameter for t in p['error_th_fact'][err_type]]
+      error_obj_ths[obj_id] = [t * diameter for t in p['error_th_fact'][err_type]]
   else:
     # The same threshold for all objects.
     for obj_id in obj_ids:
-      error_ths[obj_id] = p['error_th'][err_type]
+      error_obj_ths[obj_id] = p['error_th'][err_type]
 
   # Go through the test scenes and match estimated poses to GT poses.
   # ----------------------------------------------------------------------------
@@ -178,7 +181,8 @@ for error_dir_path in p['error_dir_paths']:
     # Load GT poses.
     gts = inout.load_gt(dp['test_gt_tpath'].format(scene_id=scene_id))
 
-    # Load statistics (e.g. visibility fraction) of the GT poses.
+    # Load statistics (e.g. visibility fraction) of the GT poses from the
+    # current scene.
     gt_stats_path = dp['test_gt_stats_tpath'].format(
       scene_id=scene_id, delta=int(p['visib_delta']))
     gt_stats = inout.load_yaml(gt_stats_path)
@@ -197,8 +201,8 @@ for error_dir_path in p['error_dir_paths']:
       errs = inout.load_errors(scene_errs_path)
 
       # Matching of estimated poses to the ground-truth poses.
-      matches += pose_matching.batch_match_poses(
-        gts, gt_stats, errs, scene_id, p['visib_gt_min'], error_ths, n_top)
+      matches += pose_matching.match_poses_scene(
+        scene_id, gts, gt_stats, errs, p['visib_gt_min'], error_obj_ths, n_top)
 
     elif p['require_all_errors']:
       raise IOError(
