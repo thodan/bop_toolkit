@@ -242,7 +242,7 @@ def save_bop_results(path, res, run_time=-1):
 def save_errors(path, errors):
   """Saves errors of pose estimates to a YAML file.
 
-  See scripts/calc_errors.py for details.
+  See scripts/eval_calc_errors.py for details.
 
   :param path: Path to the output YAML file.
   :return: Dictionary with errors to save.
@@ -266,7 +266,7 @@ def save_errors(path, errors):
 def load_errors(path):
   """Loads errors of pose estimates from a YAML file.
 
-  See scripts/calc_errors.py for details.
+  See scripts/eval_calc_errors.py for details.
 
   :param path: Path to a YAML file with errors.
   :return: Dictionary with the loaded errors.

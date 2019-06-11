@@ -13,7 +13,7 @@ from bop_toolkit import dataset_params, inout, misc, visualization
 ################################################################################
 p = {
   # Options: 'lm', 'lmo', 'tless', 'tudl', 'ruapc', 'icmi', 'icbin'.
-  'dataset': 'tless',
+  'dataset': 'lm',
 
   # Dataset split. Options: 'train', 'val', 'test'.
   'dataset_split': 'test',
@@ -44,18 +44,18 @@ p = {
   'vis_orig_color': False,
   
   # Folder containing the BOP datasets.
-  'datasets_path': r'/PATH/TO/BOP/DATASETS',
+  'datasets_path': r'/path/to/bop/datasets',
   
   # Folder for output visualisations.
-  'vis_folder_path': r'/PATH/TO/OUTPUT/FOLDER',
+  'vis_folder_path': r'/path/to/output/folder',
   
   # Path templates for output images.
   'vis_rgb_tpath': join(
-    '{vis_folder_path}', 'vis_gt_poses', '{dataset}', '{scene_id:06d}',
-    '{im_id:06d}.jpg'),
+    '{vis_folder_path}', 'vis_gt_poses', '{dataset}', '{split}',
+    '{scene_id:06d}', '{im_id:06d}.jpg'),
   'vis_depth_diff_tpath': join(
-    '{vis_folder_path}', 'vis_gt_poses', '{dataset}', '{scene_id:06d}',
-    '{im_id:06d}_depth_diff.jpg'),
+    '{vis_folder_path}', 'vis_gt_poses', '{dataset}', '{split}',
+    '{scene_id:06d}', '{im_id:06d}_depth_diff.jpg'),
 }
 ################################################################################
 
@@ -91,6 +91,7 @@ if p['scene_ids']:
 # Load object models.
 models = {}
 for obj_id in dp['obj_ids']:
+  misc.log('Loading 3D model of object {}...'.format(obj_id))
   models[obj_id] = inout.load_ply(dp['model_tpath'].format(obj_id=obj_id))
 
 # Colors used for the text labels and (optionally) for the object surface.
@@ -162,14 +163,14 @@ for scene_id in scene_ids_curr:
     if p['vis_rgb']:
       vis_rgb_path = p['vis_rgb_tpath'].format(
         vis_folder_path=p['vis_folder_path'], dataset=p['dataset'],
-        scene_id=scene_id, im_id=im_id)
+        split=p['dataset_split'], scene_id=scene_id, im_id=im_id)
 
     # Path to the output depth difference visualization.
     vis_depth_diff_path = None
     if p['vis_depth_diff']:
       vis_depth_diff_path = p['vis_depth_diff_tpath'].format(
         vis_folder_path=p['vis_folder_path'], dataset=p['dataset'],
-        scene_id=scene_id, im_id=im_id)
+        split=p['dataset_split'], scene_id=scene_id, im_id=im_id)
 
     # Visualization.
     visualization.vis_object_poses(

@@ -52,17 +52,16 @@ clip_far = 10000  # [mm]
 ambient_weight = 0.3  # Weight of ambient light [0, 1]
 shading = 'phong'  # 'flat', 'phong'
 
-# Super-sampling anti-aliasing (SSAA).
+# Super-sampling anti-aliasing (SSAA) - the RGB image is rendered at ssaa_fact
+# times higher resolution and then down-sampled to the required resolution.
 # Ref: https://github.com/vispy/vispy/wiki/Tech.-Antialiasing
-# The RGB image is rendered at ssaa_fact times higher resolution and then
-# down-sampled to the required resolution.
 ssaa_fact = 4
 
 # Folder containing the BOP datasets.
-datasets_path = r'/PATH/TO/BOP/DATASETS'
+datasets_path = r'/path/to/bop/datasets'
 
 # Folder for the rendered images.
-out_folder = r'/PATH/TO/OUTPUT/FOLDER'
+out_folder = r'/path/to/output/folder'
 
 # Output path templates.
 out_rgb_tpath =\

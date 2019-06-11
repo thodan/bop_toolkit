@@ -13,9 +13,9 @@ from bop_toolkit import dataset_params, inout, misc, visualization
 # PARAMETERS.
 ################################################################################
 p = {
-  # Top N pose estimates (with the highest score) to be displayed for each
+  # Top N pose estimates (with the highest score) to be visualized for each
   # object in each image.
-  'n_top': -1,  # 0 = all estimates, -1 = given by the number of GT poses.
+  'n_top': 1,  # 0 = all estimates, -1 = given by the number of GT poses.
 
   # Indicates whether to render RGB image.
   'vis_rgb': True,
@@ -34,14 +34,14 @@ p = {
 
   # Paths to results in the BOP format (see docs/bop_results_format.md).
   'result_paths': [
-    r'/PATH/TO/RESULTS/IN/BOP/FORMAT',
+    r'/path/to/results/in/bop/format',
   ],
 
   # Folder containing the BOP datasets.
-  'datasets_path': r'/PATH/TO/BOP/DATASETS',
+  'datasets_path': r'/path/to/bop/datasets',
   
   # Folder for output visualisations.
-  'vis_folder_path': r'/PATH/TO/OUTPUT/FOLDER',
+  'vis_folder_path': r'/path/to/output/folder',
   
   # Path templates for output images.
   'vis_rgb_tpath': join(
@@ -83,6 +83,7 @@ for result_path in p['result_paths']:
   # Load object models.
   models = {}
   for obj_id in dp['obj_ids']:
+    misc.log('Loading 3D model of object {}...'.format(obj_id))
     models[obj_id] = inout.load_ply(dp['model_tpath'].format(obj_id=obj_id))
 
   # Colors used for the text labels and (optionally) for the object surface.

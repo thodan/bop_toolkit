@@ -3,11 +3,12 @@
 
 """Calculates performance scores for 6D object pose estimation tasks.
 
-Currently supported tasks (see the BOP paper from ECCV'18):
+Errors of the pose estimates need to be pre-calculated with eval_calc_errors.py.
+
+Currently supported tasks (see [1]):
 - SiSo (a single instance of a single object)
 
-For evaluation presented in the BOP paper from ECCV'18, the following parameters
-were used:
+For evaluation in the BOP paper [1], the following parameters were used:
  - n_top = 1
  - visib_gt_min = 0.1
  - error_type = 'vsd'
@@ -15,6 +16,9 @@ were used:
  - vsd_delta = 15
  - vsd_tau = 20
  - error_th['vsd'] = 0.3
+
+ [1] Hodan, Michel et al. BOP: Benchmark for 6D Object Pose Estimation,
+     ECCV 2018.
 """
 
 import os
@@ -27,11 +31,11 @@ from bop_toolkit import dataset_params, inout, misc, pose_matching, score
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
 p = {
-  # Threshold of correctness.
+  # Threshold of correctness for different pose error functions.
   'error_th': {
     'vsd': [0.3],
     'cou_mask_proj': [0.5],
-    'rete': [5.0, 5.0],  # [deg,cm].
+    'rete': [5.0, 5.0],  # [deg, cm].
     're': [5.0],  # [deg].
     'te': [5.0]  # [cm].
   },
@@ -43,20 +47,20 @@ p = {
   },
 
   'require_all_errors': True,  # Whether to break if some errors are missing.
-  'visib_gt_min': 0.1,  # Minimum visible surface fraction of valid GT pose.
-  'visib_delta': 15,  # [mm].
+  'visib_gt_min': 0.1,  # Minimum visible surface fraction of a valid GT pose.
+  'visib_delta': 15,  # Tolerance for estimation of the visibility mask [mm].
 
-  # Paths to pose errors (calculated using calc_errors.py).
+  # Paths to pose errors (calculated using eval_calc_errors.py).
   'error_dir_paths': [
-    r'C:\Users\tomho\th_data\cmp\projects\bop\test_data\eval\hodan-iros15-dv1-nopso_lm\error=re_ntop=1',
+    r'/path/to/pose/errors',
   ],
 
   # Folder containing the BOP datasets.
-  'datasets_path': r'C:\Users\tomho\th_data\msr\projects\pose6d\pose6d_scratch\datasets\bop',
+  'datasets_path': r'/path/to/bop/datasets',
 
-  # Name of file with a list of image ID's to use for the evaluation. The file
-  # is assumed to be stored in the dataset folder. None = all images are used
-  # for the evaluation.
+  # File with a list of image ID's to use for the evaluation. The file is
+  # assumed to be stored in the dataset folder. None = all images are used for
+  # the evaluation.
   'im_subset_filename': 'test_set_v1.yml',
 
   # Template of path to the input file with calculated errors.
@@ -89,7 +93,7 @@ parser.add_argument('--require_all_errors', default=p['require_all_errors'])
 parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
 parser.add_argument('--visib_delta', default=p['visib_delta'])
 parser.add_argument('--error_dir_paths', default=','.join(p['error_dir_paths']),
-                    help='Comma-separated paths to errors from calc_errors.py.')
+                    help='Comma-sep. paths to errors from eval_calc_errors.py.')
 parser.add_argument('--datasets_path', default=p['datasets_path'])
 parser.add_argument('--im_subset_filename', default=p['im_subset_filename'])
 parser.add_argument('--error_tpath', default=p['error_tpath'])
@@ -123,19 +127,20 @@ for k, v in p.items():
   misc.log('- {}: {}'.format(k, v))
 misc.log('----------')
 
-
-# Evaluation.
+# Calculation of the performance scores.
 # ------------------------------------------------------------------------------
 for error_dir_path in p['error_dir_paths']:
 
   # Parse info about the errors from the folder name.
   error_sign = os.path.basename(error_dir_path)
-  err_type = error_sign.split('_')[0].split('=')[1]
+  err_type = str(error_sign.split('_')[0].split('=')[1])
   n_top = int(error_sign.split('_')[1].split('=')[1])
   result_info = os.path.basename(os.path.dirname(error_dir_path)).split('_')
   method = result_info[0]
-  dataset = result_info[1]
-  test_type = result_info[2] if len(result_info) > 3 else None
+  dataset_info = result_info[1].split('-')
+  dataset = dataset_info[0]
+  split = dataset_info[1]
+  split_type = dataset_info[2] if len(dataset_info) > 2 else None
 
   # Evaluation signature.
   if err_type in ['add', 'adi']:
@@ -149,7 +154,8 @@ for error_dir_path in p['error_dir_paths']:
 
   # Load dataset parameters.
   dp = dataset_params.get_dataset_params(
-    p['datasets_path'], dataset, test_type=test_type)
+    p['datasets_path'], dataset, train_type=split_type, val_type=split_type,
+    test_type=split_type, cam_type=split_type)
   obj_ids = dp['obj_ids']
   scene_ids = dp['scene_ids']
 
@@ -167,7 +173,8 @@ for error_dir_path in p['error_dir_paths']:
     models_info = inout.load_yaml(dp['models_info_path'])
     for obj_id in obj_ids:
       diameter = models_info[obj_id]['diameter']
-      error_obj_ths[obj_id] = [t * diameter for t in p['error_th_fact'][err_type]]
+      error_obj_ths[obj_id] =\
+          [t * diameter for t in p['error_th_fact'][err_type]]
   else:
     # The same threshold for all objects.
     for obj_id in obj_ids:
@@ -175,44 +182,43 @@ for error_dir_path in p['error_dir_paths']:
 
   # Go through the test scenes and match estimated poses to GT poses.
   # ----------------------------------------------------------------------------
-  matches = []  # Stores info about the matching pose estimate for each GT.
+  matches = []  # Stores info about the matching pose estimate for each GT pose.
   for scene_id in scene_ids:
 
-    # Load GT poses.
-    gts = inout.load_gt(dp['test_gt_tpath'].format(scene_id=scene_id))
+    # Load GT poses for the current scene.
+    scene_gt = inout.load_gt(dp[split + '_gt_tpath'].format(scene_id=scene_id))
 
-    # Load statistics (e.g. visibility fraction) of the GT poses from the
-    # current scene.
-    gt_stats_path = dp['test_gt_stats_tpath'].format(
-      scene_id=scene_id, delta=int(p['visib_delta']))
-    gt_stats = inout.load_yaml(gt_stats_path)
+    # Load statistics (e.g. visibility) of the GT poses for the current scene.
+    scene_gt_stats = inout.load_yaml(dp[split + '_gt_stats_tpath'].format(
+      scene_id=scene_id, delta=int(p['visib_delta'])))
 
     # Keep only the GT poses and their stats for the selected images.
     if im_ids_sets is not None:
       im_ids = im_ids_sets[scene_id]
-      gts = {im_id: gts[im_id] for im_id in im_ids}
-      gt_stats = {im_id: gt_stats[im_id] for im_id in im_ids}
+      scene_gt = {im_id: scene_gt[im_id] for im_id in im_ids}
+      scene_gt_stats = {im_id: scene_gt_stats[im_id] for im_id in im_ids}
 
-    # Load pre-calculated errors of the pose estimates.
+    # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
     scene_errs_path = p['error_tpath'].format(
       error_path=error_dir_path, scene_id=scene_id)
 
+    scene_errs = None
     if os.path.isfile(scene_errs_path):
-      errs = inout.load_errors(scene_errs_path)
-
-      # Matching of estimated poses to the ground-truth poses.
-      matches += pose_matching.match_poses_scene(
-        scene_id, gts, gt_stats, errs, p['visib_gt_min'], error_obj_ths, n_top)
+      scene_errs = inout.load_errors(scene_errs_path)
 
     elif p['require_all_errors']:
-      raise IOError(
-        '{} is missing, but errors for all scenes are required'
-        ' (require_all_results = True).'.format(scene_errs_path)
-      )
+      raise IOError('{} is missing, but errors for all scenes are required'
+                    ' (require_all_errors = True).'.format(scene_errs_path))
+
+    # Match the estimated poses to the ground-truth poses.
+    matches += pose_matching.match_poses_scene(
+      scene_id, scene_gt, scene_gt_stats, scene_errs, p['visib_gt_min'],
+      error_obj_ths, n_top)
 
   # Calculate the performance scores.
   # ----------------------------------------------------------------------------
-  scores = score.calc_siso_scores(scene_ids, obj_ids, matches, n_top)
+  # 6D object localization scores (SiSo if n_top = 1).
+  scores = score.calc_localization_scores(scene_ids, obj_ids, matches, n_top)
 
   # Save scores.
   scores_path = p['out_scores_tpath'].format(

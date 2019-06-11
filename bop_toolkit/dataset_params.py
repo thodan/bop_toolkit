@@ -43,7 +43,6 @@ def get_dataset_params(
     p['scene_ids'] = range(1, 16)
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
     p['test_depth_range'] = (600.90, 1102.35)
     p['test_azimuth_range'] = (0, 2 * math.pi)
     p['test_elev_range'] = (0, 0.5 * math.pi)
@@ -54,7 +53,6 @@ def get_dataset_params(
     p['scene_ids'] = [2]
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
     p['test_depth_range'] = (346.31, 1499.84)
     p['test_azimuth_range'] = (0, 2 * math.pi)
     p['test_elev_range'] = (0, 0.5 * math.pi)
@@ -78,17 +76,19 @@ def get_dataset_params(
     cam_filename = 'camera_{}.yml'.format(p['cam_type'])
     p['cam_params_path'] = join(p['base_path'], cam_filename)
 
-    if p['test_type'] in ['primesense', 'kinect']:
-      p['test_im_size'] = (720, 540)
-    elif p['test_type'] == 'canon':
-      p['test_im_size'] = (2560, 1920)
-
     if p['train_type'] in ['primesense', 'kinect']:
       p['train_im_size'] = (400, 400)
     elif p['train_type'] == 'canon':
       p['train_im_size'] = (1900, 1900)
     elif p['train_type'] == 'render_reconst':
       p['train_im_size'] = (1280, 1024)
+
+    p['val_im_size'] = None
+
+    if p['test_type'] in ['primesense', 'kinect']:
+      p['test_im_size'] = (720, 540)
+    elif p['test_type'] == 'canon':
+      p['test_im_size'] = (2560, 1920)
 
     # The following holds for Primesense, but is similar for the other sensors.
     p['test_depth_range'] = (649.89, 940.04)
@@ -101,7 +101,6 @@ def get_dataset_params(
     p['scene_ids'] = range(1, 4)
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
     p['test_depth_range'] = (851.29, 2016.14)
     p['test_azimuth_range'] = (0, 2 * math.pi)
     p['test_elev_range'] = (-0.4363, 0.5 * math.pi)  # (-25, 90) [deg].
@@ -112,11 +111,9 @@ def get_dataset_params(
     p['scene_ids'] = range(1, 22)
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
-    # Not calculated yet.
-    p['test_depth_range'] = None
-    p['test_azimuth_range'] = None
-    p['test_elev_range'] = None
+    p['test_depth_range'] = None  # Not calculated yet.
+    p['test_azimuth_range'] = None  # Not calculated yet.
+    p['test_elev_range'] = None  # Not calculated yet.
 
   # Rutgers APC (RU-APC).
   elif dataset_name == 'ruapc':
@@ -124,7 +121,6 @@ def get_dataset_params(
     p['scene_ids'] = range(1, 15)
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
     p['test_depth_range'] = (594.41, 739.12)
     p['test_azimuth_range'] = (0, 2 * math.pi)
     p['test_elev_range'] = (-0.5 * math.pi, 0.5 * math.pi)
@@ -135,7 +131,6 @@ def get_dataset_params(
     p['scene_ids'] = range(1, 7)
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
     p['test_depth_range'] = (509.12, 1120.41)
     p['test_azimuth_range'] = (0, 2 * math.pi)
     p['test_elev_range'] = (0, 0.5 * math.pi)
@@ -146,10 +141,20 @@ def get_dataset_params(
     p['scene_ids'] = range(1, 4)
     p['train_im_size'] = (640, 480)
     p['test_im_size'] = (640, 480)
-
     p['test_depth_range'] = (454.56, 1076.29)
     p['test_azimuth_range'] = (0, 2 * math.pi)
     p['test_elev_range'] = (-1.0297, 0.5 * math.pi)  # (-59, 90) [deg].
+
+  # HomebrewedDB (HB).
+  elif dataset_name == 'hb':
+    p['obj_ids'] = range(1, 34)
+    p['scene_ids'] = range(1, 6)
+    p['train_im_size'] = (640, 480)
+    p['val_im_size'] = (640, 480)
+    p['test_im_size'] = (640, 480)
+    p['test_depth_range'] = (420.0, 1430.0)
+    p['test_azimuth_range'] = (0, 2 * math.pi)
+    p['test_elev_range'] = (0.1920, 1.5184)  # (11, 87) [deg].
 
   else:
     raise ValueError('Unknown BOP dataset.')

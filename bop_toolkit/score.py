@@ -59,11 +59,12 @@ def recall(tp_count, targets_count):
     return tp_count / float(targets_count)
 
 
-def calc_siso_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
-  """Calculates performance scores for the SiSo task (i.e. 6D object pose
-  estimation of a single instance of a single object).
+def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
+  """Calculates performance scores for the 6D object localization task.
 
-  Ref: Hodan et al., BOP: Benchmark for 6D Object Pose Estimation, ECCV'18.
+  References:
+  Hodan et al., BOP: Benchmark for 6D Object Pose Estimation, ECCV'18.
+  Hodan et al., On Evaluation of 6D Object Pose Estimation, ECCVW'16.
 
   :param scene_ids: ID's of considered scenes.
   :param obj_ids: ID's of considered objects.
@@ -79,9 +80,9 @@ def calc_siso_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
     if m['valid']:
       insts[m['obj_id']][m['scene_id']][m['im_id']] += 1
 
-  # Count the number of targets = object instances to be found
-  # (for SiSo, there is either zero or one target in each image - there is just
-  # one even if there are more instances of the object of interest).
+  # Count the number of targets = object instances to be found.
+  # For SiSo, there is either zero or one target in each image - there is just
+  # one even if there are more instances of the object of interest.
   tars = 0  # Total number of targets.
   obj_tars = {i: 0 for i in obj_ids}  # Targets per object.
   scene_tars = {i: 0 for i in scene_ids}  # Targets per scene.
@@ -137,12 +138,10 @@ def calc_siso_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
 
   if do_print:
     obj_recalls_str = ', '.join(
-      ['{}: {:.3f}'.format(i, s)
-       for i, s in scores['obj_recalls'].items()])
+      ['{}: {:.3f}'.format(i, s) for i, s in scores['obj_recalls'].items()])
 
     scene_recalls_str = ', '.join(
-      ['{}: {:.3f}'.format(i, s)
-       for i, s in scores['scene_recalls'].items()])
+      ['{}: {:.3f}'.format(i, s) for i, s in scores['scene_recalls'].items()])
 
     misc.log('')
     misc.log('GT count:           {:d}'.format(scores['gt_count']))
