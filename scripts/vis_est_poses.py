@@ -32,7 +32,7 @@ p = {
   # If to use the original model color.
   'vis_orig_color': False,
 
-  # Paths to results in the BOP format (see docs/bop_results_format.md).
+  # Paths to results in the BOP format (see docs/bop_challenge_2019_results_format.md).
   'result_paths': [
     r'/path/to/results/in/bop/format',
   ],

@@ -192,7 +192,7 @@ def save_gt(path, gts):
 def load_bop_results(path):
   """Loads 6D object pose estimates from a YAML file.
 
-  See docs/bop_results_format.md for details.
+  See docs/bop_challenge_2019_results_format.md for details.
 
   :param path: Path to a YAML file with pose estimates.
   :return: List of loaded poses.
@@ -216,7 +216,7 @@ def load_bop_results(path):
 def save_bop_results(path, res, run_time=-1):
   """Saves 6D object pose estimates to a YAML file.
 
-  See docs/bop_results_format.md for details.
+  See docs/bop_challenge_2019_results_format.md for details.
 
   :param path: Path to the output YAML file.
   :param res: Dictionary with pose estimates.

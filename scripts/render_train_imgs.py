@@ -169,7 +169,6 @@ for obj_id in obj_ids:
       obj_gt[im_id] = [{
         'cam_R_m2c': view['R'].flatten().tolist(),
         'cam_t_m2c': view['t'].flatten().tolist(),
-        'obj_bb': [int(x) for x in obj_bb],
         'obj_id': int(obj_id)
       }]
 
