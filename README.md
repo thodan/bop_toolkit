@@ -50,7 +50,7 @@ C++ renderers - you can swith between them by setting *renderer_type* to
 The evaluation in the [BOP evaluation system](http://bop.felk.cvut.cz) is done
 in two steps:
 
-1. Errors of the pose estimates are calculated using
+1. Errors of pose estimates are calculated using
 *scripts/eval_calc_errors.py*. The pose estimates are expected in
 [this format](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_challenge_2019_results_format.md)
 ([samples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
