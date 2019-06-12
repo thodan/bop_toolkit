@@ -76,7 +76,7 @@ dp = dataset_params.get_dataset_params(
 colors_path = join(os.path.dirname(visualization.__file__), 'colors.yml')
 colors = inout.load_yaml(colors_path)
 
-# Subset of images for which the the ground-truth poses will be renderer.
+# Subset of images for which the the ground-truth poses will be rendered.
 if p['im_subset_filename'] is not None:
   im_ids_sets = inout.load_yaml(
     os.path.join(dp['base_path'], p['im_subset_filename']))

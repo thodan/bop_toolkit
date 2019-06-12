@@ -70,11 +70,48 @@ def write_text_on_image(im, txt_list, loc=(3, 0), color=(1.0, 1.0, 1.0),
   return np.array(im_pil)
 
 
+def depth_for_vis(depth, valid_start=0.2, valid_end=1.0):
+  """Transforms depth values from the specified range to [0, 255].
+
+  :param depth: ndarray with a depth image (1 channel).
+  :param valid_start: The beginning of the depth range.
+  :param valid_end: The end of the depth range.
+  :return: Transformed depth image.
+  """
+  mask = depth > 0
+  depth_n = depth.astype(np.float)
+  depth_n[mask] -= depth_n[mask].min()
+  depth_n[mask] /= depth_n[mask].max() / (valid_end - valid_start)
+  depth_n[mask] += valid_start
+  return depth_n
+
+
 def vis_object_poses(
       poses, K, models, model_colors, rgb=None, depth=None, vis_rgb_path=None,
       vis_depth_diff_path=None, vis_orig_color=False,
       vis_rgb_resolve_visib=False):
+  """Visualizes 3D object models in specified poses for one image.
 
+  Two visualizations are created:
+  1. An RGB visualization (if vis_rgb_path is not None).
+  2. A Depth-difference visualization (if vis_depth_diff_path is not None).
+
+  :param poses: List of dictionaries, each with info about one pose:
+    - 'obj_id': Object ID.
+    - 'R': 3x3 ndarray with a rotation matrix.
+    - 't': 3x1 ndarray with a translation vector.
+    - 'text_info': Info to write at the object (see write_text_on_image).
+  :param K: 3x3 ndarray with a camera matrix.
+  :param models: Dict. mapping object ID's to 3D models (see inout.load_ply).
+  :param model_colors: Dict. mapping object ID's to colors.
+  :param rgb: ndarray with the RGB image.
+  :param depth: ndarray with the depth image.
+  :param vis_rgb_path: Path to the output RGB visualization.
+  :param vis_depth_diff_path: Path to the output depth-difference visualization.
+  :param vis_orig_color: Whether to use the color from the loaded object models.
+  :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
+    (i.e. only the closest object is visualized at each pixel).
+  """
   # Indicators of visualization types.
   vis_rgb = vis_rgb_path is not None
   vis_depth_diff = vis_depth_diff_path is not None
