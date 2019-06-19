@@ -107,8 +107,8 @@ def save_depth(path, im):
     w_depth.write(f, np.reshape(im_uint16, (-1, im.shape[1])))
 
 
-def load_info(path):
-  """Loads content of a YAML file with information about training/test images.
+def load_scene_camera(path):
+  """Loads content of a YAML file with information about the scene camera.
 
   See docs/bop_datasets_format.md for details.
 
@@ -121,24 +121,24 @@ def load_info(path):
       if 'cam_K' in info[eid].keys():
         info[eid]['cam_K'] = np.array(info[eid]['cam_K']).reshape((3, 3))
       if 'cam_R_w2c' in info[eid].keys():
-        info[eid]['cam_R_w2c'] = np.array(info[eid]['cam_R_w2c']).reshape(
-          (3, 3))
+        info[eid]['cam_R_w2c'] =\
+          np.array(info[eid]['cam_R_w2c']).reshape((3, 3))
       if 'cam_t_w2c' in info[eid].keys():
-        info[eid]['cam_t_w2c'] = np.array(info[eid]['cam_t_w2c']).reshape(
-          (3, 1))
+        info[eid]['cam_t_w2c'] =\
+          np.array(info[eid]['cam_t_w2c']).reshape((3, 1))
   return info
 
 
-def save_info(path, info):
-  """Saves information about training/test images to a YAML file.
+def save_scene_camera(path, scene_camera):
+  """Saves information about the scene camera to a YAML file.
 
   See docs/bop_datasets_format.md for details.
 
   :param path: Path to the output YAML file.
-  :param info: Dictionary to save to the YAML file.
+  :param scene_camera: Dictionary to save to the YAML file.
   """
-  for im_id in sorted(info.keys()):
-    im_info = info[im_id]
+  for im_id in sorted(scene_camera.keys()):
+    im_info = scene_camera[im_id]
     if 'cam_K' in im_info.keys():
       im_info['cam_K'] = im_info['cam_K'].flatten().tolist()
     if 'cam_R_w2c' in im_info.keys():
@@ -146,10 +146,10 @@ def save_info(path, info):
     if 'cam_t_w2c' in im_info.keys():
       im_info['cam_t_w2c'] = im_info['cam_t_w2c'].flatten().tolist()
   with open(path, 'w') as f:
-    yaml.dump(info, f, Dumper=yaml.CDumper, width=10000)
+    yaml.dump(scene_camera, f, Dumper=yaml.CDumper, width=10000)
 
 
-def load_gt(path):
+def load_scene_gt(path):
   """Loads content of a YAML file with ground-truth annotations.
 
   See docs/bop_datasets_format.md for details.
@@ -168,16 +168,16 @@ def load_gt(path):
   return gts
 
 
-def save_gt(path, gts):
+def save_scene_gt(path, scene_gt):
   """Saves ground-truth annotations to a YAML file.
 
   See docs/bop_datasets_format.md for details.
 
   :param path: Path to the output YAML file.
-  :param info: Dictionary to save to the YAML file.
+  :param scene_gt: Dictionary to save to the YAML file.
   """
-  for im_id in sorted(gts.keys()):
-    im_gts = gts[im_id]
+  for im_id in sorted(scene_gt.keys()):
+    im_gts = scene_gt[im_id]
     for gt in im_gts:
       if 'cam_R_m2c' in gt.keys():
         gt['cam_R_m2c'] = gt['cam_R_m2c'].flatten().tolist()
@@ -186,57 +186,75 @@ def save_gt(path, gts):
       if 'obj_bb' in gt.keys():
         gt['obj_bb'] = [int(x) for x in gt['obj_bb']]
   with open(path, 'w') as f:
-    yaml.dump(gts, f, Dumper=yaml.CDumper, width=10000)
+    yaml.dump(scene_gt, f, Dumper=yaml.CDumper, width=10000)
 
 
-def load_bop_results(path):
-  """Loads 6D object pose estimates from a YAML file.
+def load_bop_results(path, version='bop_challenge_2019'):
+  """Loads 6D object pose estimates from a file.
 
-  See docs/bop_challenge_2019_results_format.md for details.
-
-  :param path: Path to a YAML file with pose estimates.
+  :param path: Path to a file with pose estimates.
   :return: List of loaded poses.
   """
-  with open(path, 'r') as f:
-    res = yaml.load(f, Loader=yaml.CLoader)
-    if not res['ests'] or res['ests'] == [{}]:
-      res['ests'] = []
-    else:
-      for est in res['ests']:
-        est['R'] = np.array(est['R']).reshape((3, 3))
-        est['t'] = np.array(est['t']).reshape((3, 1))
-        if isinstance(est['score'], basestring):
-          if 'nan' in est['score']:
-            est['score'] = 0.0
-          else:
-            raise ValueError('Bad type of score.')
-  return res
+  results = []
+
+  # See docs/bop_challenge_2019.md for details.
+  if version == 'bop_challenge_2019':
+    header = 'scene_id,im_id,obj_id,score,R,t,time'
+    with open(path, 'r') as f:
+      line_id = 0
+      for line in f:
+        line_id += 1
+        if line_id == 1 and header in line:
+          continue
+        else:
+          elems = line.split(',')
+          if len(elems) != 7:
+            raise ValueError(
+              'A line does not have 7 comma-sep. elements: {}'.format(line))
+          results.append({
+            'scene_id': int(elems[0]),
+            'im_id': int(elems[1]),
+            'obj_id': int(elems[2]),
+            'score': float(elems[3]),
+            'R': np.array(map(float, elems[4].split())).reshape((3, 3)),
+            't': np.array(map(float, elems[5].split())).reshape((3, 1)),
+            'time': float(elems[6])})
+  else:
+    raise ValueError('Unknown version of BOP results.')
+
+  return results
 
 
-def save_bop_results(path, res, run_time=-1):
+def save_bop_results(path, results, version='bop_challenge_2019'):
   """Saves 6D object pose estimates to a YAML file.
-
-  See docs/bop_challenge_2019_results_format.md for details.
 
   :param path: Path to the output YAML file.
   :param res: Dictionary with pose estimates.
   :param run_time: Time which the evaluated method took to make the estimates.
   """
-  # The first line contains the run time.
-  txt = 'run_time: ' + str(run_time) + '\n'
-  txt += 'ests:\n'
+  # See docs/bop_challenge_2019.md for details.
+  if version == 'bop_challenge_2019':
+    lines = ['scene_id,im_id,obj_id,score,R,t,time']
+    for res in results:
+      if 'time' in res:
+        run_time = res['time']
+      else:
+        run_time = -1
 
-  line_tpl = '- {{' \
-             'score: {:.8f}, ' \
-             'R: [' + ', '.join(['{:.8f}'] * 9) + '], ' \
-             't: [' + ', '.join(['{:.8f}'] * 3) + ']}}\n'
+      lines.append('{scene_id},{im_id},{obj_id},{score},{R},{t},{time}'.format(
+        scene_id=res['scene_id'],
+        im_id=res['im_id'],
+        obj_id=res['obj_id'],
+        score=res['score'],
+        R=' '.join(map(str, res['R'].flatten().tolist())),
+        t=' '.join(map(str, res['t'].flatten().tolist())),
+        time=run_time))
 
-  for e in res['ests']:
-    Rt = e['R'].flatten().tolist() + e['t'].flatten().tolist()
-    txt += line_tpl.format(e['score'], *Rt)
+    with open(path, 'w') as f:
+      f.write('\n'.join(lines))
 
-  with open(path, 'w') as f:
-    f.write(txt)
+  else:
+    raise ValueError('Unknown version of BOP results.')
 
 
 def save_errors(path, errors):

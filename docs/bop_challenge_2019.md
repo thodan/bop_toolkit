@@ -1,29 +1,50 @@
-# BOP Challenge 2019: format of results
+# BOP Challenge 2019
 
-The methods are evaluated on the SiSo task, i.e. the 6D localization of a single
-instance of a single object.
+## The Challenge Tasks
 
-## File format
+The methods are evaluated on the task of 6D localization of a single instance of
+a single object. All test images are used for the evaluation, even those with
+multiple instances of the object of interest.
 
-For a test image Y and object X, which is present in the image, the method is
-expected to estimate the 6D pose of an instance of object Y and save the results
-into file *Y\_X.yml* with this format:
+Two tasks:
+
+1. *The SiSo task* - 6D localization of a single instance of a single object.
+
+2. *The ViVo task* - 6D localization of a varying number of instances of a varying number of objects.
+
+## Submission instructions
+
+1. Run your method on the SiSo task, i.e. the 6D localization of a single
+instance of a single object [1], on all BOP datasets. Consider only a subset of
+test images defined in files *test_set_v1.yml* provided with the datasets.
+2. Prepare the results of your method in the format described below and submit
+to the [BOP evaluation system](http://bop.felk.cvut.cz).
+
+## Format of results
+
+Results for all test images from one dataset are saved in one CSV file, with one
+pose estimate per line in the following format:
 
 ```
-run_time: TIME
-ests:
-- {score: SCORE, R: [r11, r12, r13, r21, r22, r23, r31, r32, r33], t: [t1, t2, t3]}
+scene_id,im_id,obj_id,score,R,t,time
 ```
 
 where:
-* TIME is the wall time from the point right after the raw data (images, 3D
-object models etc.) is loaded to the point when the final pose estimates are
-available (a single real number in seconds, -1 if not available).
-* SCORE is a confidence of the estimate (the range of values is not
+* a triplet *(scene_id, im_id, obj_id)* defines a test target [1].
+* *score* is a confidence of the estimate (the range of values is not
 restricted).
-* R = [r11 r12 r13; r21 r22 r23; r31 r32 r33] is a 3x3 rotation
-matrix saved row-wise.
-* t = [t1 t2 t3]' is a 3x1 translation vector (in mm).
+* *R* is a 3x3 rotation matrix whose elements are saved row-wise and separated
+by a white space (i.e. ```r11 r12 r13 r21 r22 r23 r31 r32 r33```, where *rij* is
+an element in the *i*-th row and *j*-th column of the matrix).
+* *t* is a 3x1 translation vector (in mm) whose elements are separated by a
+white space (i.e. ```t1 t2 t3```).
+* *time* ...
+
+The method is expected to produce a single pose estimate per test target.
+If multiple pose estimates are provided, the one with the highest score is used.
+
+Example results can be found
+[here](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results).
 
 P = K * [R t] is the camera matrix that transforms 3D point p\_m = [x, y, z, 1]'
 in the model coordinate system to 2D point p\_i = [u, v, 1]' in the image
@@ -31,10 +52,17 @@ coordinate system: s * p\_i = P * p\_m. The camera coordinate system is defined
 as in OpenCV with the camera looking along the Z axis. K is provided with the
 test images and might be different for each image.
 
-If multiple pose estimates are provided, the one with the highest score is used.
+
+
+* TIME is the wall time from the point right after the raw data (images, 3D
+object models etc.) is loaded to the point when the final pose estimates are
+available (a single real number in seconds, -1 if not available).
+* SCORE is a confidence of the estimate (the range of values is not
+
 
 The list of objects that are present in an image can be obtained from the file
 *gt.yml* provided for each test scene.
+
 
 ## Directory structure
 
@@ -63,13 +91,6 @@ provided with the datasets. The sets of test images from the original datasets
 were reduced to remove redundancies and to encourage participation of new, in
 particular slow, methods.
 
-## Submission
-
-Create a ZIP archive with results of your method for all scenes of a dataset
-and submit it to the [BOP evaluation system](http://bop.felk.cvut.cz).
-Example submissions can be found
-[here](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results).
-
 ## Example
 
 Test image 0 of test scene 1 from the T-LESS dataset contains objects 2, 25, 29
@@ -97,3 +118,7 @@ ests:
 - {score: 1.195, R: [-0.171041, -0.0236642, -0.98498, -0.892308, 0.427616, 0.144675, 0.41777, 0.90365, -0.0942557], t: [-69.8224, 73.1472, 800.083]}
 - {score: 1.874, R: [0.180726, -0.73069, 0.658354, 0.0538221, -0.661026, -0.74843, 0.98206, 0.170694, -0.0801374], t: [19.7014, -68.7299, 781.424]}
 ```
+
+## References
+
+[1] Hodan, Michel et al. "BOP: Benchmark for 6D Object Pose Estimation" ECCV'18.

@@ -1,6 +1,6 @@
-# BOP: format of datasets
+# Format of the BOP datasets
 
-This file describes the common format of the BOP datasets.
+This file describes the common format of the BOP datasets [1].
 
 
 ## Directory structure
@@ -9,6 +9,8 @@ The datasets have the following structure:
 
 
 * *models[\_MODELTYPE]* - 3D object models.
+* *models[\_MODELTYPE]\_eval* - "Uniformly" resampled and decimated 3D object
+  models used for calculation of errors of object pose estimates.
 
 
 * *train[\_TRAINTYPE]/X* (optional) - Training images of object X.
@@ -16,19 +18,14 @@ The datasets have the following structure:
 * *test[\_TESTTYPE]/Y* - Test images of scene Y.
 
 
-* *train[\_TRAINTYPE]\_gt\_stats* (optional) - Stats of the GT poses in training
-  images.
-* *val[\_TRAINTYPE]\_gt\_stats* (optional) - Stats of the GT poses in validation
-  images.
-* *test[\_TRAINTYPE]\_gt\_stats* - Stats of the GT poses in test images.
-
-
-* *camera.yml* - Camera parameters.
+* *camera.yml* - Camera parameters (for sensor simulation only; per-image camera
+  parameters are in files *scene_camera.yml* - see below).
 * *dataset_info.md* - Dataset-specific information.
-* *test_set_[VERSION].yml* - A subset of test images for evaluation.
+* *test_targets_bopc19.yml* - A list of test targets used for the evaluation in
+  the BOP paper [1] and in the BOP Challenge 2019.
 
 
-*MODELTYPE*, *TRAINTYPE* and *TESTTYPE* are optional and are used if more
+*MODELTYPE*, *TRAINTYPE*, *VALTYPE* and *TESTTYPE* are optional and used if more
 data types are available (e.g. images from different sensors).
 
 The images in *train*, *val* and *test* folders are organized into subfolders:
@@ -45,8 +42,15 @@ of the same RGB-D frame.
 
 ## Training, validation and test images
 
-Each set of images is accompanied with file *info.yml* that contains for each
-image the following information:
+If both validation and test images are available for a dataset, the ground-truth
+annotations are public only for the validation images. Performance scores for
+test images with private ground-truth annotations can be calculated in the
+[BOP evaluation system](http://bop.felk.cvut.cz).
+
+### Camera parameters
+
+Each set of images is accompanied with file *scene\_camera.yml* which contains
+the following information for each image:
 
 * *cam\_K* - 3x3 intrinsic camera matrix K (saved row-wise).
 * *depth_scale* - Multiply the depth image with this factor to get depth in mm.
@@ -58,12 +62,18 @@ The matrix K may be different for each image. For example, the principal point
 is not constant for images in T-LESS as the images were obtained by cropping a
 region around the projection of the origin of the world coordinate system.
 
+Note that the intrinsic camera parameters can be found also in file *camera.yml*
+in the root folder of a dataset. These parameters are meant only for simulation
+of the used sensor when rendering training images.
+
 P\_w2i = K * [R\_w2c, t\_w2c] is the camera matrix which transforms 3D point
 p\_w = [x, y, z, 1]' in the world coordinate system to 2D point p\_i =
 [u, v, 1]' in the image coordinate system: s * p\_i = P\_w2i * p\_w.
 
-The ground truth object poses are provided in files *gt.yml* that contain for
-each object in each image the following information:
+### Ground-truth annotations
+
+The ground truth object poses are provided in files *scene_gt.yml* which contain
+the following information for each annotated object instance:
 
 * *obj\_id* - Object ID.
 * *cam\_R\_m2c* - 3x3 rotation matrix R\_m2c (saved row-wise).
@@ -73,16 +83,11 @@ P\_m2i = K * [R\_m2c, t\_m2c] is the camera matrix which transforms 3D point
 p\_m = [x, y, z, 1]' in the model coordinate system to 2D point p\_i =
 [u, v, 1]' in the image coordinate system: s * p\_i = P\_m2i * p\_m.
 
-If both validation and test images are available for a dataset, the ground-truth
-annotations are public only for the validation images. Performance scores for
-test images with private ground-truth annotations can be calculated at
-[bop.felk.cvut.cz](http://bop.felk.cvut.cz).
+### Meta information about the ground-truth poses
 
-
-## Stats of the ground-truth poses
-
-The folders *\*_gt_stats* contain one file per scene with statistics of the
-ground-truth poses calculated using *scripts/calc_gt_stats.py*:
+The following meta information about the ground-truth poses is provided in files
+*scene_gt_info.yml* (calculated using *scripts/calc_gt_info.py*, with delta =
+15mm):
 
 * *bbox\_obj* - 2D bounding box of the object silhouette given by (x, y, width,
   height), where (x, y) is the top-left corner of the bounding box.
@@ -103,8 +108,8 @@ capturing real objects from various viewpoints or by rendering 3D object models
 (using *scripts/render_train_imgs.py*).
 
 The viewpoints, from which the objects were rendered, were sampled from a view
-sphere as in [1] by recursively subdividing an icosahedron. The level of
-subdivision at which a viewpoint was added is saved in *info.yml* as
+sphere as in [2] by recursively subdividing an icosahedron. The level of
+subdivision at which a viewpoint was added is saved in *scene_camera.yml* as
 *view_level* (viewpoints corresponding to vertices of the icosahedron have
 *view_level* = 0, viewpoints obtained in the first subdivision step have
 *view_level* = 1, etc.). To reduce the number of viewpoints while preserving
@@ -113,53 +118,44 @@ viewpoints with *view_level* <= n, where n is the highest considered level of
 subdivision.
 
 For rendering, the radius of the view sphere was set to the distance of the
-closest occurrence of any object over all test images. The distance was
-calculated from the camera center to the origin of the model coordinate system.
+closest occurrence of any annotated object instance over all test images. The
+distance was calculated from the camera center to the origin of the model
+coordinate system.
 
 
 ## 3D object models
 
-The 3D object models are provided in PLY (ascii) format. All the models include
+The 3D object models are provided in PLY (ascii) format. All models include
 vertex normals. Most of the models include also vertex color or vertex texture
 coordinates with the texture saved as a separate image.
-
-The vertex normals were calculated using MeshLab [2] as the angle-weighted sum
-of face normals incident to a vertex [3].
+The vertex normals were calculated using
+[MeshLab](http://meshlab.sourceforge.net/) as the angle-weighted sum of face
+normals incident to a vertex [4].
 
 
 ## Coordinate systems
 
 All coordinate systems (model, camera, world) are right-handed.
-
 In the model coordinate system, the Z axis points up (when the object is
 standing "naturally up-right") and the origin coincides with the center of the
 3D bounding box of the object model.
-
-The camera coordinate system is [as in OpenCV](http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html)
+The camera coordinate system is as in [OpenCV](http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html)
 with the camera looking along the Z axis.
-
-
-## Camera parameters
-
-Intrinsic camera parameters can be found in file *camera.yml*. However, these
-parameters are meant only for simulation of the used sensor when rendering the
-training images. Intrinsic camera parameters for individual images are in files
-*info.yml*.
 
 
 ## Units
 
-* Depth images: See *camera.yml* of individual datasets.
+* Depth images: See files *camera.yml/scene_camera.yml* in individual datasets.
 * 3D object models: 1 mm
 * Translation vectors: 1 mm
 
 
 ## References
 
-[1] Hinterstoisser et al. "Model based training, detection and pose estimation
-    of texture-less 3d objects in heavily cluttered scenes" ACCV 2012.
+[1] Hodan, Michel et al. "BOP: Benchmark for 6D Object Pose Estimation" ECCV'18.
 
-[2] MeshLab, http://meshlab.sourceforge.net/.
+[2] Hinterstoisser et al. "Model based training, detection and pose estimation
+    of texture-less 3d objects in heavily cluttered scenes" ACCV'12.
 
 [3] Thurrner and Wuthrich "Computing vertex normals from polygonal
     facets" Journal of Graphics Tools 3.1 (1998).

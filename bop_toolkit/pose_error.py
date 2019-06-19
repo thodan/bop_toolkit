@@ -36,10 +36,10 @@ def vsd(R_est, t_est, R_gt, t_gt, depth_test, K, delta, tau, renderer, obj_id,
   """
   # Render depth images of the model in the estimated and the ground-truth pose.
   fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-  renderer.render_object(obj_id, R_est, t_est, fx, fy, cx, cy)
-  depth_est = renderer.get_depth_image(obj_id)
-  renderer.render_object(obj_id, R_gt, t_gt, fx, fy, cx, cy)
-  depth_gt = renderer.get_depth_image(obj_id)
+  depth_est = renderer.render_object(
+    obj_id, R_est, t_est, fx, fy, cx, cy)['depth']
+  depth_gt = renderer.render_object(
+    obj_id, R_gt, t_gt, fx, fy, cx, cy)['depth']
 
   # Convert depth images to distance images.
   dist_test = misc.depth_im_to_dist_im(depth_test, K)
@@ -201,10 +201,10 @@ def cou_mask_proj(R_est, t_est, R_gt, t_gt, K, renderer, obj_id):
   """
   # Render depth images of the model at the estimated and the ground-truth pose.
   fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-  renderer.render_object(obj_id, R_est, t_est, fx, fy, cx, cy)
-  depth_est = renderer.get_depth_image(obj_id)
-  renderer.render_object(obj_id, R_gt, t_gt, fx, fy, cx, cy)
-  depth_gt = renderer.get_depth_image(obj_id)
+  depth_est = renderer.render_object(
+    obj_id, R_est, t_est, fx, fy, cx, cy)['depth']
+  depth_gt = renderer.render_object(
+    obj_id, R_gt, t_gt, fx, fy, cx, cy)['depth']
 
   # Masks of the rendered model and their intersection and union.
   mask_est = depth_est > 0
@@ -245,10 +245,10 @@ def cou_bb_proj(R_est, t_est, R_gt, t_gt, K, renderer, obj_id):
   """
   # Render depth images of the model at the estimated and the ground-truth pose.
   fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-  renderer.render_object(obj_id, R_est, t_est, fx, fy, cx, cy)
-  depth_est = renderer.get_depth_image(obj_id)
-  renderer.render_object(obj_id, R_gt, t_gt, fx, fy, cx, cy)
-  depth_gt = renderer.get_depth_image(obj_id)
+  depth_est = renderer.render_object(
+    obj_id, R_est, t_est, fx, fy, cx, cy)['depth']
+  depth_gt = renderer.render_object(
+    obj_id, R_gt, t_gt, fx, fy, cx, cy)['depth']
 
   # Masks of the rendered model and their intersection and union
   mask_est = depth_est > 0

@@ -90,14 +90,14 @@ def match_poses(errs, error_threshs, max_ests_count=0, gt_valid_mask=None):
   return matches
 
 
-def match_poses_scene(scene_id, scene_gt, scene_gt_stats, scene_errs,
+def match_poses_scene(scene_id, scene_gt, scene_gt_info, scene_errs,
                       visib_gt_min, error_obj_threshs, n_top):
   """Matches the estimated poses to the ground-truth poses in one scene.
 
   :param scene_id: Scene ID.
   :param scene_gt: Dictionary mapping image ID's to lists of dictionaries with:
     - 'obj_id': Object ID of the ground-truth pose.
-  :param scene_gt_stats: Dictionary mapping image ID's to lists of dicts with:
+  :param scene_gt_info: Dictionary mapping image ID's to lists of dicts with:
     - 'visib_fract': Visible surface fraction in the ground-truth pose.
   :param scene_errs: List of dictionaries with:
     - 'im_id': Image ID.
@@ -126,7 +126,7 @@ def match_poses_scene(scene_id, scene_gt, scene_gt_stats, scene_errs,
     im_matches = []
 
     for gt_id, gt in enumerate(im_gts):
-      valid = scene_gt_stats[im_id][gt_id]['visib_fract'] >= visib_gt_min
+      valid = scene_gt_info[im_id][gt_id]['visib_fract'] >= visib_gt_min
       im_matches.append({
         'scene_id': scene_id,
         'im_id': im_id,
@@ -137,7 +137,6 @@ def match_poses_scene(scene_id, scene_gt, scene_gt_stats, scene_errs,
         'error': -1,
         'error_norm': -1,
         'valid': int(valid),
-        # 'stats': gt_stats[im_id][gt_id],
       })
 
     # Mask of valid GT poses (i.e. GT poses with sufficient visibility).

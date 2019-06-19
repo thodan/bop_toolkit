@@ -4,23 +4,31 @@
 """Visualizes object models in the ground-truth poses."""
 
 import os
-from os.path import join
 
-from bop_toolkit import dataset_params, inout, misc, visualization
+from bop_toolkit import config
+from bop_toolkit import dataset_params
+from bop_toolkit import inout
+from bop_toolkit import misc
+from bop_toolkit import renderer
+from bop_toolkit import visualization
 
 
 # PARAMETERS.
 ################################################################################
 p = {
-  # Options: 'lm', 'lmo', 'tless', 'tudl', 'ruapc', 'icmi', 'icbin'.
-  'dataset': 'lm',
+  # See dataset_params.py for options.
+  'dataset': 'lmo',
 
   # Dataset split. Options: 'train', 'val', 'test'.
   'dataset_split': 'test',
 
-  # Name of file with a list of image ID's to be used. The file is assumed to be
-  # stored in the dataset folder. None = all images are used for the evaluation.
-  'im_subset_filename': 'test_set_v1.yml',
+  # Dataset split type. None = default. See dataset_params.py for options.
+  'dataset_split_type': None,
+
+  # File with a list of estimation targets from which a list of images to use
+  # will be extracted. The file is assumed to be stored in the dataset folder.
+  # None = all images are considerer.
+  'targets_filename': 'test_targets_bopc19.yml',
 
   # Select ID's of scenes, images and GT poses to be processed.
   # Empty list [] means that all ID's will be used.
@@ -42,91 +50,102 @@ p = {
   
   # Whether to use the original model color.
   'vis_orig_color': False,
+
+  # Type of the renderer (used for the VSD pose error function).
+  'renderer_type': 'python',  # Options: 'cpp', 'python'.
   
   # Folder containing the BOP datasets.
-  'datasets_path': r'/path/to/bop/datasets',
+  'datasets_path': config.datasets_path,
   
   # Folder for output visualisations.
-  'vis_folder_path': r'/path/to/output/folder',
+  'vis_path': os.path.join(config.output_path, 'vis_gt_poses'),
   
   # Path templates for output images.
-  'vis_rgb_tpath': join(
-    '{vis_folder_path}', 'vis_gt_poses', '{dataset}', '{split}',
-    '{scene_id:06d}', '{im_id:06d}.jpg'),
-  'vis_depth_diff_tpath': join(
-    '{vis_folder_path}', 'vis_gt_poses', '{dataset}', '{split}',
-    '{scene_id:06d}', '{im_id:06d}_depth_diff.jpg'),
+  'vis_rgb_tpath': os.path.join(
+    '{vis_path}', '{dataset}', '{split}', '{scene_id:06d}', '{im_id:06d}.jpg'),
+  'vis_depth_diff_tpath': os.path.join(
+    '{vis_path}', '{dataset}', '{split}', '{scene_id:06d}',
+    '{im_id:06d}_depth_diff.jpg'),
 }
 ################################################################################
 
 
-# Type of object models and images.
-model_type = None  # None = default.
-data_type = None  # None = default.
-if p['dataset'] == 'tless':
-  model_type = 'cad_subdivided'
-  data_type = 'primesense'
-
 # Load dataset parameters.
-dp = dataset_params.get_dataset_params(
-  p['datasets_path'], p['dataset'], model_type=model_type, train_type=data_type,
-  val_type=data_type, test_type=data_type, cam_type=data_type)
+dp_split = dataset_params.get_split_params(
+  p['datasets_path'], p['dataset'], p['dataset_split'], p['dataset_split_type'])
+
+model_type = 'eval'  # None = default.
+dp_model = dataset_params.get_split_params(
+  p['datasets_path'], p['dataset'], model_type)
 
 # Load colors.
-colors_path = join(os.path.dirname(visualization.__file__), 'colors.yml')
+colors_path = os.path.join(
+  os.path.dirname(visualization.__file__), 'colors.yml')
 colors = inout.load_yaml(colors_path)
 
 # Subset of images for which the the ground-truth poses will be rendered.
-if p['im_subset_filename'] is not None:
-  im_ids_sets = inout.load_yaml(
-    os.path.join(dp['base_path'], p['im_subset_filename']))
+if p['targets_filename'] is not None:
+  targets = inout.load_yaml(
+    os.path.join(dp_split['base_path'], p['targets_filename']))
+  scene_im_ids = {}
+  for target in targets:
+    scene_im_ids.setdefault(
+      target['scene_id'], set()).add(target['im_id'])
 else:
-  im_ids_sets = None
+  scene_im_ids = None
 
 # List of considered scenes.
-scene_ids_curr = dp['scene_ids']
+scene_ids_curr = dp_split['scene_ids']
 if p['scene_ids']:
   scene_ids_curr = set(scene_ids_curr).intersection(p['scene_ids'])
 
+# Rendering mode.
+renderer_modalities = []
+if p['vis_rgb']:
+  renderer_modalities.append('rgb')
+if p['vis_depth_diff'] or (p['vis_rgb'] and p['vis_rgb_resolve_visib']):
+  renderer_modalities.append('depth')
+renderer_mode = '+'.join(renderer_modalities)
+
+# Create a renderer.
+width, height = dp_split['im_size']
+ren = renderer.create_renderer(
+  width, height, p['renderer_type'], mode=renderer_mode)
+
 # Load object models.
 models = {}
-for obj_id in dp['obj_ids']:
+for obj_id in dp_model['obj_ids']:
   misc.log('Loading 3D model of object {}...'.format(obj_id))
-  models[obj_id] = inout.load_ply(dp['model_tpath'].format(obj_id=obj_id))
-
-# Colors used for the text labels and (optionally) for the object surface.
-model_colors = {}
-for obj_id in dp['obj_ids']:
-  if p['vis_orig_color']:
-    model_colors[obj_id] = (1.0, 1.0, 1.0)
-  else:
-    c_id = (obj_id - 1) % len(colors)
-    model_colors[obj_id] = tuple(colors[c_id])
+  model_path = dp_model['model_tpath'].format(obj_id=obj_id)
+  model_color = None
+  if not p['vis_orig_color']:
+    model_color = tuple(colors[(obj_id - 1) % len(colors)])
+  ren.add_object(obj_id, model_path, surf_color=model_color)
 
 for scene_id in scene_ids_curr:
 
   # Load scene info and ground-truth poses.
-  scene_info = inout.load_info(
-    dp[p['dataset_split'] + '_info_tpath'].format(scene_id=scene_id))
-  scene_gt = inout.load_gt(
-    dp[p['dataset_split'] + '_gt_tpath'].format(scene_id=scene_id))
+  scene_camera = inout.load_scene_camera(
+    dp_split['scene_camera_tpath'].format(scene_id=scene_id))
+  scene_gt = inout.load_scene_gt(
+    dp_split['scene_gt_tpath'].format(scene_id=scene_id))
 
   # List of considered images.
-  if im_ids_sets is not None:
-    im_ids_curr = im_ids_sets[scene_id]
+  if scene_im_ids is not None:
+    im_ids = scene_im_ids[scene_id]
   else:
-    im_ids_curr = sorted(scene_info.keys())
+    im_ids = sorted(scene_camera.keys())
   if p['im_ids']:
-    im_ids_curr = set(im_ids_curr).intersection(p['im_ids'])
+    im_ids = set(im_ids).intersection(p['im_ids'])
 
   # Render the object models in the ground-truth poses in the selected images.
-  for im_counter, im_id in enumerate(im_ids_curr):
+  for im_counter, im_id in enumerate(im_ids):
     if im_counter % 10 == 0:
       misc.log(
         'Visualizing GT poses - dataset: {}, scene: {}, im: {}/{}'.format(
-          p['dataset'], scene_id, im_counter, len(im_ids_curr)))
+          p['dataset'], scene_id, im_counter, len(im_ids)))
 
-    K = scene_info[im_id]['cam_K']
+    K = scene_camera[im_id]['cam_K']
 
     # List of considered ground-truth poses.
     gt_ids_curr = range(len(scene_gt[im_id]))
@@ -149,35 +168,33 @@ for scene_id in scene_ids_curr:
     # Load the color and depth images and prepare images for rendering.
     rgb = None
     if p['vis_rgb']:
-      rgb = inout.load_im(dp[p['dataset_split'] + '_rgb_tpath'].format(
+      rgb = inout.load_im(dp_split['rgb_tpath'].format(
         scene_id=scene_id, im_id=im_id))
 
     depth = None
     if p['vis_depth_diff'] or (p['vis_rgb'] and p['vis_rgb_resolve_visib']):
-      depth = inout.load_depth(dp[p['dataset_split'] + '_depth_tpath'].format(
+      depth = inout.load_depth(dp_split['depth_tpath'].format(
         scene_id=scene_id, im_id=im_id))
-      depth *= dp['cam']['depth_scale']  # Convert to [mm].
+      depth *= scene_camera[im_id]['depth_scale']  # Convert to [mm].
 
     # Path to the output RGB visualization.
     vis_rgb_path = None
     if p['vis_rgb']:
       vis_rgb_path = p['vis_rgb_tpath'].format(
-        vis_folder_path=p['vis_folder_path'], dataset=p['dataset'],
-        split=p['dataset_split'], scene_id=scene_id, im_id=im_id)
+        vis_path=p['vis_path'], dataset=p['dataset'], split=p['dataset_split'],
+        scene_id=scene_id, im_id=im_id)
 
     # Path to the output depth difference visualization.
     vis_depth_diff_path = None
     if p['vis_depth_diff']:
       vis_depth_diff_path = p['vis_depth_diff_tpath'].format(
-        vis_folder_path=p['vis_folder_path'], dataset=p['dataset'],
-        split=p['dataset_split'], scene_id=scene_id, im_id=im_id)
+        vis_path=p['vis_path'], dataset=p['dataset'], split=p['dataset_split'],
+        scene_id=scene_id, im_id=im_id)
 
     # Visualization.
     visualization.vis_object_poses(
-      poses=gt_poses, K=K, models=models, model_colors=model_colors,
-      rgb=rgb, depth=depth, vis_rgb_path=vis_rgb_path,
-      vis_depth_diff_path=vis_depth_diff_path,
-      vis_orig_color=p['vis_orig_color'],
+      poses=gt_poses, K=K, renderer=ren, rgb=rgb, depth=depth,
+      vis_rgb_path=vis_rgb_path, vis_depth_diff_path=vis_depth_diff_path,
       vis_rgb_resolve_visib=p['vis_rgb_resolve_visib'])
 
 misc.log('Done.')

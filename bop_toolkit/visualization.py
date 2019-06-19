@@ -8,7 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 
-from bop_toolkit import inout, misc, renderer_py
+from bop_toolkit import inout
+from bop_toolkit import misc
 
 
 def draw_rect(im, rect, color=(1.0, 1.0, 1.0)):
@@ -87,10 +88,9 @@ def depth_for_vis(depth, valid_start=0.2, valid_end=1.0):
 
 
 def vis_object_poses(
-      poses, K, models, model_colors, rgb=None, depth=None, vis_rgb_path=None,
-      vis_depth_diff_path=None, vis_orig_color=False,
-      vis_rgb_resolve_visib=False):
-  """Visualizes 3D object models in specified poses for one image.
+      poses, K, renderer, rgb=None, depth=None, vis_rgb_path=None,
+      vis_depth_diff_path=None, vis_rgb_resolve_visib=False):
+  """Visualizes 3D object models in specified poses in a single image.
 
   Two visualizations are created:
   1. An RGB visualization (if vis_rgb_path is not None).
@@ -102,16 +102,16 @@ def vis_object_poses(
     - 't': 3x1 ndarray with a translation vector.
     - 'text_info': Info to write at the object (see write_text_on_image).
   :param K: 3x3 ndarray with a camera matrix.
-  :param models: Dict. mapping object ID's to 3D models (see inout.load_ply).
-  :param model_colors: Dict. mapping object ID's to colors.
-  :param rgb: ndarray with the RGB image.
-  :param depth: ndarray with the depth image.
+  :param renderer: Instance of the Renderer class (see renderer.py).
+  :param rgb: ndarray with the RGB input image.
+  :param depth: ndarray with the depth input image.
   :param vis_rgb_path: Path to the output RGB visualization.
   :param vis_depth_diff_path: Path to the output depth-difference visualization.
-  :param vis_orig_color: Whether to use the color from the loaded object models.
   :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
     (i.e. only the closest object is visualized at each pixel).
   """
+  fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+
   # Indicators of visualization types.
   vis_rgb = vis_rgb_path is not None
   vis_depth_diff = vis_depth_diff_path is not None
@@ -145,24 +145,17 @@ def vis_object_poses(
   # Render the pose estimates one by one.
   for pose in poses:
 
-    model = models[pose['obj_id']]
-    model_color = model_colors[pose['obj_id']]
-
     # Rendering.
+    ren_out = renderer.render_object(
+      pose['obj_id'], pose['R'], pose['t'], fx, fy, cx, cy)
+
     m_rgb = None
     if vis_rgb:
-      if vis_orig_color:
-        m_rgb = renderer_py.render(
-          model, im_size, K, pose['R'], pose['t'], mode='rgb')
-      else:
-        m_rgb = renderer_py.render(
-          model, im_size, K, pose['R'], pose['t'], mode='rgb',
-          surf_color=model_color)
+      m_rgb = ren_out['rgb']
 
     m_mask = None
     if vis_depth_diff or (vis_rgb and vis_rgb_resolve_visib):
-      m_depth = renderer_py.render(
-        model, im_size, K, pose['R'], pose['t'], mode='depth')
+      m_depth = ren_out['depth']
 
       # Get mask of the surface parts that are closer than the
       # surfaces rendered before.

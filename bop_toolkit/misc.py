@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import math
+import subprocess
 import numpy as np
 from scipy.spatial import distance
 
@@ -80,22 +81,37 @@ def clip_pt_to_im(pt, im_size):
 
 
 def calc_2d_bbox(xs, ys, im_size=None, clip=False):
-  """Calculates 2D bounding box of a given set of 2D points.
+  """Calculates 2D bounding box of the given set of 2D points.
 
   :param xs: 1D ndarray with x-coordinates of 2D points.
   :param ys: 1D ndarray with y-coordinates of 2D points.
   :param im_size: Image size (width, height) (used for optional clipping).
   :param clip: Whether to clip the bounding box (default == False).
   :return: 2D bounding box (x, y, w, h), where (x, y) is the top-left corner
-    and (w, h) is the width and the height of the bounding box.
+    and (w, h) is width and height of the bounding box.
   """
-  bb_tl = [xs.min(), ys.min()]
-  bb_br = [xs.max(), ys.max()]
+  bb_min = [xs.min(), ys.min()]
+  bb_max = [xs.max(), ys.max()]
   if clip:
     assert (im_size is not None)
-    bb_tl = clip_pt_to_im(bb_tl, im_size)
-    bb_br = clip_pt_to_im(bb_br, im_size)
-  return [bb_tl[0], bb_tl[1], bb_br[0] - bb_tl[0], bb_br[1] - bb_tl[1]]
+    bb_min = clip_pt_to_im(bb_min, im_size)
+    bb_max = clip_pt_to_im(bb_max, im_size)
+  return [bb_min[0], bb_min[1], bb_max[0] - bb_min[0], bb_max[1] - bb_min[1]]
+
+
+def calc_3d_bbox(xs, ys, zs):
+  """Calculates 3D bounding box of the given set of 3D points.
+
+  :param xs: 1D ndarray with x-coordinates of 3D points.
+  :param ys: 1D ndarray with y-coordinates of 3D points.
+  :param zs: 1D ndarray with z-coordinates of 3D points.
+  :return: 3D bounding box (x, y, z, w, h, d), where (x, y, z) is the top-left
+    corner and (w, h, d) is width, height and depth of the bounding box.
+  """
+  bb_min = [xs.min(), ys.min(), zs.min()]
+  bb_max = [xs.max(), ys.max(), zs.max()]
+  return [bb_min[0], bb_min[1], bb_min[2],
+          bb_max[0] - bb_min[0], bb_max[1] - bb_min[1], bb_max[2] - bb_min[2]]
 
 
 def iou(bb_a, bb_b):
@@ -169,3 +185,41 @@ def calc_pts_diameter2(pts):
   dists = distance.cdist(pts, pts, 'euclidean')
   diameter = np.max(dists)
   return diameter
+
+
+def run_meshlab_script(meshlab_server_path, meshlab_script_path, model_in_path,
+                       model_out_path, attrs_to_save):
+  """Runs a MeshLab script on a 3D model.
+
+  meshlabserver depends on X server. To remove this dependence (on linux), run:
+  1) Xvfb :100 &
+  2) export DISPLAY=:100.0
+  3) meshlabserver <my_options>
+
+  :param meshlab_server_path: Path to meshlabserver.exe.
+  :param meshlab_script_path: Path to an MLX MeshLab script.
+  :param model_in_path: Path to the input 3D model saved in the PLY format.
+  :param model_out_path: Path to the output 3D model saved in the PLY format.
+  :param attrs_to_save: Attributes to save:
+    - vc -> vertex colors
+    - vf -> vertex flags
+    - vq -> vertex quality
+    - vn -> vertex normals
+    - vt -> vertex texture coords
+    - fc -> face colors
+    - ff -> face flags
+    - fq -> face quality
+    - fn -> face normals
+    - wc -> wedge colors
+    - wn -> wedge normals
+    - wt -> wedge texture coords
+  """
+  meshlabserver_cmd = [meshlab_server_path, '-s', meshlab_script_path, '-i',
+                       model_in_path, '-o', model_out_path]
+
+  if len(attrs_to_save):
+    meshlabserver_cmd += ['-m'] + attrs_to_save
+
+  log(' '.join(meshlabserver_cmd))
+  if subprocess.call(meshlabserver_cmd) != 0:
+    exit(-1)

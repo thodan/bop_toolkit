@@ -22,10 +22,14 @@ For evaluation in the BOP paper [1], the following parameters were used:
 """
 
 import os
-from os.path import join
 import argparse
 
-from bop_toolkit import dataset_params, inout, misc, pose_matching, score
+from bop_toolkit import config
+from bop_toolkit import dataset_params
+from bop_toolkit import inout
+from bop_toolkit import misc
+from bop_toolkit import pose_matching
+from bop_toolkit import score
 
 
 # PARAMETERS (can be overwritten by the command line arguments below).
@@ -56,20 +60,20 @@ p = {
   ],
 
   # Folder containing the BOP datasets.
-  'datasets_path': r'/path/to/bop/datasets',
+  'datasets_path': config.datasets_path,
 
-  # File with a list of image ID's to use for the evaluation. The file is
-  # assumed to be stored in the dataset folder. None = all images are used for
-  # the evaluation.
-  'im_subset_filename': 'test_set_v1.yml',
+  # File with a list of estimation targets from which a list of images to use
+  # will be extracted. The file is assumed to be stored in the dataset folder.
+  # None = all images are considerer.
+  'targets_filename': 'test_targets_bopc19.yml',
 
   # Template of path to the input file with calculated errors.
-  'error_tpath': join('{error_path}', 'errors_{scene_id:06d}.yml'),
+  'error_tpath': os.path.join('{error_path}', 'errors_{scene_id:06d}.yml'),
 
   # Template of path to the output file with established matches and calculated
   # scores.
-  'out_matches_tpath': join('{error_path}', 'matches_{eval_sign}.yml'),
-  'out_scores_tpath': join('{error_path}', 'scores_{eval_sign}.yml'),
+  'out_matches_tpath': os.path.join('{error_path}', 'matches_{eval_sign}.yml'),
+  'out_scores_tpath': os.path.join('{error_path}', 'scores_{eval_sign}.yml'),
 }
 ################################################################################
 
@@ -95,7 +99,7 @@ parser.add_argument('--visib_delta', default=p['visib_delta'])
 parser.add_argument('--error_dir_paths', default=','.join(p['error_dir_paths']),
                     help='Comma-sep. paths to errors from eval_calc_errors.py.')
 parser.add_argument('--datasets_path', default=p['datasets_path'])
-parser.add_argument('--im_subset_filename', default=p['im_subset_filename'])
+parser.add_argument('--targets_filename', default=p['targets_filename'])
 parser.add_argument('--error_tpath', default=p['error_tpath'])
 parser.add_argument('--out_matches_tpath', default=p['out_matches_tpath'])
 parser.add_argument('--out_scores_tpath', default=p['out_scores_tpath'])
@@ -116,7 +120,7 @@ p['visib_gt_min'] = float(args.visib_gt_min)
 p['visib_delta'] = float(args.visib_delta)
 p['error_dir_paths'] = args.error_dir_paths.split(',')
 p['datasets_path'] = str(args.datasets_path)
-p['im_subset_filename'] = str(args.im_subset_filename)
+p['targets_filename'] = str(args.targets_filename)
 p['error_tpath'] = str(args.error_tpath)
 p['out_matches_tpath'] = str(args.out_matches_tpath)
 p['out_scores_tpath'] = str(args.out_scores_tpath)
@@ -149,54 +153,60 @@ for error_dir_path in p['error_dir_paths']:
     eval_sign = 'th=' + '-'.join((map(str, p['error_th'][err_type])))
   eval_sign += '_min-visib=' + str(p['visib_gt_min'])
 
-  misc.log('Evaluating - error: {}, method: {}, dataset: {}.'.format(
+  misc.log('Calculating score - error: {}, method: {}, dataset: {}.'.format(
     err_type, method, dataset))
 
   # Load dataset parameters.
-  dp = dataset_params.get_dataset_params(
-    p['datasets_path'], dataset, train_type=split_type, val_type=split_type,
-    test_type=split_type, cam_type=split_type)
-  obj_ids = dp['obj_ids']
-  scene_ids = dp['scene_ids']
+  dp_split = dataset_params.get_split_params(
+    p['datasets_path'], dataset, split, split_type)
+
+  model_type = 'eval'
+  dp_model = dataset_params.get_model_params(
+    p['datasets_path'], dataset, model_type)
 
   # Subset of images to consider.
-  if p['im_subset_filename'] is not None:
-    im_subset_path = join(dp['base_path'], p['im_subset_filename'])
-    im_ids_sets = inout.load_yaml(im_subset_path)
+  if p['targets_filename'] is not None:
+    targets = inout.load_yaml(
+      os.path.join(dp_split['base_path'], p['targets_filename']))
+    scene_im_ids = {}
+    for target in targets:
+      scene_im_ids.setdefault(
+        target['scene_id'], set()).add(target['im_id'])
   else:
-    im_ids_sets = None
+    scene_im_ids = None
 
   # Set threshold of correctness (might be different for each object).
   error_obj_ths = {}
   if err_type in ['add', 'adi']:
     # Relative to object diameter.
-    models_info = inout.load_yaml(dp['models_info_path'])
-    for obj_id in obj_ids:
+    models_info = inout.load_yaml(dp_model['models_info_path'])
+    for obj_id in dp_model['obj_ids']:
       diameter = models_info[obj_id]['diameter']
       error_obj_ths[obj_id] =\
           [t * diameter for t in p['error_th_fact'][err_type]]
   else:
     # The same threshold for all objects.
-    for obj_id in obj_ids:
+    for obj_id in dp_model['obj_ids']:
       error_obj_ths[obj_id] = p['error_th'][err_type]
 
   # Go through the test scenes and match estimated poses to GT poses.
   # ----------------------------------------------------------------------------
   matches = []  # Stores info about the matching pose estimate for each GT pose.
-  for scene_id in scene_ids:
+  for scene_id in dp_split['scene_ids']:
 
     # Load GT poses for the current scene.
-    scene_gt = inout.load_gt(dp[split + '_gt_tpath'].format(scene_id=scene_id))
+    scene_gt = inout.load_scene_gt(
+      dp_split['scene_gt_tpath'].format(scene_id=scene_id))
 
-    # Load statistics (e.g. visibility) of the GT poses for the current scene.
-    scene_gt_stats = inout.load_yaml(dp[split + '_gt_stats_tpath'].format(
-      scene_id=scene_id, delta=int(p['visib_delta'])))
+    # Load info about the GT poses (e.g. visibility) for the current scene.
+    scene_gt_info = inout.load_yaml(
+      dp_split['scene_gt_info_tpath'].format(scene_id=scene_id))
 
     # Keep only the GT poses and their stats for the selected images.
-    if im_ids_sets is not None:
-      im_ids = im_ids_sets[scene_id]
+    if scene_im_ids is not None:
+      im_ids = scene_im_ids[scene_id]
       scene_gt = {im_id: scene_gt[im_id] for im_id in im_ids}
-      scene_gt_stats = {im_id: scene_gt_stats[im_id] for im_id in im_ids}
+      scene_gt_info = {im_id: scene_gt_info[im_id] for im_id in im_ids}
 
     # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
     scene_errs_path = p['error_tpath'].format(
@@ -212,13 +222,14 @@ for error_dir_path in p['error_dir_paths']:
 
     # Match the estimated poses to the ground-truth poses.
     matches += pose_matching.match_poses_scene(
-      scene_id, scene_gt, scene_gt_stats, scene_errs, p['visib_gt_min'],
+      scene_id, scene_gt, scene_gt_info, scene_errs, p['visib_gt_min'],
       error_obj_ths, n_top)
 
   # Calculate the performance scores.
   # ----------------------------------------------------------------------------
   # 6D object localization scores (SiSo if n_top = 1).
-  scores = score.calc_localization_scores(scene_ids, obj_ids, matches, n_top)
+  scores = score.calc_localization_scores(
+    dp_split['scene_ids'], dp_model['obj_ids'], matches, n_top)
 
   # Save scores.
   scores_path = p['out_scores_tpath'].format(

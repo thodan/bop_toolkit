@@ -3,6 +3,7 @@
 
 """An interface to the C++ based renderer (bop_renderer)."""
 
+# C++ renderer (https://github.com/thodan/bop_renderer)
 import bop_renderer
 
 from bop_toolkit import renderer
@@ -27,7 +28,7 @@ class RendererCpp(renderer.Renderer):
     super(RendererCpp, self).set_light_ambient_weight(light_ambient_weight)
     self.renderer.set_light_ambient_weight(light_ambient_weight)
 
-  def add_object(self, obj_id, model_path):
+  def add_object(self, obj_id, model_path, **kwargs):
     """See base class."""
     self.renderer.add_object(obj_id, model_path)
 
@@ -35,16 +36,11 @@ class RendererCpp(renderer.Renderer):
     """See base class."""
     self.renderer.remove_object(obj_id)
 
-  def render_object(self, obj_id, R, t, fx, fy, cx, cy, shading='flat'):
+  def render_object(self, obj_id, R, t, fx, fy, cx, cy):
     """See base class."""
     R_l = R.flatten().tolist()
     t_l = t.flatten().tolist()
     self.renderer.render_object(obj_id, R_l, t_l, fx, fy, cx, cy)
-
-  def get_color_image(self, obj_id):
-    """See base class."""
-    return self.renderer.get_color_image(obj_id)
-
-  def get_depth_image(self, obj_id):
-    """See base class."""
-    return self.renderer.get_depth_image(obj_id)
+    rgb = self.renderer.get_color_image(obj_id)
+    depth = self.renderer.get_depth_image(obj_id)
+    return {'rgb': rgb, 'depth': depth}
