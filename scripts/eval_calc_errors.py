@@ -148,7 +148,6 @@ for result_fname in p['result_fnames']:
   # Load the estimation targets to consider.
   targets = inout.load_yaml(
     os.path.join(dp_split['base_path'], p['targets_filename']))
-  scene_im_ids = {}
 
   # Organize the targets by scene, image and object.
   misc.log('Organizing estimation targets...')
