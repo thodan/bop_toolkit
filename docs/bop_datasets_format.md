@@ -132,6 +132,10 @@ The vertex normals were calculated using
 [MeshLab](http://meshlab.sourceforge.net/) as the angle-weighted sum of face
 normals incident to a vertex [4].
 
+Each folder with object models contains file *models_info.yml*, which includes
+the 3D bounding box and the diameter for each object model. The diameter is
+calculated as the largest distance between any pair of model vertices.
+
 
 ## Coordinate systems
 

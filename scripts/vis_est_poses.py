@@ -42,11 +42,12 @@ p = {
   # Type of the renderer (used for the VSD pose error function).
   'renderer_type': 'python',  # Options: 'cpp', 'python'.
 
-  # Names of files with results for which the errors will be calculated.
-  # The files are assumed to be stored in folder config.eval_results_path.
-  # See docs/bop_challenge_2019.md for a format description.
+  # Names of files with pose estimates to visualize (assumed to be stored in
+  # folder config.eval_path). See docs/bop_challenge_2019.md for a description
+  # of the format. Example results can be found at:
+  # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_fnames': [
-    '',
+    '/path/to/csv/with/results',
   ],
 
   # Folder containing the BOP datasets.
@@ -122,10 +123,8 @@ for result_fname in p['result_fnames']:
   misc.log('Organizing pose estimates...')
   ests_org = {}
   for est in ests:
-    ests_org.setdefault(
-      est['scene_id'], {}).setdefault(
-      est['im_id'], {}).setdefault(
-      est['obj_id'], []).append(est)
+    ests_org.setdefault(est['scene_id'], {}).setdefault(
+      est['im_id'], {}).setdefault(est['obj_id'], []).append(est)
 
   for scene_id, scene_ests in ests_org.items():
 

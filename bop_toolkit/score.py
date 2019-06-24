@@ -89,10 +89,10 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
   for obj_id, obj_insts in insts.items():
     for scene_id, scene_insts in obj_insts.items():
 
-      # Count the number of targets in the current test scene.
+      # Count the number of targets for the current object in the current scene.
       if n_top > 0:
         count = sum(np.minimum(n_top, scene_insts.values()))
-      else:  # 0 = all estimates, -1 = given by the number of GT poses.
+      else:
         count = sum(scene_insts.values())
 
       tars += count

@@ -59,13 +59,18 @@ def depth_im_to_dist_im(depth_im, K):
     distance from the camera center to the 3D point [X, Y, Z] that projects to
     pixel [x, y], or 0 if there is no such 3D point.
   """
-  xs = np.tile(np.arange(depth_im.shape[1]), [depth_im.shape[0], 1])
-  ys = np.tile(np.arange(depth_im.shape[0]), [depth_im.shape[1], 1]).T
+  xs, ys = np.meshgrid(
+    np.arange(depth_im.shape[1]), np.arange(depth_im.shape[0]))
 
   Xs = np.multiply(xs - K[0, 2], depth_im) * (1.0 / K[0, 0])
   Ys = np.multiply(ys - K[1, 2], depth_im) * (1.0 / K[1, 1])
 
-  dist_im = np.linalg.norm(np.dstack((Xs, Ys, depth_im)), axis=2)
+  dist_im = np.sqrt(
+    Xs.astype(np.float64)**2 +
+    Ys.astype(np.float64)**2 +
+    depth_im.astype(np.float64)**2)
+  # dist_im = np.linalg.norm(np.dstack((Xs, Ys, depth_im)), axis=2)  # Slower.
+
   return dist_im
 
 
@@ -185,6 +190,24 @@ def calc_pts_diameter2(pts):
   dists = distance.cdist(pts, pts, 'euclidean')
   diameter = np.max(dists)
   return diameter
+
+
+def get_error_signature(error_type, n_top, vsd_delta, vsd_tau, vsd_cost):
+  """Generates a signature for the specified settings of pose error calculation.
+
+  :param error_type: Type of error.
+  :param n_top: Top N pose estimates (with the highest score) to be evaluated
+    for each object class in each image.
+  :param vsd_delta: See pose.error.vsd().
+  :param vsd_tau: See pose.error.vsd().
+  :param vsd_cost: See pose.error.vsd().
+  :return: Generated signature.
+  """
+  error_sign = 'error=' + error_type + '_ntop=' + str(n_top)
+  if error_type == 'vsd':
+    error_sign += '_delta={}_tau={}_cost={}'.format(
+      int(vsd_delta), int(vsd_tau), vsd_cost)
+  return error_sign
 
 
 def run_meshlab_script(meshlab_server_path, meshlab_script_path, model_in_path,

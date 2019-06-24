@@ -32,18 +32,26 @@ p = {
   'vsd_tau': 20,
   'vsd_cost': 'step',  # Options: 'step', 'tlinear'.
 
+  # Whether to ignore/break if some errors are missing.
+  'skip_missing': True,
+
   # Type of the renderer (used for the VSD pose error function).
   'renderer_type': 'python',  # Options: 'cpp', 'python'.
 
-  # Names of files with results for which the errors will be calculated.
-  # The files are assumed to be stored in folder config.eval_path.
-  # See docs/bop_challenge_2019.md for a format description.
+  # Names of files with results for which to calculate the errors (assumed to be
+  # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
+  # description of the format. Example results can be found at:
+  # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_fnames': [
-    'hodan-iros15-dv1-nopso_icbin-test.csv',
+    '/path/to/csv/with/results',
   ],
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
+
+  # File with a list of estimation targets to consider. The file is assumed to
+  # be stored in the dataset folder.
+  'targets_filename': 'test_targets_bopc19.yml',
 
   # Folder in which the calculated errors will be saved.
   'out_errors_dir': config.eval_path,
@@ -64,10 +72,12 @@ parser.add_argument('--error_type', default=p['error_type'])
 parser.add_argument('--vsd_delta', default=p['vsd_delta'])
 parser.add_argument('--vsd_tau', default=p['vsd_tau'])
 parser.add_argument('--vsd_cost', default=p['vsd_cost'])
+parser.add_argument('--skip_missing', default=p['skip_missing'])
 parser.add_argument('--renderer_type', default=p['renderer_type'])
 parser.add_argument('--result_fnames', default=','.join(p['result_fnames']),
                     help='Comma-separated names of files with results.')
 parser.add_argument('--datasets_path', default=p['datasets_path'])
+parser.add_argument('--targets_filename', default=p['targets_filename'])
 parser.add_argument('--out_errors_dir', default=p['out_errors_dir'])
 parser.add_argument('--out_errors_tpath', default=p['out_errors_tpath'])
 args = parser.parse_args()
@@ -78,8 +88,10 @@ p['error_type'] = str(args.error_type)
 p['vsd_delta'] = float(args.vsd_delta)
 p['vsd_tau'] = float(args.vsd_tau)
 p['vsd_cost'] = str(args.vsd_cost)
+p['skip_missing'] = str(args.skip_missing)
 p['renderer_type'] = str(args.renderer_type)
 p['datasets_path'] = str(args.datasets_path)
+p['targets_filename'] = str(args.targets_filename)
 p['out_errors_dir'] = str(args.out_errors_dir)
 p['out_errors_tpath'] = str(args.out_errors_tpath)
 
@@ -92,10 +104,8 @@ misc.log('----------')
 # Error calculation.
 # ------------------------------------------------------------------------------
 # Error signature.
-error_sign = 'error=' + p['error_type'] + '_ntop=' + str(p['n_top'])
-if p['error_type'] == 'vsd':
-  error_sign += '_delta={}_tau={}_cost={}'.format(
-    int(p['vsd_delta']), int(p['vsd_tau']), p['vsd_cost'])
+error_sign = misc.get_error_signature(
+  p['error_type'], p['n_top'], p['vsd_delta'], p['vsd_tau'], p['vsd_cost'])
 
 for result_fname in p['result_fnames']:
   misc.log('Processing: ' + result_fname)
@@ -135,6 +145,18 @@ for result_fname in p['result_fnames']:
     for obj_id in dp_model['obj_ids']:
       ren.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
 
+  # Load the estimation targets to consider.
+  targets = inout.load_yaml(
+    os.path.join(dp_split['base_path'], p['targets_filename']))
+  scene_im_ids = {}
+
+  # Organize the targets by scene, image and object.
+  misc.log('Organizing estimation targets...')
+  targets_org = {}
+  for target in targets:
+    targets_org.setdefault(target['scene_id'], {}).setdefault(
+      target['im_id'], {})[target['obj_id']] = target
+
   # Load pose estimates.
   misc.log('Loading pose estimates...')
   ests = inout.load_bop_results(
@@ -144,25 +166,23 @@ for result_fname in p['result_fnames']:
   misc.log('Organizing pose estimates...')
   ests_org = {}
   for est in ests:
-    ests_org.setdefault(
-      est['scene_id'], {}).setdefault(
-      est['im_id'], {}).setdefault(
-      est['obj_id'], []).append(est)
+    ests_org.setdefault(est['scene_id'], {}).setdefault(
+      est['im_id'], {}).setdefault(est['obj_id'], []).append(est)
 
   ests_counter = 0
   time_start = time.time()
 
-  for scene_id, scene_ests in ests_org.items():
+  for scene_id, scene_targets in targets_org.items():
 
-    # Load info and GT poses for the current scene.
+    # Load camera and GT poses for the current scene.
     scene_camera = inout.load_scene_camera(
       dp_split['scene_camera_tpath'].format(scene_id=scene_id))
     scene_gt = inout.load_scene_gt(dp_split['scene_gt_tpath'].format(
       scene_id=scene_id))
 
     scene_errs = []
-    depth_im = None
-    for im_ind, (im_id, im_ests) in enumerate(scene_ests.items()):
+
+    for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
 
       if im_ind % 10 == 0:
         misc.log(
@@ -174,28 +194,45 @@ for result_fname in p['result_fnames']:
       K = scene_camera[im_id]['cam_K']
 
       # Load the depth image if VSD is selected as the pose error function.
+      depth_im = None
       if p['error_type'] == 'vsd':
         depth_path = dp_split['depth_tpath'].format(
           scene_id=scene_id, im_id=im_id)
         depth_im = inout.load_depth(depth_path)
         depth_im *= scene_camera[im_id]['depth_scale']  # Convert to [mm].
 
-      for obj_id, obj_ests in im_ests.items():
+      for obj_id, target in im_targets.items():
+
+        # The required number of top estimated poses.
+        if p['n_top'] == 0:  # All estimates are considered.
+          n_top_curr = None
+        elif p['n_top'] == -1:  # Given by the number of GT poses.
+          # n_top_curr = sum([gt['obj_id'] == obj_id for gt in scene_gt[im_id]])
+          n_top_curr = target['inst_count']
+        else:
+          n_top_curr = p['n_top']
+
+        # Get the estimates.
+        try:
+          obj_ests = ests_org[scene_id][im_id][obj_id]
+          obj_count = len(obj_ests)
+        except KeyError:
+          obj_ests = []
+          obj_count = 0
+
+        # Check the number of estimates.
+        if not p['skip_missing'] and obj_count < n_top_curr:
+          raise ValueError(
+            'Not enough estimates for scene: {}, im: {}, obj: {} '
+            '(provided: {}, expected: {})'.format(
+              scene_id, im_id, obj_id, obj_count, n_top_curr))
 
         # Sort the estimates by score (in descending order).
         obj_ests_sorted = sorted(
           enumerate(obj_ests), key=lambda x: x[1]['score'], reverse=True)
 
         # Select the required number of top estimated poses.
-        if p['n_top'] == 0:  # All estimates are considered.
-          n_top_curr = None
-        elif p['n_top'] == -1:  # Given by the number of GT poses.
-          n_gt = sum([gt['obj_id'] == obj_id for gt in scene_gt[im_id]])
-          n_top_curr = n_gt
-        else:
-          n_top_curr = p['n_top']
         obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
-
         ests_counter += len(obj_ests_sorted)
 
         # Calculate error of each pose estimate w.r.t. all GT poses of the same

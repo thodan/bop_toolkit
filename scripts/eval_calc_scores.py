@@ -50,22 +50,21 @@ p = {
     'adi': [0.1]
   },
 
-  'require_all_errors': True,  # Whether to break if some errors are missing.
   'visib_gt_min': 0.1,  # Minimum visible surface fraction of a valid GT pose.
   'visib_delta': 15,  # Tolerance for estimation of the visibility mask [mm].
 
-  # Paths to folders with pose errors relative to config.eval_path
-  # (calculated using eval_calc_errors.py).
+  # Paths (relative to config.eval_path) to folders with pose errors calculated
+  # using eval_calc_errors.py.
+  # Example: 'hodan-iros15_lm-test/error=vsd_ntop=1_delta=15_tau=20_cost=step'
   'error_dir_paths': [
-    r'hodan-iros15-dv1-nopso_icbin-test/error=vsd_ntop=1_delta=15_tau=20_cost=step',
+    r'/path/to/calculated/errors',
   ],
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
 
-  # File with a list of estimation targets from which a list of images to use
-  # will be extracted. The file is assumed to be stored in the dataset folder.
-  # None = all images are considerer.
+  # File with a list of estimation targets to consider. The file is assumed to
+  # be stored in the dataset folder.
   'targets_filename': 'test_targets_bopc19.yml',
 
   # Template of path to the input file with calculated errors.
@@ -97,7 +96,6 @@ for err_type in p['error_th_fact']:
     '--error_th_fact_' + err_type,
     default=','.join(map(str, p['error_th_fact'][err_type])))
 
-parser.add_argument('--require_all_errors', default=p['require_all_errors'])
 parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
 parser.add_argument('--visib_delta', default=p['visib_delta'])
 parser.add_argument('--error_dir_paths', default=','.join(p['error_dir_paths']),
@@ -119,7 +117,6 @@ for err_type in p['error_th_fact']:
   p['error_th_fact'][err_type] =\
     map(float, args.__dict__['error_th_fact_' + err_type].split(','))
 
-p['require_all_errors'] = bool(args.require_all_errors)
 p['visib_gt_min'] = float(args.visib_gt_min)
 p['visib_delta'] = float(args.visib_delta)
 p['error_dir_paths'] = args.error_dir_paths.split(',')
@@ -168,16 +165,17 @@ for error_dir_path in p['error_dir_paths']:
   dp_model = dataset_params.get_model_params(
     p['datasets_path'], dataset, model_type)
 
-  # Subset of images to consider.
-  if p['targets_filename'] is not None:
-    targets = inout.load_yaml(
-      os.path.join(dp_split['base_path'], p['targets_filename']))
-    scene_im_ids = {}
-    for target in targets:
-      scene_im_ids.setdefault(
-        target['scene_id'], set()).add(target['im_id'])
-  else:
-    scene_im_ids = None
+  # Load the estimation targets to consider.
+  targets = inout.load_yaml(
+    os.path.join(dp_split['base_path'], p['targets_filename']))
+  scene_im_ids = {}
+
+  # Organize the targets by scene, image and object.
+  misc.log('Organizing estimation targets...')
+  targets_org = {}
+  for target in targets:
+    targets_org.setdefault(target['scene_id'], {}).setdefault(
+      target['im_id'], {})[target['obj_id']] = target
 
   # Set threshold of correctness (might be different for each object).
   error_obj_ths = {}
@@ -196,7 +194,7 @@ for error_dir_path in p['error_dir_paths']:
   # Go through the test scenes and match estimated poses to GT poses.
   # ----------------------------------------------------------------------------
   matches = []  # Stores info about the matching pose estimate for each GT pose.
-  for scene_id in dp_split['scene_ids']:
+  for scene_id, scene_targets in targets_org.items():
 
     # Load GT poses for the current scene.
     scene_gt = inout.load_scene_gt(
@@ -206,28 +204,29 @@ for error_dir_path in p['error_dir_paths']:
     scene_gt_info = inout.load_yaml(
       dp_split['scene_gt_info_tpath'].format(scene_id=scene_id))
 
-    # Keep only the GT poses and their stats for the selected images.
-    if scene_im_ids is not None:
-      im_ids = scene_im_ids[scene_id]
-      scene_gt = {im_id: scene_gt[im_id] for im_id in im_ids}
-      scene_gt_info = {im_id: scene_gt_info[im_id] for im_id in im_ids}
+    # Keep GT poses only for the selected targets.
+    scene_gt_curr = {}
+    scene_gt_info_curr = {}
+    scene_gt_valid = {}
+    for im_id, im_targets in scene_targets.items():
+      scene_gt_curr[im_id] = scene_gt[im_id]
+
+      # Determine which GT poses are valid.
+      scene_gt_valid[im_id] = []
+      im_gt_info = scene_gt_info[im_id]
+      for gt_id, gt in enumerate(scene_gt[im_id]):
+        is_target = gt['obj_id'] in im_targets.keys()
+        is_visib = im_gt_info[gt_id]['visib_fract'] >= p['visib_gt_min']
+        scene_gt_valid[im_id].append(is_target and is_visib)
 
     # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
     scene_errs_path = p['error_tpath'].format(
       error_dir_path=error_dir_path, scene_id=scene_id)
-
-    scene_errs = None
-    if os.path.isfile(scene_errs_path):
-      scene_errs = inout.load_errors(scene_errs_path)
-
-    elif p['require_all_errors']:
-      raise IOError('{} is missing, but errors for all scenes are required'
-                    ' (require_all_errors = True).'.format(scene_errs_path))
+    scene_errs = inout.load_errors(scene_errs_path)
 
     # Match the estimated poses to the ground-truth poses.
     matches += pose_matching.match_poses_scene(
-      scene_id, scene_gt, scene_gt_info, scene_errs, p['visib_gt_min'],
-      error_obj_ths, n_top)
+      scene_id, scene_gt_curr, scene_gt_valid, scene_errs, error_obj_ths, n_top)
 
   # Calculate the performance scores.
   # ----------------------------------------------------------------------------

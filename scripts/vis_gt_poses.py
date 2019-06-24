@@ -25,9 +25,9 @@ p = {
   # Dataset split type. None = default. See dataset_params.py for options.
   'dataset_split_type': None,
 
-  # File with a list of estimation targets from which a list of images to use
-  # will be extracted. The file is assumed to be stored in the dataset folder.
-  # None = all images are considerer.
+  # File with a list of estimation targets used to determine the set of images
+  # for which the GT poses will be visualized. The file is assumed to be stored
+  # in the dataset folder. None = all images.
   'targets_filename': 'test_targets_bopc19.yml',
 
   # Select ID's of scenes, images and GT poses to be processed.
@@ -83,7 +83,7 @@ colors_path = os.path.join(
   os.path.dirname(visualization.__file__), 'colors.yml')
 colors = inout.load_yaml(colors_path)
 
-# Subset of images for which the the ground-truth poses will be rendered.
+# Subset of images for which the ground-truth poses will be rendered.
 if p['targets_filename'] is not None:
   targets = inout.load_yaml(
     os.path.join(dp_split['base_path'], p['targets_filename']))
@@ -134,7 +134,7 @@ for scene_id in scene_ids_curr:
   if scene_im_ids is not None:
     im_ids = scene_im_ids[scene_id]
   else:
-    im_ids = sorted(scene_camera.keys())
+    im_ids = sorted(scene_gt.keys())
   if p['im_ids']:
     im_ids = set(im_ids).intersection(p['im_ids'])
 
