@@ -54,9 +54,10 @@ p = {
   'visib_gt_min': 0.1,  # Minimum visible surface fraction of a valid GT pose.
   'visib_delta': 15,  # Tolerance for estimation of the visibility mask [mm].
 
-  # Paths to pose errors (calculated using eval_calc_errors.py).
+  # Paths to folders with pose errors relative to config.eval_path
+  # (calculated using eval_calc_errors.py).
   'error_dir_paths': [
-    r'/path/to/pose/errors',
+    r'hodan-iros15-dv1-nopso_icbin-test/error=vsd_ntop=1_delta=15_tau=20_cost=step',
   ],
 
   # Folder containing the BOP datasets.
@@ -68,12 +69,15 @@ p = {
   'targets_filename': 'test_targets_bopc19.yml',
 
   # Template of path to the input file with calculated errors.
-  'error_tpath': os.path.join('{error_path}', 'errors_{scene_id:06d}.yml'),
+  'error_tpath': os.path.join(
+    config.eval_path, '{error_dir_path}', 'errors_{scene_id:06d}.yml'),
 
   # Template of path to the output file with established matches and calculated
   # scores.
-  'out_matches_tpath': os.path.join('{error_path}', 'matches_{eval_sign}.yml'),
-  'out_scores_tpath': os.path.join('{error_path}', 'scores_{eval_sign}.yml'),
+  'out_matches_tpath': os.path.join(
+    config.eval_path, '{error_dir_path}', 'matches_{eval_sign}.yml'),
+  'out_scores_tpath': os.path.join(
+    config.eval_path, '{error_dir_path}', 'scores_{eval_sign}.yml'),
 }
 ################################################################################
 
@@ -210,7 +214,7 @@ for error_dir_path in p['error_dir_paths']:
 
     # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
     scene_errs_path = p['error_tpath'].format(
-      error_path=error_dir_path, scene_id=scene_id)
+      error_dir_path=error_dir_path, scene_id=scene_id)
 
     scene_errs = None
     if os.path.isfile(scene_errs_path):
@@ -233,12 +237,12 @@ for error_dir_path in p['error_dir_paths']:
 
   # Save scores.
   scores_path = p['out_scores_tpath'].format(
-    error_path=error_dir_path, eval_sign=eval_sign)
+    error_dir_path=error_dir_path, eval_sign=eval_sign)
   inout.save_yaml(scores_path, scores)
 
   # Save matches.
   matches_path = p['out_matches_tpath'].format(
-    error_path=error_dir_path, eval_sign=eval_sign)
+    error_dir_path=error_dir_path, eval_sign=eval_sign)
   inout.save_yaml(matches_path, matches)
 
 misc.log('Done.')

@@ -121,19 +121,19 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
   # Recall per scene.
   scene_recalls = {}
   for i in scene_ids:
-    scene_recalls[i] = recall(scene_tps[i], scene_tars[i])
+    scene_recalls[i] = float(recall(scene_tps[i], scene_tars[i]))
   mean_scene_recall = float(np.mean(scene_recalls.values()).squeeze())
 
   # Final scores.
   scores = {
-    'total_recall': total_recall,
+    'total_recall': float(total_recall),
     'obj_recalls': obj_recalls,
-    'mean_obj_recall': mean_obj_recall,
+    'mean_obj_recall': float(mean_obj_recall),
     'scene_recalls': scene_recalls,
-    'mean_scene_recall': mean_scene_recall,
+    'mean_scene_recall': float(mean_scene_recall),
     'gt_count': len(matches),
-    'targets_count': tars,
-    'tp_count': tps,
+    'targets_count': int(tars),
+    'tp_count': int(tps),
   }
 
   if do_print:

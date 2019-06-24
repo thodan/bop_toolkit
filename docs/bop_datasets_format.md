@@ -30,7 +30,7 @@ data types are available (e.g. images from different sensors).
 
 The images in *train*, *val* and *test* folders are organized into subfolders:
 
-* *rgb* - Color images.
+* *rgb/gray* - Color/gray images.
 * *depth* - Depth images (saved as 16-bit unsigned short).
 * *mask* (optional) - Masks of object silhouettes.
 * *mask_visib* (optional) - Masks of the visible parts of object silhouettes.
@@ -139,7 +139,8 @@ All coordinate systems (model, camera, world) are right-handed.
 In the model coordinate system, the Z axis points up (when the object is
 standing "naturally up-right") and the origin coincides with the center of the
 3D bounding box of the object model.
-The camera coordinate system is as in [OpenCV](http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html)
+The camera coordinate system is as in
+[OpenCV](http://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html)
 with the camera looking along the Z axis.
 
 

@@ -36,10 +36,10 @@ p = {
   'renderer_type': 'python',  # Options: 'cpp', 'python'.
 
   # Names of files with results for which the errors will be calculated.
-  # The files are assumed to be stored in folder config.eval_results_path.
+  # The files are assumed to be stored in folder config.eval_path.
   # See docs/bop_challenge_2019.md for a format description.
   'result_fnames': [
-    '',
+    'hodan-iros15-dv1-nopso_icbin-test.csv',
   ],
 
   # Folder containing the BOP datasets.
@@ -102,16 +102,17 @@ for result_fname in p['result_fnames']:
 
   # Parse info about the method and the dataset from the folder name.
   result_name = os.path.splitext(os.path.basename(result_fname))[0]
-  result_info = result_fname.split('_')
+  result_info = result_name.split('_')
   method = result_info[0]
   dataset_info = result_info[1].split('-')
   dataset = dataset_info[0]
   split = dataset_info[1]
   split_type = dataset_info[2] if len(dataset_info) > 2 else None
+  split_type_str = ' - ' + split_type if split_type is not None else ''
 
   # Load dataset parameters.
   dp_split = dataset_params.get_split_params(
-    p['datasets_path'], dataset, split_type, split_type)
+    p['datasets_path'], dataset, split, split_type)
 
   model_type = 'eval'
   dp_model = dataset_params.get_model_params(
@@ -148,15 +149,10 @@ for result_fname in p['result_fnames']:
       est['im_id'], {}).setdefault(
       est['obj_id'], []).append(est)
 
+  ests_counter = 0
+  time_start = time.time()
+
   for scene_id, scene_ests in ests_org.items():
-
-    split_type_str = ' - ' + split_type if split_type is not None else ''
-    misc.log(
-      'Calculating error {} - method: {}, dataset: {}{}, scene: {}'.format(
-        p['error_type'], method, dataset, split_type_str, scene_id))
-
-    targets_counter = 0
-    time_start = time.time()
 
     # Load info and GT poses for the current scene.
     scene_camera = inout.load_scene_camera(
@@ -168,18 +164,23 @@ for result_fname in p['result_fnames']:
     depth_im = None
     for im_ind, (im_id, im_ests) in enumerate(scene_ests.items()):
 
+      if im_ind % 10 == 0:
+        misc.log(
+          'Calculating error {} - method: {}, dataset: {}{}, scene: {}, '
+          'im: {}'.format(
+            p['error_type'], method, dataset, split_type_str, scene_id, im_ind))
+
       # Camera matrix.
       K = scene_camera[im_id]['cam_K']
 
       # Load the depth image if VSD is selected as the pose error function.
       if p['error_type'] == 'vsd':
-        depth_path = dp_split['depth_tpath'].format(scene_id, im_id)
+        depth_path = dp_split['depth_tpath'].format(
+          scene_id=scene_id, im_id=im_id)
         depth_im = inout.load_depth(depth_path)
         depth_im *= scene_camera[im_id]['depth_scale']  # Convert to [mm].
 
       for obj_id, obj_ests in im_ests.items():
-
-        targets_counter += 1
 
         # Sort the estimates by score (in descending order).
         obj_ests_sorted = sorted(
@@ -194,6 +195,8 @@ for result_fname in p['result_fnames']:
         else:
           n_top_curr = p['n_top']
         obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
+
+        ests_counter += len(obj_ests_sorted)
 
         # Calculate error of each pose estimate w.r.t. all GT poses of the same
         # object class.
@@ -249,10 +252,6 @@ for result_fname in p['result_fnames']:
             'errors': errs
           })
 
-    time_total = time.time() - time_start
-    misc.log('{} test targets evaluated in {}s.'.format(
-      targets_counter, time_total))
-
     # Save the calculated errors to a YAML file.
     errors_path = p['out_errors_tpath'].format(
       out_errors_dir=p['out_errors_dir'], result_name=result_name,
@@ -260,5 +259,8 @@ for result_fname in p['result_fnames']:
     misc.ensure_dir(os.path.dirname(errors_path))
     misc.log('Saving errors to: {}'.format(errors_path))
     inout.save_errors(errors_path, scene_errs)
+
+  time_total = time.time() - time_start
+  misc.log('{} estimates evaluated in {}s.'.format(ests_counter, time_total))
 
 misc.log('Done.')

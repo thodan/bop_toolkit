@@ -3,10 +3,14 @@
 
 """An interface to the C++ based renderer (bop_renderer)."""
 
-# C++ renderer (https://github.com/thodan/bop_renderer)
-import bop_renderer
+import sys
 
+from bop_toolkit import config
 from bop_toolkit import renderer
+
+# C++ renderer (https://github.com/thodan/bop_renderer)
+sys.path.append(config.bop_renderer_path)
+import bop_renderer
 
 
 class RendererCpp(renderer.Renderer):

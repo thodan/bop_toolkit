@@ -31,7 +31,7 @@ def save_yaml(path, content):
   :param content: Dictionary/list to save.
   """
   with open(path, 'w') as f:
-    yaml.dump(content, f, Dumper=yaml.CDumper, width=10000)
+    yaml.dump(content, f, Dumper=yaml.CDumper, width=100000)
 
 
 def load_cam_params(path):

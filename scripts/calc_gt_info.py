@@ -72,8 +72,7 @@ ren = renderer.create_renderer(
 for obj_id in dp_model['obj_ids']:
   ren.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
 
-# for scene_id in dp_split['scene_ids']:
-for scene_id in range(22, 31):
+for scene_id in dp_split['scene_ids']:
 
   # Load scene info and ground-truth poses.
   scene_camera = inout.load_scene_camera(

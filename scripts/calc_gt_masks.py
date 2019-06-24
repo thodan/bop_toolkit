@@ -49,7 +49,7 @@ dp_model = dataset_params.get_model_params(
   p['datasets_path'], p['dataset'], model_type)
 
 # for scene_id in dp_split['scene_ids']:
-for scene_id in range(8, 31):
+for scene_id in [29, 30]:
 
   # Load scene GT.
   scene_gt_path = dp_split['scene_gt_tpath'].format(
@@ -87,7 +87,7 @@ for scene_id in range(8, 31):
 
     if im_id % 100 == 0:
       misc.log(
-        'Calculating GT info - dataset: {} ({}, {}), scene: {}, im: {}'.format(
+        'Calculating masks - dataset: {} ({}, {}), scene: {}, im: {}'.format(
           p['dataset'], p['dataset_split'], p['dataset_split_type'], scene_id,
           im_id))
 
