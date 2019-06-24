@@ -145,7 +145,7 @@ for result_fname in p['result_fnames']:
     for obj_id in dp_model['obj_ids']:
       ren.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
 
-  # Load the estimation targets to consider.
+  # Load the estimation targets.
   targets = inout.load_yaml(
     os.path.join(dp_split['base_path'], p['targets_filename']))
 
