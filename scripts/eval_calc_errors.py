@@ -88,11 +88,11 @@ p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
 p['out_errors_tpath'] = str(args.out_errors_tpath)
 
-misc.log('----------')
+misc.log('-----------')
 misc.log('Parameters:')
 for k, v in p.items():
   misc.log('- {}: {}'.format(k, v))
-misc.log('----------')
+misc.log('-----------')
 
 # Error calculation.
 # ------------------------------------------------------------------------------

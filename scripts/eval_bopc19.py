@@ -82,6 +82,11 @@ p['result_filenames'] = args.result_filenames.split(',')
 # Evaluation.
 # ------------------------------------------------------------------------------
 for result_filename in p['result_filenames']:
+
+  misc.log('-----------')
+  misc.log('EVALUATING: {}'.format(result_filename))
+  misc.log('-----------')
+
   for error in p['errors']:
 
     # Calculate error of the pose estimates.

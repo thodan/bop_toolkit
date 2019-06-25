@@ -124,11 +124,11 @@ p['error_tpath'] = str(args.error_tpath)
 p['out_matches_tpath'] = str(args.out_matches_tpath)
 p['out_scores_tpath'] = str(args.out_scores_tpath)
 
-misc.log('----------')
+misc.log('-----------')
 misc.log('Parameters:')
 for k, v in p.items():
   misc.log('- {}: {}'.format(k, v))
-misc.log('----------')
+misc.log('-----------')
 
 # Calculation of the performance scores.
 # ------------------------------------------------------------------------------
