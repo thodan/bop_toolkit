@@ -15,13 +15,13 @@ For evaluation in the BOP paper [1], the following parameters were used:
  - vsd_cost = 'step'
  - vsd_delta = 15
  - vsd_tau = 20
- - error_th['vsd'] = 0.3
+ - correct_th['vsd'] = 0.3
 
- [1] Hodan, Michel et al. BOP: Benchmark for 6D Object Pose Estimation,
-     ECCV 2018.
+ [1] Hodan, Michel et al. BOP: Benchmark for 6D Object Pose Estimation, ECCV'18.
 """
 
 import os
+import time
 import argparse
 
 from bop_toolkit import config
@@ -36,7 +36,7 @@ from bop_toolkit import score
 ################################################################################
 p = {
   # Threshold of correctness for different pose error functions.
-  'error_th': {
+  'correct_th': {
     'vsd': [0.3],
     'cou_mask_proj': [0.5],
     'rete': [5.0, 5.0],  # [deg, cm].
@@ -45,13 +45,13 @@ p = {
   },
 
   # Factor k; threshold of correctness = k * d, where d is the obj. diameter.
-  'error_th_fact': {
+  'correct_th_fact': {
     'add': [0.1],
     'adi': [0.1]
   },
 
-  'visib_gt_min': 0.1,  # Minimum visible surface fraction of a valid GT pose.
-  'visib_delta': 15,  # Tolerance for estimation of the visibility mask [mm].
+  # Minimum visible surface fraction of a valid GT pose.
+  'visib_gt_min': 0.1,
 
   # Paths (relative to config.eval_path) to folders with pose errors calculated
   # using eval_calc_errors.py.
@@ -74,9 +74,9 @@ p = {
   # Template of path to the output file with established matches and calculated
   # scores.
   'out_matches_tpath': os.path.join(
-    config.eval_path, '{error_dir_path}', 'matches_{eval_sign}.yml'),
+    config.eval_path, '{error_dir_path}', 'matches_{score_sign}.yml'),
   'out_scores_tpath': os.path.join(
-    config.eval_path, '{error_dir_path}', 'scores_{eval_sign}.yml'),
+    config.eval_path, '{error_dir_path}', 'scores_{score_sign}.yml'),
 }
 ################################################################################
 
@@ -86,18 +86,17 @@ p = {
 parser = argparse.ArgumentParser()
 
 # Define the command line arguments.
-for err_type in p['error_th']:
+for err_type in p['correct_th']:
   parser.add_argument(
-    '--error_th_' + err_type,
-    default=','.join(map(str, p['error_th'][err_type])))
+    '--correct_th_' + err_type,
+    default=','.join(map(str, p['correct_th'][err_type])))
 
-for err_type in p['error_th_fact']:
+for err_type in p['correct_th_fact']:
   parser.add_argument(
-    '--error_th_fact_' + err_type,
-    default=','.join(map(str, p['error_th_fact'][err_type])))
+    '--correct_th_fact_' + err_type,
+    default=','.join(map(str, p['correct_th_fact'][err_type])))
 
 parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
-parser.add_argument('--visib_delta', default=p['visib_delta'])
 parser.add_argument('--error_dir_paths', default=','.join(p['error_dir_paths']),
                     help='Comma-sep. paths to errors from eval_calc_errors.py.')
 parser.add_argument('--datasets_path', default=p['datasets_path'])
@@ -109,16 +108,15 @@ parser.add_argument('--out_scores_tpath', default=p['out_scores_tpath'])
 # Process the command line arguments.
 args = parser.parse_args()
 
-for err_type in p['error_th']:
-  p['error_th'][err_type] =\
-    map(float, args.__dict__['error_th_' + err_type].split(','))
+for err_type in p['correct_th']:
+  p['correct_th'][err_type] =\
+    map(float, args.__dict__['correct_th_' + err_type].split(','))
 
-for err_type in p['error_th_fact']:
-  p['error_th_fact'][err_type] =\
-    map(float, args.__dict__['error_th_fact_' + err_type].split(','))
+for err_type in p['correct_th_fact']:
+  p['correct_th_fact'][err_type] =\
+    map(float, args.__dict__['correct_th_fact_' + err_type].split(','))
 
 p['visib_gt_min'] = float(args.visib_gt_min)
-p['visib_delta'] = float(args.visib_delta)
 p['error_dir_paths'] = args.error_dir_paths.split(',')
 p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
@@ -135,6 +133,9 @@ misc.log('----------')
 # Calculation of the performance scores.
 # ------------------------------------------------------------------------------
 for error_dir_path in p['error_dir_paths']:
+  misc.log('Processing: {}'.format(error_dir_path))
+
+  time_start = time.time()
 
   # Parse info about the errors from the folder name.
   error_sign = os.path.basename(error_dir_path)
@@ -149,10 +150,13 @@ for error_dir_path in p['error_dir_paths']:
 
   # Evaluation signature.
   if err_type in ['add', 'adi']:
-    eval_sign = 'thf=' + '-'.join((p['error_th_fact'][err_type]))
+    score_sign = misc.get_score_signature(
+      err_type, p['visib_gt_min'],
+      correct_th_fact=p['correct_th_fact'][err_type])
   else:
-    eval_sign = 'th=' + '-'.join((map(str, p['error_th'][err_type])))
-  eval_sign += '_min-visib=' + str(p['visib_gt_min'])
+    score_sign = misc.get_score_signature(
+      err_type, p['visib_gt_min'],
+      correct_th=p['correct_th'][err_type])
 
   misc.log('Calculating score - error: {}, method: {}, dataset: {}.'.format(
     err_type, method, dataset))
@@ -178,18 +182,18 @@ for error_dir_path in p['error_dir_paths']:
       target['im_id'], {})[target['obj_id']] = target
 
   # Set threshold of correctness (might be different for each object).
-  error_obj_ths = {}
+  correct_obj_ths = {}
   if err_type in ['add', 'adi']:
     # Relative to object diameter.
     models_info = inout.load_yaml(dp_model['models_info_path'])
     for obj_id in dp_model['obj_ids']:
       diameter = models_info[obj_id]['diameter']
-      error_obj_ths[obj_id] =\
-          [t * diameter for t in p['error_th_fact'][err_type]]
+      correct_obj_ths[obj_id] =\
+          [t * diameter for t in p['correct_th_fact'][err_type]]
   else:
     # The same threshold for all objects.
     for obj_id in dp_model['obj_ids']:
-      error_obj_ths[obj_id] = p['error_th'][err_type]
+      correct_obj_ths[obj_id] = p['correct_th'][err_type]
 
   # Go through the test scenes and match estimated poses to GT poses.
   # ----------------------------------------------------------------------------
@@ -226,7 +230,8 @@ for error_dir_path in p['error_dir_paths']:
 
     # Match the estimated poses to the ground-truth poses.
     matches += pose_matching.match_poses_scene(
-      scene_id, scene_gt_curr, scene_gt_valid, scene_errs, error_obj_ths, n_top)
+      scene_id, scene_gt_curr, scene_gt_valid, scene_errs, correct_obj_ths,
+      n_top)
 
   # Calculate the performance scores.
   # ----------------------------------------------------------------------------
@@ -236,12 +241,15 @@ for error_dir_path in p['error_dir_paths']:
 
   # Save scores.
   scores_path = p['out_scores_tpath'].format(
-    error_dir_path=error_dir_path, eval_sign=eval_sign)
+    error_dir_path=error_dir_path, score_sign=score_sign)
   inout.save_yaml(scores_path, scores)
 
   # Save matches.
   matches_path = p['out_matches_tpath'].format(
-    error_dir_path=error_dir_path, eval_sign=eval_sign)
+    error_dir_path=error_dir_path, score_sign=score_sign)
   inout.save_yaml(matches_path, matches)
+
+  time_total = time.time() - time_start
+  misc.log('Matching and score calculation took {}s.'.format(time_total))
 
 misc.log('Done.')

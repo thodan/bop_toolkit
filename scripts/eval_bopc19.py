@@ -1,68 +1,158 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Main evaluation script."""
+"""Evaluation script for the BOP Challenge 2019."""
 
 import os
+import argparse
 import subprocess
 
+from bop_toolkit import config
+from bop_toolkit import inout
 from bop_toolkit import misc
 
 
-result_filename = 'hodan-iros15-dv1-nopso_lm-test.csv'
+# PARAMETERS (some can be overwritten by the command line arguments below).
+################################################################################
+p = {
+  # Errors to calculate.
+  'errors': [
+    # {
+    #   'n_top': -1,
+    #   'type': 'vsd',
+    #   'vsd_delta': 15,
+    #   'vsd_tau': 20,
+    #   'correct_th': [[0.3]]
+    # },
+    # {
+    #   'n_top': -1,
+    #   'type': 'vsd',
+    #   'vsd_delta': 15,
+    #   'vsd_tau': float('inf'),
+    #   'correct_th': [[0.3]]
+    # },
+    # {
+    #   'n_top': -1,
+    #   'type': 'add',
+    #   'correct_th': [[0.1]]
+    # },
+    # {
+    #   'n_top': -1,
+    #   'type': 'adi',
+    #   'correct_th': [[0.1]]
+    # },
+    {
+      'n_top': -1,
+      'type': 'rete',
+      'correct_th': [[5.0, 5.0]]
+    }
+  ],
+
+  # Minimum visible surface fraction of a valid GT pose.
+  'visib_gt_min': 0.1,
+
+  # Type of the renderer (used for the VSD pose error function).
+  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+
+  # Names of files with results for which to calculate the errors (assumed to be
+  # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
+  # description of the format. Example results can be found at:
+  # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
+  'result_filenames': [
+    '/path/to/csv/with/results',
+  ],
+}
+################################################################################
 
 
-# Errors to calculate.
-errors = [
-  {'n_top': -1, 'type': 'vsd', 'vsd_delta': 15, 'vsd_tau': 20},
-  {'n_top': -1, 'type': 'adi'}
-]
+# Command line arguments.
+# ------------------------------------------------------------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
+parser.add_argument('--renderer_type', default=p['renderer_type'])
+parser.add_argument('--result_filenames',
+                    default=','.join(p['result_filenames']),
+                    help='Comma-separated names of files with results.')
+args = parser.parse_args()
 
-for error in errors:
+p['visib_gt_min'] = float(args.visib_gt_min)
+p['renderer_type'] = str(args.renderer_type)
+p['result_filenames'] = args.result_filenames.split(',')
 
-  # Calculate error of the pose estimates.
-  calc_errors_cmd = [
-    'python',
-    os.path.join('scripts', 'eval_calc_errors.py'),
-    '--n_top={}'.format(error['n_top']),
-    '--error_type={}'.format(error['type']),
-    '--result_filenames={}'.format(result_filename),
-    '--targets_filename=test_targets_bopc19.yml'
-    '--renderer_type=cpp',
-    '--skip_missing=1',
-  ]
-  if error['type'] == 'vsd':
-    calc_errors_cmd += [
-      '--vsd_delta={}'.format(error['vsd_delta']),
-      '--vsd_tau={}'.format(error['vsd_tau'])
+# Evaluation.
+# ------------------------------------------------------------------------------
+for result_filename in p['result_filenames']:
+  for error in p['errors']:
+
+    # Calculate error of the pose estimates.
+    calc_errors_cmd = [
+      'python',
+      os.path.join('scripts', 'eval_calc_errors.py'),
+      '--n_top={}'.format(error['n_top']),
+      '--error_type={}'.format(error['type']),
+      '--result_filenames={}'.format(result_filename),
+      '--renderer_type={}'.format(p['renderer_type']),
+      '--targets_filename=test_targets_bopc19.yml',
+      '--skip_missing=1',
     ]
+    if error['type'] == 'vsd':
+      calc_errors_cmd += [
+        '--vsd_delta={}'.format(error['vsd_delta']),
+        '--vsd_tau={}'.format(error['vsd_tau'])
+      ]
 
-  misc.log('Running: ' + ' '.join(calc_errors_cmd))
-  if subprocess.call(calc_errors_cmd) != 0:
-    raise RuntimeError('Calculation of VSD failed.')
+    misc.log('Running: ' + ' '.join(calc_errors_cmd))
+    if subprocess.call(calc_errors_cmd) != 0:
+      raise RuntimeError('Calculation of VSD failed.')
 
-  # Path (relative to config.eval_path) to folder with calculated pose errors.
-  error_sign = misc.get_error_signature(
-    error['type'], error['n_top'], error['vsd_delta'], error['vsd_tau'])
-  result_name = os.path.splitext(os.path.basename(result_filename))[0]
-  error_dir_path = os.path.join(result_name, error_sign)
+    # Path (relative to config.eval_path) to folder with calculated pose errors.
+    if error['type'] == 'vsd':
+      error_sign = misc.get_error_signature(
+        error['type'], error['n_top'], vsd_delta=error['vsd_delta'],
+        vsd_tau=error['vsd_tau'])
+    else:
+      error_sign = misc.get_error_signature(
+        error['type'], error['n_top'])
 
-  # Calculate performance scores.
-  calc_scores_cmd = [
-    'python',
-    os.path.join('scripts', 'eval_calc_scores.py'),
-    '--n_top={}'.format(error['n_top']),
-    '--error_type={}'.format(error['type']),
-    '--vsd_delta={}'.format(error['vsd_delta']),
-    '--vsd_tau={}'.format(error['vsd_tau']),
-    '--error_dir_paths={}'.format(error_dir_path),
-    '--visib_gt_min=0.1'
-    '--visib_delta=15'
-  ]
+    result_name = os.path.splitext(os.path.basename(result_filename))[0]
+    error_dir_path = os.path.join(result_name, error_sign)
 
-  if error['type'] in ['add', 'adi']:
-    calc_scores_cmd += ['--error_th_fact_{}={}'.format(
-      error['type'], error[''])]
-  else:
-    calc_scores_cmd += ['--error_th_{}={}'.format(
-      error['type'], error[''])]
+    # Calculate performance scores.
+    for correct_th in error['correct_th']:
+
+      calc_scores_cmd = [
+        'python',
+        os.path.join('scripts', 'eval_calc_scores.py'),
+        '--error_dir_paths={}'.format(error_dir_path),
+        '--targets_filename=test_targets_bopc19.yml',
+        '--visib_gt_min=0.1'
+      ]
+
+      if error['type'] in ['add', 'adi']:
+        calc_scores_cmd += ['--correct_th_fact_{}={}'.format(
+          error['type'], ','.join(map(str, correct_th)))]
+      else:
+        calc_scores_cmd += ['--correct_th_{}={}'.format(
+          error['type'], ','.join(map(str, correct_th)))]
+
+      misc.log('Running: ' + ' '.join(calc_scores_cmd))
+      if subprocess.call(calc_scores_cmd) != 0:
+        raise RuntimeError('Calculation of scores failed.')
+
+      # Path to file with calculated scores.
+      if error['type'] in ['add', 'adi']:
+        score_sign = misc.get_score_signature(
+          error['type'], p['visib_gt_min'], correct_th_fact=correct_th)
+      else:
+        score_sign = misc.get_score_signature(
+          error['type'], p['visib_gt_min'], correct_th=correct_th)
+
+      scores_filename = 'scores_{}.yml'.format(score_sign)
+      scores_path = os.path.join(
+        config.eval_path, result_name, error_sign, scores_filename)
+
+      # Load the scores.
+      misc.log('Loading calculated scores from: {}'.format(scores_path))
+      scores = inout.load_yaml(scores_path)
+
+      misc.log('Total recall: {}'.format(scores['total_recall']))

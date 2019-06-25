@@ -192,21 +192,38 @@ def calc_pts_diameter2(pts):
   return diameter
 
 
-def get_error_signature(error_type, n_top, vsd_delta=None, vsd_tau=None):
+def get_error_signature(error_type, n_top, **kwargs):
   """Generates a signature for the specified settings of pose error calculation.
 
   :param error_type: Type of error.
   :param n_top: Top N pose estimates (with the highest score) to be evaluated
     for each object class in each image.
-  :param vsd_delta: See pose.error.vsd().
-  :param vsd_tau: See pose.error.vsd().
-  :param vsd_cost: See pose.error.vsd().
   :return: Generated signature.
   """
   error_sign = 'error=' + error_type + '_ntop=' + str(n_top)
   if error_type == 'vsd':
-    error_sign += '_delta={}_tau={}'.format(int(vsd_delta), int(vsd_tau))
+    vsd_delta_str = str(int(kwargs['vsd_delta']))
+    if kwargs['vsd_tau'] == float('inf'):
+      vsd_tau_str = 'inf'
+    else:
+      vsd_tau_str = str(int(kwargs['vsd_tau']))
+    error_sign += '_delta={}_tau={}'.format(vsd_delta_str, vsd_tau_str)
   return error_sign
+
+
+def get_score_signature(error_type, visib_gt_min, **kwargs):
+  """Generates a signature for a performance score.
+
+  :param error_type: Type of error.
+  :param visib_gt_min: Minimum visible surface fraction of a valid GT pose.
+  :return: Generated signature.
+  """
+  if error_type in ['add', 'adi']:
+    eval_sign = 'thf=' + '-'.join((kwargs['correct_th_fact']))
+  else:
+    eval_sign = 'th=' + '-'.join((map(str, kwargs['correct_th'])))
+  eval_sign += '_min-visib=' + str(visib_gt_min)
+  return eval_sign
 
 
 def run_meshlab_script(meshlab_server_path, meshlab_script_path, model_in_path,

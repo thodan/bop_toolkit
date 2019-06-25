@@ -68,10 +68,14 @@ Surface Discrepancy which is more tolerant towards misalignment in the Z axis.
 
 ## Awards
 
-1. **The Best Method** (prize money: X EUR) - The best-performing method on the 7 core datasets.
-2. **The Best Open Source Method** (prize money: X EUR) - The best-performing method on the 7 core
-datasets whose source code is publicly available.
-3. **The Best Method on Dataset D** (prize money: Y EUR) - D can be any of the 12 available datasets.
+1. **The Best Method** (prize money: X EUR) - The best-performing method on
+the 7 core datasets.
+2. **The Best RGB-Only Method** (prize money: X EUR) - The best-performing
+RGB-only method on the 7 core datasets.
+3. **The Best Open Source Method** (prize money: Y<X EUR) - The best-performing
+method on the 7 core datasets whose source code is publicly available.
+4. **The Best Method on Dataset D** (prize money: Z<Y EUR) - D can be any of the
+12 available datasets.
 
 ## How to Participate
 

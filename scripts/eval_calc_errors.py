@@ -77,13 +77,13 @@ parser.add_argument('--targets_filename', default=p['targets_filename'])
 parser.add_argument('--out_errors_tpath', default=p['out_errors_tpath'])
 args = parser.parse_args()
 
-p['result_fnames'] = args.result_fnames.split(',')
 p['n_top'] = int(args.n_top)
 p['error_type'] = str(args.error_type)
 p['vsd_delta'] = float(args.vsd_delta)
 p['vsd_tau'] = float(args.vsd_tau)
 p['skip_missing'] = str(args.skip_missing)
 p['renderer_type'] = str(args.renderer_type)
+p['result_filenames'] = args.result_filenames.split(',')
 p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
 p['out_errors_tpath'] = str(args.out_errors_tpath)
@@ -98,13 +98,16 @@ misc.log('----------')
 # ------------------------------------------------------------------------------
 # Error signature.
 error_sign = misc.get_error_signature(
-  p['error_type'], p['n_top'], p['vsd_delta'], p['vsd_tau'])
+  p['error_type'], p['n_top'], vsd_delta=p['vsd_delta'], vsd_tau=p['vsd_tau'])
 
-for result_fname in p['result_fnames']:
-  misc.log('Processing: ' + result_fname)
+for result_filename in p['result_filenames']:
+  misc.log('Processing: {}'.format(result_filename))
+
+  ests_counter = 0
+  time_start = time.time()
 
   # Parse info about the method and the dataset from the folder name.
-  result_name = os.path.splitext(os.path.basename(result_fname))[0]
+  result_name = os.path.splitext(os.path.basename(result_filename))[0]
   result_info = result_name.split('_')
   method = result_info[0]
   dataset_info = result_info[1].split('-')
@@ -152,7 +155,7 @@ for result_fname in p['result_fnames']:
   # Load pose estimates.
   misc.log('Loading pose estimates...')
   ests = inout.load_bop_results(
-    os.path.join(config.results_path, result_fname))
+    os.path.join(config.results_path, result_filename))
 
   # Organize the pose estimates by scene, image and object.
   misc.log('Organizing pose estimates...')
@@ -160,9 +163,6 @@ for result_fname in p['result_fnames']:
   for est in ests:
     ests_org.setdefault(est['scene_id'], {}).setdefault(
       est['im_id'], {}).setdefault(est['obj_id'], []).append(est)
-
-  ests_counter = 0
-  time_start = time.time()
 
   for scene_id, scene_targets in targets_org.items():
 
@@ -289,6 +289,7 @@ for result_fname in p['result_fnames']:
     inout.save_errors(errors_path, scene_errs)
 
   time_total = time.time() - time_start
-  misc.log('{} estimates evaluated in {}s.'.format(ests_counter, time_total))
+  misc.log('Calculation of errors for {} estimates took {}s.'.format(
+    ests_counter, time_total))
 
 misc.log('Done.')
