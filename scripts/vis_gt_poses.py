@@ -28,7 +28,7 @@ p = {
   # File with a list of estimation targets used to determine the set of images
   # for which the GT poses will be visualized. The file is assumed to be stored
   # in the dataset folder. None = all images.
-  'targets_filename': 'test_targets_bopc19.yml',
+  'targets_filename': 'test_targets_bop19.yml',
 
   # Select ID's of scenes, images and GT poses to be processed.
   # Empty list [] means that all ID's will be used.

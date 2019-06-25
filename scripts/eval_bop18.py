@@ -61,6 +61,10 @@ p = {
   'result_filenames': [
     '/path/to/csv/with/results',
   ],
+
+  # File with a list of estimation targets to consider. The file is assumed to
+  # be stored in the dataset folder.
+  'targets_filename': 'test_targets_bopc19.yml',
 }
 ################################################################################
 
@@ -73,11 +77,13 @@ parser.add_argument('--renderer_type', default=p['renderer_type'])
 parser.add_argument('--result_filenames',
                     default=','.join(p['result_filenames']),
                     help='Comma-separated names of files with results.')
+parser.add_argument('--targets_filename', default=p['targets_filename'])
 args = parser.parse_args()
 
 p['visib_gt_min'] = float(args.visib_gt_min)
 p['renderer_type'] = str(args.renderer_type)
 p['result_filenames'] = args.result_filenames.split(',')
+p['targets_filename'] = str(args.targets_filename)
 
 # Evaluation.
 # ------------------------------------------------------------------------------
@@ -97,7 +103,7 @@ for result_filename in p['result_filenames']:
       '--error_type={}'.format(error['type']),
       '--result_filenames={}'.format(result_filename),
       '--renderer_type={}'.format(p['renderer_type']),
-      '--targets_filename=test_targets_bopc19.yml',
+      '--targets_filename={}'.format(p['targets_filename']),
       '--skip_missing=1',
     ]
     if error['type'] == 'vsd':
@@ -129,8 +135,8 @@ for result_filename in p['result_filenames']:
         'python',
         os.path.join('scripts', 'eval_calc_scores.py'),
         '--error_dir_paths={}'.format(error_dir_path),
-        '--targets_filename=test_targets_bopc19.yml',
-        '--visib_gt_min=0.1'
+        '--targets_filename={}'.format(p['targets_filename']),
+        '--visib_gt_min={}'.format(p['visib_gt_min'])
       ]
 
       if error['type'] in ['add', 'adi']:

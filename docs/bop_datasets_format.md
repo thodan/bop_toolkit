@@ -21,7 +21,7 @@ The datasets have the following structure:
 * *camera.yml* - Camera parameters (for sensor simulation only; per-image camera
   parameters are in files *scene_camera.yml* - see below).
 * *dataset_info.md* - Dataset-specific information.
-* *test_targets_bopc19.yml* - A list of test targets used for the evaluation in
+* *test_targets_bop19.yml* - A list of test targets used for the evaluation in
   the BOP paper [1] and in the BOP Challenge 2019.
 
 
