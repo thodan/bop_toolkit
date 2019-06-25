@@ -192,7 +192,7 @@ def calc_pts_diameter2(pts):
   return diameter
 
 
-def get_error_signature(error_type, n_top, vsd_delta, vsd_tau, vsd_cost):
+def get_error_signature(error_type, n_top, vsd_delta=None, vsd_tau=None):
   """Generates a signature for the specified settings of pose error calculation.
 
   :param error_type: Type of error.
@@ -205,8 +205,7 @@ def get_error_signature(error_type, n_top, vsd_delta, vsd_tau, vsd_cost):
   """
   error_sign = 'error=' + error_type + '_ntop=' + str(n_top)
   if error_type == 'vsd':
-    error_sign += '_delta={}_tau={}_cost={}'.format(
-      int(vsd_delta), int(vsd_tau), vsd_cost)
+    error_sign += '_delta={}_tau={}'.format(int(vsd_delta), int(vsd_tau))
   return error_sign
 
 

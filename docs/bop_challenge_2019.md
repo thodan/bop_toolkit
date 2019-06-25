@@ -1,26 +1,102 @@
 # BOP Challenge 2019
 
-## The Challenge Tasks
+## The Challenge Task
 
-The methods are evaluated on the task of 6D localization of a single instance of
-a single object. All test images are used for the evaluation, even those with
-multiple instances of the object of interest.
+The methods are evaluated on the task of 6D localization of a varying number of
+instances of a varying number of objects (the ViVo task) from a single RGB-D
+image.
 
-Two tasks:
+**Training input:** At training time, a method *M* for 6D object pose estimation
+learns from a training set *T = {T<sub>o</sub>}*, where *o* is an object
+identifier. Training data *T<sub>o</sub>* may have different forms -- a 3D mesh
+model of the object or a set of RGB-D images (synthetic or real) showing object
+instances in known 6D poses.
 
-1. *The SiSo task* - 6D localization of a single instance of a single object.
+**Test input:** At test time, the method *M* is provided with a list of *test
+targets*, each defined by a pair *(I, L)*, where *I* is an image and *L* is a
+list *[(o<sub>1</sub>, n<sub>1</sub>), ..., (o<sub>m</sub>, n<sub>m</sub>)]*,
+where *n<sub>i</sub>* is the number of instances (at least 1) of object
+*o<sub>i</sub>* present in image *I*.
 
-2. *The ViVo task* - 6D localization of a varying number of instances of a varying number of objects.
+**Test output:** The method *M* produces a list
+*E = [E<sub>1</sub>, ..., E<sub>m</sub>]*, where
+*E<sub>i</sub>* is a list of *n<sub>i</sub>* pose estimates for object
+*o<sub>i</sub>*, each given by a triplet *(R, t, s)* with *R* being a 3x3
+rotation matrix, *t* a 3x1 rotation vector and *s* a confidence score.
 
-## Submission instructions
+The ViVo task is equivalent to the *6D localization problem* defined in [2].
+In the BOP paper [1], methods were evaluated on a different task --
+6D localization of a single instance of a single object (the SiSo task).
+The simpler SiSo task was chosen because it allowed to evaluate all relevant
+methods out of the box. However, the state of the art has advanced since then
+and we are moving to the more challenging ViVo task in this challenge.
 
-1. Run your method on the SiSo task, i.e. the 6D localization of a single
-instance of a single object [1], on all BOP datasets. Consider only a subset of
-test images defined in files *test_set_v1.yml* provided with the datasets.
-2. Prepare the results of your method in the format described below and submit
-to the [BOP evaluation system](http://bop.felk.cvut.cz).
+## Datasets
 
-## Format of results
+All datasets are available in the
+[BOP format](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_datasets_format.md)
+and contain 3D object models and training and test RGB-D images. The training
+images show individual objects from different viewpoints and were either
+captured by a Kinect-like sensor or obtained by rendering of the 3D object
+models. The test images were captured in scenes with graded complexity, often
+with clutter and occlusion. For more information, see files *dataset_info.md*
+provided with the datasets which can be downloaded from the
+[BOP evaluation system](http://bop.felk.cvut.cz/datasets/).
+
+The core datasets:
+
+* **LM-O** (Linemod-Occluded)
+* **T-LESS**
+* **TUD-L** (TU Dresden Light)
+* **IC-BIN** (Doumanoglou et al.)
+* **HB** (HomebrewedDB)
+* **ITODD** (MVTec ITODD)
+* **YCB-V** (YCB-Video)
+
+Other datasets:
+
+* **LM** (Linemod)
+* **RU-APC** (Rutgers APC)
+* **IC-MI** (Tejani et al.)
+* **TYO-L** (Toyota Light)
+* **DLR**
+
+## Performance Score
+
+To encourage RGB-only methods, we introduce a modified version of the Visible
+Surface Discrepancy which is more tolerant towards misalignment in the Z axis.
+
+## Awards
+
+1. **The Best Method** (prize money: X EUR) - The best-performing method on the 7 core datasets.
+2. **The Best Open Source Method** (prize money: X EUR) - The best-performing method on the 7 core
+datasets whose source code is publicly available.
+3. **The Best Method on Dataset D** (prize money: Y EUR) - D can be any of the 12 available datasets.
+
+## How to Participate
+
+### Challenge Rules
+
+1. For training, you can use the provided object models and training images
+(both real and rendered). You can also render extra training images using the
+object models.
+2. Not a single pixel of test images may be used in training, nor the ground
+truth poses provided for the test images. The distribution of object poses in
+the test scenes (from *bop_toolkit/dataset_params.py*) is the only information
+about the test set that can be used in training.
+3. To become the best method on the 7 core datasets (including the best open
+source method), parameters of the method need to be constant across all objects
+and datasets.
+4. If you want your results to be included in a publication about the challenge,
+a documentation of results (provided through the online submission form) is
+required. Without the documentation, your results will be listed on the website
+but not included in the publication.
+
+### Submission of Results
+
+To have your method evaluated, run it on the ViVo task and submit the results in
+the format described below to the
+[BOP evaluation system](http://bop.felk.cvut.cz).
 
 Results for all test images from one dataset are saved in one CSV file, with one
 pose estimate per line in the following format:
@@ -52,72 +128,17 @@ coordinate system: s * p\_i = P * p\_m. The camera coordinate system is defined
 as in OpenCV with the camera looking along the Z axis. K is provided with the
 test images and might be different for each image.
 
-
-
 * TIME is the wall time from the point right after the raw data (images, 3D
 object models etc.) is loaded to the point when the final pose estimates are
 available (a single real number in seconds, -1 if not available).
 * SCORE is a confidence of the estimate (the range of values is not
 
-
 The list of objects that are present in an image can be obtained from the file
 *gt.yml* provided for each test scene.
 
+## Organizers
 
-## Directory structure
-
-The files with results are expected to have this structure:
-
-*METHOD\_DATASET-SPLIT[\-TESTTYPE]/Z/Y\_X.yml*
-
-where:
-* METHOD is the name of the evaluated method.
-* DATASET is the dataset name, one of {lm, lmo, tless, tudl, ruapc, icmi, icbin,
-hb}.
-* SPLIT shall be set to "test".
-* TESTTYPE is the type of test images (currently used only for T-LESS where the
-possible types are {primesense, kinect, canon}).
-* Z is the scene ID.
-* Y is the image ID.
-* X is the object ID.
-
-METHOD, DATASET, SPLIT and TESTTYPE must not contain the underscore character
-"_".
-
-## Subsets of test images
-
-The ID's of test images used for the evaluation are in files *test_set_v1.yml*
-provided with the datasets. The sets of test images from the original datasets
-were reduced to remove redundancies and to encourage participation of new, in
-particular slow, methods.
-
-## Example
-
-Test image 0 of test scene 1 from the T-LESS dataset contains objects 2, 25, 29
-and 30. You are expected to provide four files with results of your method for
-this image, each with pose estimates for one object (the zero padding of ID's is
-not necessary):
-
-- *your-method_tless-test-primesense/000001/000000\_000002.yml*
-- *your-method_tless-test-primesense/000001/000000\_000025.yml*
-- *your-method_tless-test-primesense/000001/000000\_000029.yml*
-- *your-method_tless-test-primesense/000001/000000\_000030.yml*
-
-Example content of file *000000_000025.yml*:
-```
-run_time: 1.6553
-ests:
-- {score: 2.591, R: [0.164305, -0.116608, -0.979493, -0.881643, 0.427981, -0.198842, 0.442391, 0.896233, -0.0324873], t: [-45.7994, 75.008, 801.078]}
-- {score: 3.495, R: [-0.321302, 0.937843, -0.131205, -0.926472, -0.282636, 0.248529, 0.195999, 0.201411, 0.959697], t: [-77.2591, -23.8807, 770.016]}
-- {score: 0.901, R: [0.133352, -0.546655, -0.826671, 0.244205, 0.826527, -0.507166, 0.960511, -0.134245, 0.243715], t: [79.4697, -23.619, 775.376]}
-- {score: 1.339, R: [-0.998023, 0.0114256, 0.061813, -1.55661e-05, -0.983388, 0.181512, 0.0628601, 0.181152, 0.981445], t: [8.9896, 75.8737, 751.272]}
-- {score: 1.512, R: [0.211676, 0.12117, -0.969799, 0.120886, 0.981419, 0.149007, 0.969835, -0.148776, 0.193096], t: [7.10206, -53.5385, 784.077]}
-- {score: 0.864, R: [0.0414156, -0.024525, -0.998841, 0.295721, 0.955208, -0.0111921, 0.954376, -0.294915, 0.046813], t: [40.1253, -34.8206, 775.819]}
-- {score: 1.811, R: [0.0369952, -0.0230957, -0.999049, 0.304581, 0.952426, -0.0107392, 0.951768, -0.303894, 0.0422696], t: [36.5109, -27.5895, 775.758]}
-- {score: 1.882, R: [0.263059, -0.946784, 0.18547, -0.00346377, -0.193166, -0.98116, 0.964774, 0.25746, -0.0540936], t: [75.3467, -28.4081, 771.788]}
-- {score: 1.195, R: [-0.171041, -0.0236642, -0.98498, -0.892308, 0.427616, 0.144675, 0.41777, 0.90365, -0.0942557], t: [-69.8224, 73.1472, 800.083]}
-- {score: 1.874, R: [0.180726, -0.73069, 0.658354, 0.0538221, -0.661026, -0.74843, 0.98206, 0.170694, -0.0801374], t: [19.7014, -68.7299, 781.424]}
-```
+...
 
 ## References
 

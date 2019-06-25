@@ -46,7 +46,7 @@ p = {
   # folder config.eval_path). See docs/bop_challenge_2019.md for a description
   # of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
-  'result_fnames': [
+  'result_filenames': [
     '/path/to/csv/with/results',
   ],
 
@@ -71,7 +71,7 @@ colors_path = os.path.join(
   os.path.dirname(visualization.__file__), 'colors.yml')
 colors = inout.load_yaml(colors_path)
 
-for result_fname in p['result_fnames']:
+for result_fname in p['result_filenames']:
   misc.log('Processing: ' + result_fname)
 
   # Parse info about the method and the dataset from the folder name.

@@ -1,7 +1,7 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Calculates the error of 6D object pose estimates."""
+"""Calculates error of 6D object pose estimates."""
 
 import os
 import time
@@ -30,7 +30,6 @@ p = {
   # VSD parameters.
   'vsd_delta': 15,
   'vsd_tau': 20,
-  'vsd_cost': 'step',  # Options: 'step', 'tlinear'.
 
   # Whether to ignore/break if some errors are missing.
   'skip_missing': True,
@@ -42,7 +41,7 @@ p = {
   # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
-  'result_fnames': [
+  'result_filenames': [
     '/path/to/csv/with/results',
   ],
 
@@ -53,12 +52,9 @@ p = {
   # be stored in the dataset folder.
   'targets_filename': 'test_targets_bopc19.yml',
 
-  # Folder in which the calculated errors will be saved.
-  'out_errors_dir': config.eval_path,
-
   # Template of path to the output file with calculated errors.
   'out_errors_tpath': os.path.join(
-    '{out_errors_dir}', '{result_name}', '{error_sign}',
+    config.eval_path, '{result_name}', '{error_sign}',
     'errors_{scene_id:06d}.yml')
 }
 ################################################################################
@@ -71,14 +67,13 @@ parser.add_argument('--n_top', default=p['n_top'])
 parser.add_argument('--error_type', default=p['error_type'])
 parser.add_argument('--vsd_delta', default=p['vsd_delta'])
 parser.add_argument('--vsd_tau', default=p['vsd_tau'])
-parser.add_argument('--vsd_cost', default=p['vsd_cost'])
 parser.add_argument('--skip_missing', default=p['skip_missing'])
 parser.add_argument('--renderer_type', default=p['renderer_type'])
-parser.add_argument('--result_fnames', default=','.join(p['result_fnames']),
+parser.add_argument('--result_filenames',
+                    default=','.join(p['result_filenames']),
                     help='Comma-separated names of files with results.')
 parser.add_argument('--datasets_path', default=p['datasets_path'])
 parser.add_argument('--targets_filename', default=p['targets_filename'])
-parser.add_argument('--out_errors_dir', default=p['out_errors_dir'])
 parser.add_argument('--out_errors_tpath', default=p['out_errors_tpath'])
 args = parser.parse_args()
 
@@ -87,12 +82,10 @@ p['n_top'] = int(args.n_top)
 p['error_type'] = str(args.error_type)
 p['vsd_delta'] = float(args.vsd_delta)
 p['vsd_tau'] = float(args.vsd_tau)
-p['vsd_cost'] = str(args.vsd_cost)
 p['skip_missing'] = str(args.skip_missing)
 p['renderer_type'] = str(args.renderer_type)
 p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
-p['out_errors_dir'] = str(args.out_errors_dir)
 p['out_errors_tpath'] = str(args.out_errors_tpath)
 
 misc.log('----------')
@@ -105,7 +98,7 @@ misc.log('----------')
 # ------------------------------------------------------------------------------
 # Error signature.
 error_sign = misc.get_error_signature(
-  p['error_type'], p['n_top'], p['vsd_delta'], p['vsd_tau'], p['vsd_cost'])
+  p['error_type'], p['n_top'], p['vsd_delta'], p['vsd_tau'])
 
 for result_fname in p['result_fnames']:
   misc.log('Processing: ' + result_fname)
@@ -254,7 +247,7 @@ for result_fname in p['result_fnames']:
             if p['error_type'] == 'vsd':
               e = [pose_error.vsd(
                 R_e, t_e, R_g, t_g, depth_im, K, p['vsd_delta'], p['vsd_tau'],
-                ren, obj_id, p['vsd_cost'])]
+                ren, obj_id, 'step')]
 
             elif p['error_type'] == 'add':
               e = [pose_error.add(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
@@ -290,8 +283,7 @@ for result_fname in p['result_fnames']:
 
     # Save the calculated errors to a YAML file.
     errors_path = p['out_errors_tpath'].format(
-      out_errors_dir=p['out_errors_dir'], result_name=result_name,
-      error_sign=error_sign, scene_id=scene_id)
+      result_name=result_name, error_sign=error_sign, scene_id=scene_id)
     misc.ensure_dir(os.path.dirname(errors_path))
     misc.log('Saving errors to: {}'.format(errors_path))
     inout.save_errors(errors_path, scene_errs)
