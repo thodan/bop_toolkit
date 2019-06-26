@@ -4,6 +4,7 @@
 """Evaluation script for the BOP Challenge 2019."""
 
 import os
+import time
 import argparse
 import subprocess
 
@@ -17,35 +18,23 @@ from bop_toolkit import misc
 p = {
   # Errors to calculate.
   'errors': [
-    # {
-    #   'n_top': -1,
-    #   'type': 'vsd',
-    #   'vsd_delta': 15,
-    #   'vsd_tau': 20,
-    #   'correct_th': [[0.3]]
-    # },
-    # {
-    #   'n_top': -1,
-    #   'type': 'vsd',
-    #   'vsd_delta': 15,
-    #   'vsd_tau': float('inf'),
-    #   'correct_th': [[0.3]]
-    # },
-    # {
-    #   'n_top': -1,
-    #   'type': 'add',
-    #   'correct_th': [[0.1]]
-    # },
-    # {
-    #   'n_top': -1,
-    #   'type': 'adi',
-    #   'correct_th': [[0.1]]
-    # },
     {
       'n_top': -1,
-      'type': 'rete',
-      'correct_th': [[5.0, 5.0]]
-    }
+      'type': 'vsd',
+      'vsd_delta': 15,
+      'vsd_tau': 20,
+      'correct_th': [[0.3]]
+    },
+    {
+      'n_top': -1,
+      'type': 'cou-mask-proj',
+      'correct_th': [[0.3]]
+    },
+    {
+      'n_top': -1,
+      'type': 'ad',
+      'correct_th': [[0.1]]
+    },
   ],
 
   # Minimum visible surface fraction of a valid GT pose.
@@ -92,6 +81,8 @@ for result_filename in p['result_filenames']:
   misc.log('-----------')
   misc.log('EVALUATING: {}'.format(result_filename))
   misc.log('-----------')
+
+  time_start = time.time()
 
   for error in p['errors']:
 
@@ -166,4 +157,5 @@ for result_filename in p['result_filenames']:
       misc.log('Loading calculated scores from: {}'.format(scores_path))
       scores = inout.load_yaml(scores_path)
 
-      misc.log('Total recall: {}'.format(scores['total_recall']))
+  time_total = time.time() - time_start
+  misc.log('Evaluation of {} took {}s.'.format(result_filename, time_total))

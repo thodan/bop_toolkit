@@ -38,7 +38,7 @@ p = {
   # Threshold of correctness for different pose error functions.
   'correct_th': {
     'vsd': [0.3],
-    'cou_mask_proj': [0.5],
+    'cou-mask-proj': [0.5],
     'rete': [5.0, 5.0],  # [deg, cm].
     're': [5.0],  # [deg].
     'te': [5.0]  # [cm].
@@ -46,6 +46,7 @@ p = {
 
   # Factor k; threshold of correctness = k * d, where d is the obj. diameter.
   'correct_th_fact': {
+    'ad': [0.1],
     'add': [0.1],
     'adi': [0.1]
   },
@@ -149,7 +150,7 @@ for error_dir_path in p['error_dir_paths']:
   split_type = dataset_info[2] if len(dataset_info) > 2 else None
 
   # Evaluation signature.
-  if err_type in ['add', 'adi']:
+  if err_type in ['ad', 'add', 'adi']:
     score_sign = misc.get_score_signature(
       err_type, p['visib_gt_min'],
       correct_th_fact=p['correct_th_fact'][err_type])
@@ -183,7 +184,7 @@ for error_dir_path in p['error_dir_paths']:
 
   # Set threshold of correctness (might be different for each object).
   correct_obj_ths = {}
-  if err_type in ['add', 'adi']:
+  if err_type in ['ad', 'add', 'adi']:
     # Relative to object diameter.
     models_info = inout.load_yaml(dp_model['models_info_path'])
     for obj_id in dp_model['obj_ids']:

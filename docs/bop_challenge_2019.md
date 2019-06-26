@@ -2,45 +2,57 @@
 
 ## The Challenge Task
 
-The methods are evaluated on the task of 6D localization of a varying number of
-instances of a varying number of objects (the ViVo task) from a single RGB-D
-image.
+The challenge is on the task of 6D localization of a *varying* number of
+instances of a *varying* number of objects in a single RGB-D image (the ViVo
+task).
 
-**Training input:** At training time, a method *M* for 6D object pose estimation
-learns from a training set *T = {T<sub>o</sub>}*, where *o* is an object
-identifier. Training data *T<sub>o</sub>* may have different forms -- a 3D mesh
-model of the object or a set of RGB-D images (synthetic or real) showing object
-instances in known 6D poses.
+**Training input:** At training time, method *M* learns using training set
+*T = {T<sub>o</sub>}*, where *o* is an object identifier. Training data
+*T<sub>o</sub>* may have different forms -- a 3D mesh model of the object or a
+set of RGB-D images (synthetic or real) showing object instances in known 6D
+poses.
 
-**Test input:** At test time, the method *M* is provided with a list of *test
+**Test input:** At test time, method *M* is provided with a list of *test
 targets*, each defined by a pair *(I, L)*, where *I* is an image and *L* is a
 list *[(o<sub>1</sub>, n<sub>1</sub>), ..., (o<sub>m</sub>, n<sub>m</sub>)]*,
-where *n<sub>i</sub>* is the number of instances (at least 1) of object
+where *n<sub>i</sub>* is the number of instances of object
 *o<sub>i</sub>* present in image *I*.
 
-**Test output:** The method *M* produces a list
-*E = [E<sub>1</sub>, ..., E<sub>m</sub>]*, where
-*E<sub>i</sub>* is a list of *n<sub>i</sub>* pose estimates for object
-*o<sub>i</sub>*, each given by a triplet *(R, t, s)* with *R* being a 3x3
-rotation matrix, *t* a 3x1 rotation vector and *s* a confidence score.
+**Test output:** Method *M* produces a list
+*E = [E<sub>1</sub>, ..., E<sub>m</sub>]*, where *E<sub>i</sub>* is a list of
+*n<sub>i</sub>* pose estimates for instances of object *o<sub>i</sub>*. Each
+estimate is given by a triplet *(R, t, s)* with *R* being a 3x3 rotation matrix,
+*t* a 3x1 rotation vector and *s* a confidence score.
 
-The ViVo task is equivalent to the *6D localization problem* defined in [2].
-In the BOP paper [1], methods were evaluated on a different task --
-6D localization of a single instance of a single object (the SiSo task).
-The simpler SiSo task was chosen because it allowed to evaluate all relevant
-methods out of the box. However, the state of the art has advanced since then
-and we are moving to the more challenging ViVo task in this challenge.
+The ViVo task is referred to as the *6D localization problem* in [2]. In the BOP
+paper [1], methods were evaluated on a different task -- 6D localization of a
+single instance of a single object (the SiSo task). The simpler SiSo task was
+chosen because it allowed to evaluate all relevant methods out of the box.
+However, the state of the art has advanced since then and we are moving to the
+more challenging ViVo task in this challenge.
 
 ## Datasets
 
-All datasets are available in the
+**Content of the datasets:** The datasets include 3D object models and training
+and test RGB-D images annotated with ground-truth 6D object poses and intrinsic
+parameters of the camera. The 3D object models were created manually or using
+KinectFusion-like systems for 3D surface reconstruction [3].
+
+**Training and test images:** The training images show individual objects from
+different viewpoints and are either captured by an RGB-D/Gray-D sensor or
+obtained by rendering of the 3D object models. The test images were captured in
+scenes with graded complexity, often with clutter and occlusion.
+
+**Rules for training:** For training, method *M* can use the provided object
+models and training images, but can also render extra training images using the
+object models. Not a single pixel of test images may be used in training, nor
+the ground truth poses provided for the test images. The distribution of object
+poses in the test images (provided in *bop_toolkit/dataset_params.py*) is the
+only information about the test set that can be used in training.
+
+**Challenge datasets:** The following datasets have been converted to the
 [BOP format](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_datasets_format.md)
-and contain 3D object models and training and test RGB-D images. The training
-images show individual objects from different viewpoints and were either
-captured by a Kinect-like sensor or obtained by rendering of the 3D object
-models. The test images were captured in scenes with graded complexity, often
-with clutter and occlusion. For more information, see files *dataset_info.md*
-provided with the datasets which can be downloaded from the
+and can be downloaded from the
 [BOP evaluation system](http://bop.felk.cvut.cz/datasets/).
 
 The core datasets:
@@ -61,33 +73,35 @@ Other datasets:
 * **TYO-L** (Toyota Light)
 * **DLR**
 
-## Performance Score
-
-To encourage RGB-only methods, we introduce a modified version of the Visible
-Surface Discrepancy which is more tolerant towards misalignment in the Z axis.
-
 ## Awards
 
 1. **The Best Method** (prize money: X EUR) - The best-performing method on
 the 7 core datasets.
 2. **The Best RGB-Only Method** (prize money: X EUR) - The best-performing
 RGB-only method on the 7 core datasets.
-3. **The Best Open Source Method** (prize money: Y<X EUR) - The best-performing
+3. **The Best Open Source Method** (prize money: Y EUR) - The best-performing
 method on the 7 core datasets whose source code is publicly available.
-4. **The Best Method on Dataset D** (prize money: Z<Y EUR) - D can be any of the
-12 available datasets.
+4. **The Best Method on Dataset D** - D can be any of the 12 available datasets.
+
+## Evaluation Methodology
+
+The error of a 6D object pose estimate is measured by the *Visible Surface
+Discrepancy (VSD)* [1] with two settings of the misalignment tolerance in depth,
+i.e. in the Z/optical axis: (1) *tau* = 20mm, (2) *tau* = infinity. With the
+latter setting, VSD evaluates only the alignment of the visible surface mask and
+is therefore more suitable for evaluation of RGB-only methods for which
+estimating the Z component is more challenging.
+
+The performance is measured by the *recall score*, i.e. the fraction of
+annotated object instances for which a correct object pose was estimated. The
+overall performance score is given by the average of the per-dataset recall
+scores. We thus treat each dataset as a separate challenge and avoid the overall
+score being dominated by larger datasets.
 
 ## How to Participate
 
 ### Challenge Rules
 
-1. For training, you can use the provided object models and training images
-(both real and rendered). You can also render extra training images using the
-object models.
-2. Not a single pixel of test images may be used in training, nor the ground
-truth poses provided for the test images. The distribution of object poses in
-the test scenes (from *bop_toolkit/dataset_params.py*) is the only information
-about the test set that can be used in training.
 3. To become the best method on the 7 core datasets (including the best open
 source method), parameters of the method need to be constant across all objects
 and datasets.
@@ -140,10 +154,19 @@ available (a single real number in seconds, -1 if not available).
 The list of objects that are present in an image can be obtained from the file
 *gt.yml* provided for each test scene.
 
+## Dates
+
+...
+
 ## Organizers
 
 ...
 
 ## References
 
-[1] Hodan, Michel et al. "BOP: Benchmark for 6D Object Pose Estimation" ECCV'18.
+[1] Hodan, Michel et al.: BOP: Benchmark for 6D Object Pose Estimation, ECCV'18.
+
+[2] Hodan et al.: On Evaluation of 6D Object Pose Estimation, ECCVW'16.
+
+[3] Newcombe et al.: KinectFusion: Real-time dense surface mapping and tracking,
+    ISMAR'11.

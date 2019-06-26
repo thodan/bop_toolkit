@@ -70,6 +70,20 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'hb': range(1, 34),
   }[dataset_name]
 
+  # ID's of objects with symmetries.
+  symmetric_obj_ids = {
+    'lm': [3, 7, 10, 11],
+    'lmo': [10, 11],
+    'tless': range(1, 31),
+    'tudl': [],
+    'tyol': [3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21],
+    'ruapc': [8, 9, 12, 13],
+    'icmi': [1, 2, 6],
+    'icbin': [1],
+    'itodd': [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
+    'hb': None,
+  }[dataset_name]
+
   # T-LESS includes two types of object models, CAD and reconstructed.
   # Use the CAD models as default.
   if dataset_name == 'tless' and model_type is None:
@@ -86,6 +100,9 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
   p = {
     # ID's of all objects included in the dataset.
     'obj_ids': obj_ids,
+
+    # ID's of objects with symmetries.
+    'symmetric_obj_ids': symmetric_obj_ids,
 
     # Path template to an object model file.
     'model_tpath': join(models_path, 'obj_{obj_id:06d}.ply'),

@@ -192,6 +192,28 @@ def calc_pts_diameter2(pts):
   return diameter
 
 
+def overlapping_sphere_projections(radius, p1, p2):
+  """Checks if projections of two spheres overlap (approximated).
+
+  :param radius: Radius of the two spheres.
+  :param p1: [X1, Y1, Z1] center of the first sphere.
+  :param p2: [X2, Y2, Z2] center of the second sphere.
+  :return: True if the projections of the two spheres overlap.
+  """
+  # 2D projections of centers of the spheres.
+  proj1 = (p1 / p1[2])[:2]
+  proj2 = (p2 / p2[2])[:2]
+
+  # Distance between the center projections.
+  proj_dist = np.linalg.norm(proj1 - proj2)
+
+  # The max. distance of the center projections at which the sphere projections,
+  # i.e. sphere silhouettes, still overlap (approximated).
+  proj_dist_thresh = radius * (1.0 / p1[2] + 1.0 / p2[2])
+
+  return proj_dist < proj_dist_thresh
+
+
 def get_error_signature(error_type, n_top, **kwargs):
   """Generates a signature for the specified settings of pose error calculation.
 
@@ -219,9 +241,9 @@ def get_score_signature(error_type, visib_gt_min, **kwargs):
   :return: Generated signature.
   """
   if error_type in ['add', 'adi']:
-    eval_sign = 'thf=' + '-'.join((kwargs['correct_th_fact']))
+    eval_sign = 'thf=' + '-'.join(map(str, kwargs['correct_th_fact']))
   else:
-    eval_sign = 'th=' + '-'.join((map(str, kwargs['correct_th'])))
+    eval_sign = 'th=' + '-'.join(map(str, kwargs['correct_th']))
   eval_sign += '_min-visib=' + str(visib_gt_min)
   return eval_sign
 

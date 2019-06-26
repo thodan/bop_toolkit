@@ -42,8 +42,8 @@ class RendererCpp(renderer.Renderer):
 
   def render_object(self, obj_id, R, t, fx, fy, cx, cy):
     """See base class."""
-    R_l = R.flatten().tolist()
-    t_l = t.flatten().tolist()
+    R_l = map(float, R.flatten().tolist())
+    t_l = map(float, t.flatten().tolist())
     self.renderer.render_object(obj_id, R_l, t_l, fx, fy, cx, cy)
     rgb = self.renderer.get_color_image(obj_id)
     depth = self.renderer.get_depth_image(obj_id)

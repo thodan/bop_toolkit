@@ -6,6 +6,7 @@
 import os
 import time
 import argparse
+import numpy as np
 
 from bop_toolkit import config
 from bop_toolkit import dataset_params
@@ -24,7 +25,7 @@ p = {
   'n_top': 1,
 
   # Pose error function.
-  # Options: 'vsd', 'adi', 'add', 'cou_mask_proj', 'rete', 're', 'te'.
+  # Options: 'vsd', 'ad', 'adi', 'add', 'cou-mask-proj', 'rete', 're', 'te'.
   'error_type': 'vsd',
 
   # VSD parameters.
@@ -42,7 +43,8 @@ p = {
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
-    '/path/to/csv/with/results',
+    # '/path/to/csv/with/results',
+    'hodan-iros15-vivo-test_icbin-test.csv',
   ],
 
   # Folder containing the BOP datasets.
@@ -126,14 +128,18 @@ for result_filename in p['result_filenames']:
 
   # Load object models.
   models = {}
-  if p['error_type'] in ['add', 'adi']:
+  if p['error_type'] in ['ad', 'add', 'adi']:
     misc.log('Loading object models...')
     for obj_id in dp_model['obj_ids']:
-      models[obj_id] = inout.load_ply(dp_model['model_tpath'].format(obj_id))
+      models[obj_id] = inout.load_ply(
+        dp_model['model_tpath'].format(obj_id=obj_id))
+
+  # Load models info.
+  models_info = inout.load_yaml(dp_model['models_info_path'])
 
   # Initialize a renderer.
   ren = None
-  if p['error_type'] in ['vsd', 'cou_mask_proj']:
+  if p['error_type'] in ['vsd', 'cou-mask-proj']:
     misc.log('Initializing renderer...')
     width, height = dp_split['im_size']
     ren = renderer.create_renderer(
@@ -244,10 +250,27 @@ for result_filename in p['result_filenames']:
             R_g = gt['cam_R_m2c']
             t_g = gt['cam_t_m2c']
 
+            # Check if the bounding spheres of the object model in the two poses
+            # overlap. This is used to speed up calculation of some errors.
+            overlapping_spheres = None
+            if p['error_type'] in ['vsd', 'cou-mask-proj']:
+              radius = 0.5 * models_info[obj_id]['diameter']
+              overlapping_spheres = misc.overlapping_sphere_projections(
+                radius, t_e.squeeze(), t_g.squeeze())
+
             if p['error_type'] == 'vsd':
-              e = [pose_error.vsd(
-                R_e, t_e, R_g, t_g, depth_im, K, p['vsd_delta'], p['vsd_tau'],
-                ren, obj_id, 'step')]
+              if overlapping_spheres:
+                e = [pose_error.vsd(
+                  R_e, t_e, R_g, t_g, depth_im, K, p['vsd_delta'], p['vsd_tau'],
+                  ren, obj_id, 'step')]
+              else:
+                e = [1.0]
+
+            elif p['error_type'] == 'ad':
+              if obj_id in dp_model['symmetric_obj_ids']:
+                e = [pose_error.adi(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
+              else:
+                e = [pose_error.add(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
 
             elif p['error_type'] == 'add':
               e = [pose_error.add(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
@@ -255,8 +278,12 @@ for result_filename in p['result_filenames']:
             elif p['error_type'] == 'adi':
               e = [pose_error.adi(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
 
-            elif p['error_type'] == 'cou_mask_proj':
-              e = [pose_error.cou_mask_proj(R_e, t_e, R_g, t_g, K, ren, obj_id)]
+            elif p['error_type'] == 'cou-mask-proj':
+              if overlapping_spheres:
+                e = [pose_error.cou_mask_proj(
+                  R_e, t_e, R_g, t_g, K, ren, obj_id)]
+              else:
+                e = [1.0]
 
             elif p['error_type'] == 'rete':
               e = [pose_error.re(R_e, R_g), pose_error.te(t_e, t_g)]
