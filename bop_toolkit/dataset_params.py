@@ -66,6 +66,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'ruapc': range(1, 15),
     'icmi': range(1, 7),
     'icbin': range(1, 3),
+    'itodd': range(1, 29),
     'hb': range(1, 34),
   }[dataset_name]
 
@@ -116,6 +117,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     'azimuth_range': None,
     'elev_range': None,
   }
+
+  gray_ext = '.png'
+  rgb_ext = '.png'
+  depth_ext = '.png'
+
+  p['im_modalities'] = ['rgb', 'depth']
 
   # Linemod (LM).
   if dataset_name == 'lm':
@@ -218,6 +225,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
       p['azimuth_range'] = (0, 2 * math.pi)
       p['elev_range'] = (-1.0297, 0.5 * math.pi)  # (-59, 90) [deg].
 
+  # MVTec ITODD.
+  elif dataset_name == 'itodd':
+    p['scene_ids'] = {'test': [1]}[split]
+    p['im_size'] = (1280, 960)
+
+    gray_ext = '.tif'
+    depth_ext = '.tif'
+    p['im_modalities'] = ['gray', 'depth']
+
+    if split == 'test':
+      p['depth_range'] = None
+      p['azimuth_range'] = None
+      p['elev_range'] = None
+
   # HomebrewedDB (HB).
   elif dataset_name == 'hb':
     p['scene_ids'] = {'train': range(1, 34), 'test': range(1, 6)}[split]
@@ -249,13 +270,17 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     'scene_gt_info_tpath': join(
       split_path, '{scene_id:06d}', 'scene_gt_info.yml'),
 
+    # Path template to a gray image.
+    'gray_tpath': join(
+      split_path, '{scene_id:06d}', 'gray', '{im_id:06d}' + gray_ext),
+
     # Path template to an RGB image.
     'rgb_tpath': join(
-      split_path, '{scene_id:06d}', 'rgb', '{im_id:06d}.png'),
+      split_path, '{scene_id:06d}', 'rgb', '{im_id:06d}' + rgb_ext),
 
     # Path template to a depth image.
     'depth_tpath': join(
-      split_path, '{scene_id:06d}', 'depth', '{im_id:06d}.png'),
+      split_path, '{scene_id:06d}', 'depth', '{im_id:06d}' + depth_ext),
 
     # Path template to a mask of the full object silhouette.
     'mask_tpath': join(

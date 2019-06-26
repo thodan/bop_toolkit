@@ -4,6 +4,7 @@
 """Visualizes object models in pose estimates saved in the BOP format."""
 
 import os
+import numpy as np
 import itertools
 
 from bop_toolkit import config
@@ -188,8 +189,15 @@ for result_fname in p['result_filenames']:
         # Load the color and depth images and prepare images for rendering.
         rgb = None
         if p['vis_rgb']:
-          rgb = inout.load_im(dp_split['rgb_tpath'].format(
-            scene_id=scene_id, im_id=im_id))
+          if 'rgb' in dp_split['im_modalities']:
+            rgb = inout.load_im(dp_split['rgb_tpath'].format(
+              scene_id=scene_id, im_id=im_id))
+          elif 'gray' in dp_split['im_modalities']:
+            gray = inout.load_im(dp_split['gray_tpath'].format(
+              scene_id=scene_id, im_id=im_id))
+            rgb = np.dstack([gray, gray, gray])
+          else:
+            raise ValueError('RGB nor gray images are available.')
 
         depth = None
         if p['vis_depth_diff'] or (p['vis_rgb'] and p['vis_rgb_resolve_visib']):

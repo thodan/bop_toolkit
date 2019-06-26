@@ -99,6 +99,9 @@ def save_depth(path, im):
   :param path: Path to the output depth image file.
   :param im: ndarray with the depth image to save.
   """
+  if path.split('.')[-1].lower() != 'png':
+    raise ValueError('Only PNG format is currently supported.')
+
   im_uint16 = np.round(im).astype(np.uint16)
 
   # PyPNG library can save 16-bit PNG and is faster than imageio.imwrite().

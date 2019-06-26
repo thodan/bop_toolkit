@@ -4,6 +4,7 @@
 """Visualizes object models in the ground-truth poses."""
 
 import os
+import numpy as np
 
 from bop_toolkit import config
 from bop_toolkit import dataset_params
@@ -17,7 +18,7 @@ from bop_toolkit import visualization
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'lmo',
+  'dataset': 'itodd',
 
   # Dataset split. Options: 'train', 'val', 'test'.
   'dataset_split': 'test',
@@ -75,7 +76,7 @@ dp_split = dataset_params.get_split_params(
   p['datasets_path'], p['dataset'], p['dataset_split'], p['dataset_split_type'])
 
 model_type = 'eval'  # None = default.
-dp_model = dataset_params.get_split_params(
+dp_model = dataset_params.get_model_params(
   p['datasets_path'], p['dataset'], model_type)
 
 # Load colors.
@@ -168,8 +169,15 @@ for scene_id in scene_ids_curr:
     # Load the color and depth images and prepare images for rendering.
     rgb = None
     if p['vis_rgb']:
-      rgb = inout.load_im(dp_split['rgb_tpath'].format(
-        scene_id=scene_id, im_id=im_id))
+      if 'rgb' in dp_split['im_modalities']:
+        rgb = inout.load_im(dp_split['rgb_tpath'].format(
+          scene_id=scene_id, im_id=im_id))
+      elif 'gray' in dp_split['im_modalities']:
+        gray = inout.load_im(dp_split['gray_tpath'].format(
+          scene_id=scene_id, im_id=im_id))
+        rgb = np.dstack([gray, gray, gray])
+      else:
+        raise ValueError('RGB nor gray images are available.')
 
     depth = None
     if p['vis_depth_diff'] or (p['vis_rgb'] and p['vis_rgb_resolve_visib']):
