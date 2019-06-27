@@ -122,13 +122,14 @@ def load_scene_camera(path):
     info = yaml.load(f, Loader=yaml.CLoader)
     for eid in info.keys():
       if 'cam_K' in info[eid].keys():
-        info[eid]['cam_K'] = np.array(info[eid]['cam_K']).reshape((3, 3))
+        info[eid]['cam_K'] =\
+          np.array(info[eid]['cam_K'], np.float).reshape((3, 3))
       if 'cam_R_w2c' in info[eid].keys():
         info[eid]['cam_R_w2c'] =\
-          np.array(info[eid]['cam_R_w2c']).reshape((3, 3))
+          np.array(info[eid]['cam_R_w2c'], np.float).reshape((3, 3))
       if 'cam_t_w2c' in info[eid].keys():
         info[eid]['cam_t_w2c'] =\
-          np.array(info[eid]['cam_t_w2c']).reshape((3, 1))
+          np.array(info[eid]['cam_t_w2c'], np.float).reshape((3, 1))
   return info
 
 

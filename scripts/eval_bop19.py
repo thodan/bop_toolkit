@@ -78,9 +78,9 @@ p['targets_filename'] = str(args.targets_filename)
 # ------------------------------------------------------------------------------
 for result_filename in p['result_filenames']:
 
-  misc.log('-----------')
+  misc.log('===========')
   misc.log('EVALUATING: {}'.format(result_filename))
-  misc.log('-----------')
+  misc.log('===========')
 
   time_start = time.time()
 
@@ -158,6 +158,8 @@ for result_filename in p['result_filenames']:
       scores = inout.load_yaml(scores_path)
 
   time_total = time.time() - time_start
+  misc.log('-----------')
   misc.log('Evaluation of {} took {}s.'.format(result_filename, time_total))
+  misc.log('-----------')
 
 misc.log('Done.')
