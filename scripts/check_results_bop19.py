@@ -3,8 +3,10 @@
 
 """Evaluation script for the BOP Challenge 2019."""
 
+import os
 import argparse
 
+from bop_toolkit import config
 from bop_toolkit import inout
 from bop_toolkit import misc
 
@@ -17,7 +19,14 @@ p = {
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
-    '/path/to/csv/with/results',
+    # '/path/to/csv/with/results',
+    'hodan-iros15-vivo-test_icbin-test.csv',
+    'hodan-iros15-vivo-test_icmi-test.csv',
+    'hodan-iros15-vivo-test_lmo-test.csv',
+    'hodan-iros15-vivo-test_lm-test.csv',
+    'hodan-iros15-vivo-test_ruapc-test.csv',
+    'hodan-iros15-vivo-test_tless-test-primesense.csv',
+    'hodan-iros15-vivo-test_tudl-test.csv'
   ],
 }
 ################################################################################
@@ -35,10 +44,16 @@ p['result_filenames'] = args.result_filenames.split(',')
 
 # Checking.
 # ------------------------------------------------------------------------------
+check_passed = True
 for result_filename in p['result_filenames']:
   try:
-    inout.load_bop_results(result_filename)
-  except:
-    misc.log('Error when loading file: {}'.format(result_filename))
+    inout.load_bop_results(os.path.join(config.results_path, result_filename))
+  except Exception as e:
+    check_passed = False
+    misc.log('ERROR when loading file {}:\n{}'.format(
+      result_filename, e))
 
-misc.log('Done.')
+if check_passed:
+  misc.log('Check passed.')
+else:
+  misc.log('Check failed.')

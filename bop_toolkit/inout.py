@@ -165,9 +165,9 @@ def load_scene_gt(path):
     for im_id, gts_im in gts.items():
       for gt in gts_im:
         if 'cam_R_m2c' in gt.keys():
-          gt['cam_R_m2c'] = np.array(gt['cam_R_m2c']).reshape((3, 3))
+          gt['cam_R_m2c'] = np.array(gt['cam_R_m2c'], np.float).reshape((3, 3))
         if 'cam_t_m2c' in gt.keys():
-          gt['cam_t_m2c'] = np.array(gt['cam_t_m2c']).reshape((3, 1))
+          gt['cam_t_m2c'] = np.array(gt['cam_t_m2c'], np.float).reshape((3, 1))
   return gts
 
 
@@ -214,14 +214,20 @@ def load_bop_results(path, version='bop_challenge_2019'):
           if len(elems) != 7:
             raise ValueError(
               'A line does not have 7 comma-sep. elements: {}'.format(line))
-          results.append({
+
+          result = {
             'scene_id': int(elems[0]),
             'im_id': int(elems[1]),
             'obj_id': int(elems[2]),
             'score': float(elems[3]),
-            'R': np.array(map(float, elems[4].split())).reshape((3, 3)),
-            't': np.array(map(float, elems[5].split())).reshape((3, 1)),
-            'time': float(elems[6])})
+            'R': np.array(
+              map(float, elems[4].split()), np.float).reshape((3, 3)),
+            't': np.array(
+              map(float, elems[5].split()), np.float).reshape((3, 1)),
+            'time': float(elems[6])
+          }
+
+          results.append(result)
   else:
     raise ValueError('Unknown version of BOP results.')
 

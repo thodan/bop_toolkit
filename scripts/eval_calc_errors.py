@@ -44,7 +44,7 @@ p = {
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
     # '/path/to/csv/with/results',
-    'hodan-iros15-vivo-test_icbin-test.csv',
+    'hodan-iros15-vivo-test_ruapc-test.csv',
   ],
 
   # Folder containing the BOP datasets.
