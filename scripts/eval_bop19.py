@@ -27,7 +27,7 @@ p = {
     },
     {
       'n_top': -1,
-      'type': 'cou-mask-proj',
+      'type': 'cus',
       'correct_th': [[0.3]]
     },
     {

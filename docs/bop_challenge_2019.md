@@ -85,6 +85,12 @@ method on the 7 core datasets whose source code is publicly available.
 
 ## Evaluation Methodology
 
+**Measuring Error:** The error of a 6D object pose estimate is measured by three
+metrics:
+1. *Visible Surface Discrepancy (VSD)* [1]
+2. *Average Distance of Model Points (ADD/ADI)* [2]
+3. *Complement over Union of Object Silhouettes (CUS)*
+
 The error of a 6D object pose estimate is measured by the *Visible Surface
 Discrepancy (VSD)* [1] with two settings of the misalignment tolerance in depth,
 i.e. in the Z/optical axis: (1) *tau* = 20mm, (2) *tau* = infinity. With the
@@ -92,11 +98,13 @@ latter setting, VSD evaluates only the alignment of the visible surface mask and
 is therefore more suitable for evaluation of RGB-only methods for which
 estimating the Z component is more challenging.
 
-The performance is measured by the *recall score*, i.e. the fraction of
+**Performance Score:** The performance is measured by the *recall score*, i.e. the fraction of
 annotated object instances for which a correct object pose was estimated. The
 overall performance score is given by the average of the per-dataset recall
 scores. We thus treat each dataset as a separate challenge and avoid the overall
 score being dominated by larger datasets.
+
+**Ranking of Methods:** As in the [ROB Challenge](http://www.robustvision.net)...
 
 ## How to Participate
 

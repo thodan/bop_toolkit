@@ -25,7 +25,7 @@ p = {
   'n_top': 1,
 
   # Pose error function.
-  # Options: 'vsd', 'ad', 'adi', 'add', 'cou-mask-proj', 'rete', 're', 'te'.
+  # Options: 'vsd', 'ad', 'adi', 'add', 'cus', 'rete', 're', 'te'.
   'error_type': 'vsd',
 
   # VSD parameters.
@@ -139,7 +139,7 @@ for result_filename in p['result_filenames']:
 
   # Initialize a renderer.
   ren = None
-  if p['error_type'] in ['vsd', 'cou-mask-proj']:
+  if p['error_type'] in ['vsd', 'cus']:
     misc.log('Initializing renderer...')
     width, height = dp_split['im_size']
     ren = renderer.create_renderer(
@@ -253,7 +253,7 @@ for result_filename in p['result_filenames']:
             # Check if the bounding spheres of the object model in the two poses
             # overlap. This is used to speed up calculation of some errors.
             overlapping_spheres = None
-            if p['error_type'] in ['vsd', 'cou-mask-proj']:
+            if p['error_type'] in ['vsd', 'cus']:
               radius = 0.5 * models_info[obj_id]['diameter']
               overlapping_spheres = misc.overlapping_sphere_projections(
                 radius, t_e.squeeze(), t_g.squeeze())
@@ -278,9 +278,9 @@ for result_filename in p['result_filenames']:
             elif p['error_type'] == 'adi':
               e = [pose_error.adi(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
 
-            elif p['error_type'] == 'cou-mask-proj':
+            elif p['error_type'] == 'cus':
               if overlapping_spheres:
-                e = [pose_error.cou_mask_proj(
+                e = [pose_error.cus(
                   R_e, t_e, R_g, t_g, K, ren, obj_id)]
               else:
                 e = [1.0]

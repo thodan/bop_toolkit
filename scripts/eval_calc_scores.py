@@ -38,7 +38,7 @@ p = {
   # Threshold of correctness for different pose error functions.
   'correct_th': {
     'vsd': [0.3],
-    'cou-mask-proj': [0.5],
+    'cus': [0.5],
     'rete': [5.0, 5.0],  # [deg, cm].
     're': [5.0],  # [deg].
     'te': [5.0]  # [cm].

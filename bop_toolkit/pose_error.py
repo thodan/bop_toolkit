@@ -187,7 +187,7 @@ def cou_mask(mask_est, mask_gt):
   return e
 
 
-def cou_mask_proj(R_est, t_est, R_gt, t_gt, K, renderer, obj_id):
+def cus(R_est, t_est, R_gt, t_gt, K, renderer, obj_id):
   """Complement over Union of projected 2D masks.
 
   :param R_est: 3x3 ndarray with the estimated rotation matrix.
