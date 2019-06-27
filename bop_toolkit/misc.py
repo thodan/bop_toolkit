@@ -240,7 +240,7 @@ def get_score_signature(error_type, visib_gt_min, **kwargs):
   :param visib_gt_min: Minimum visible surface fraction of a valid GT pose.
   :return: Generated signature.
   """
-  if error_type in ['add', 'adi']:
+  if error_type in ['ad', 'add', 'adi']:
     eval_sign = 'thf=' + '-'.join(map(str, kwargs['correct_th_fact']))
   else:
     eval_sign = 'th=' + '-'.join(map(str, kwargs['correct_th']))
