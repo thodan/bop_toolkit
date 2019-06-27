@@ -159,3 +159,5 @@ for result_filename in p['result_filenames']:
 
   time_total = time.time() - time_start
   misc.log('Evaluation of {} took {}s.'.format(result_filename, time_total))
+
+misc.log('Done.')

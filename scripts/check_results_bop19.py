@@ -40,3 +40,5 @@ for result_filename in p['result_filenames']:
     inout.load_bop_results(result_filename)
   except:
     misc.log('Error when loading file: {}'.format(result_filename))
+
+misc.log('Done.')
