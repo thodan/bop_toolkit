@@ -130,7 +130,7 @@ for result_filename in p['result_filenames']:
         '--visib_gt_min={}'.format(p['visib_gt_min'])
       ]
 
-      if error['type'] in ['add', 'adi']:
+      if error['type'] in ['ad', 'add', 'adi']:
         calc_scores_cmd += ['--correct_th_fact_{}={}'.format(
           error['type'], ','.join(map(str, correct_th)))]
       else:
@@ -142,7 +142,7 @@ for result_filename in p['result_filenames']:
         raise RuntimeError('Calculation of scores failed.')
 
       # Path to file with calculated scores.
-      if error['type'] in ['add', 'adi']:
+      if error['type'] in ['ad', 'add', 'adi']:
         score_sign = misc.get_score_signature(
           error['type'], p['visib_gt_min'], correct_th_fact=correct_th)
       else:
