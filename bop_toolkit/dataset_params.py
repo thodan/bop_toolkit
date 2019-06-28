@@ -81,7 +81,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'icmi': [1, 2, 6],
     'icbin': [1],
     'itodd': [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
-    'hb': None,
+    'hb': [10],
   }[dataset_name]
 
   # T-LESS includes two types of object models, CAD and reconstructed.

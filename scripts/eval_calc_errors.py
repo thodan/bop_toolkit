@@ -135,7 +135,9 @@ for result_filename in p['result_filenames']:
         dp_model['model_tpath'].format(obj_id=obj_id))
 
   # Load models info.
-  models_info = inout.load_yaml(dp_model['models_info_path'])
+  models_info = None
+  if p['error_type'] in ['ad', 'add', 'adi', 'vsd', 'cus']:
+    models_info = inout.load_yaml(dp_model['models_info_path'])
 
   # Initialize a renderer.
   ren = None
@@ -250,36 +252,55 @@ for result_filename in p['result_filenames']:
             R_g = gt['cam_R_m2c']
             t_g = gt['cam_t_m2c']
 
-            # Check if the bounding spheres of the object model in the two poses
-            # overlap. This is used to speed up calculation of some errors.
-            overlapping_spheres = None
+            # Check if the projections of the bounding spheres of the object in
+            # the two poses overlap (to speed up calculation of some errors).
+            sphere_projections_overlap = None
             if p['error_type'] in ['vsd', 'cus']:
               radius = 0.5 * models_info[obj_id]['diameter']
-              overlapping_spheres = misc.overlapping_sphere_projections(
+              sphere_projections_overlap = misc.overlapping_sphere_projections(
                 radius, t_e.squeeze(), t_g.squeeze())
 
+            # Check if the bounding spheres of the object in the two poses
+            # overlap (to speed up calculation of some errors).
+            spheres_overlap = None
+            if p['error_type'] in ['ad', 'add', 'adi']:
+              center_dist = np.linalg.norm(t_e - t_g)
+              spheres_overlap = center_dist < models_info[obj_id]['diameter']
+
             if p['error_type'] == 'vsd':
-              if overlapping_spheres:
+              if not sphere_projections_overlap:
+                e = [1.0]
+              else:
                 e = [pose_error.vsd(
                   R_e, t_e, R_g, t_g, depth_im, K, p['vsd_delta'], p['vsd_tau'],
                   ren, obj_id, 'step')]
+
+            elif p['error_type'] in ['ad', 'add', 'adi']:
+              if not spheres_overlap:
+                # Infinite error if the bounding spheres do not overlap. With
+                # typically used values of the correctness threshold for the AD
+                # error (e.g. k*diameter, where k = 0.1), such pose estimates
+                # would be considered incorrect anyway.
+                e = float('inf')
               else:
-                e = [1.0]
+                if p['error_type'] == 'ad':
+                  if obj_id in dp_model['symmetric_obj_ids']:
+                    e = [pose_error.adi(
+                      R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
+                  else:
+                    e = [pose_error.add(
+                      R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
 
-            elif p['error_type'] == 'ad':
-              if obj_id in dp_model['symmetric_obj_ids']:
-                e = [pose_error.adi(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
-              else:
-                e = [pose_error.add(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
+                elif p['error_type'] == 'add':
+                  e = [pose_error.add(
+                    R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
 
-            elif p['error_type'] == 'add':
-              e = [pose_error.add(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
-
-            elif p['error_type'] == 'adi':
-              e = [pose_error.adi(R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
+                elif p['error_type'] == 'adi':
+                  e = [pose_error.adi(
+                    R_e, t_e, R_g, t_g, models[obj_id]['pts'])]
 
             elif p['error_type'] == 'cus':
-              if overlapping_spheres:
+              if sphere_projections_overlap:
                 e = [pose_error.cus(
                   R_e, t_e, R_g, t_g, K, ren, obj_id)]
               else:
