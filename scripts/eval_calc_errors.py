@@ -281,7 +281,7 @@ for result_filename in p['result_filenames']:
                 # typically used values of the correctness threshold for the AD
                 # error (e.g. k*diameter, where k = 0.1), such pose estimates
                 # would be considered incorrect anyway.
-                e = float('inf')
+                e = [float('inf')]
               else:
                 if p['error_type'] == 'ad':
                   if obj_id in dp_model['symmetric_obj_ids']:
