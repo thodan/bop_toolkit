@@ -10,7 +10,7 @@ import imageio
 import png
 import ruamel.yaml as yaml
 
-from bop_toolkit import misc
+from bop_toolkit_lib import misc
 
 
 def load_yaml(path):

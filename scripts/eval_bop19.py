@@ -8,9 +8,9 @@ import time
 import argparse
 import subprocess
 
-from bop_toolkit import config
-from bop_toolkit import inout
-from bop_toolkit import misc
+from bop_toolkit_lib import config
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS (some can be overwritten by the command line arguments below).

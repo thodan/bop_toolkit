@@ -6,19 +6,19 @@
 import os
 import numpy as np
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
-from bop_toolkit import renderer
-from bop_toolkit import visualization
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
+from bop_toolkit_lib import renderer
+from bop_toolkit_lib import visualization
 
 
 # PARAMETERS.
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'itodd',
+  'dataset': 'lm',
 
   # Dataset split. Options: 'train', 'val', 'test'.
   'dataset_split': 'test',
@@ -29,7 +29,8 @@ p = {
   # File with a list of estimation targets used to determine the set of images
   # for which the GT poses will be visualized. The file is assumed to be stored
   # in the dataset folder. None = all images.
-  'targets_filename': 'test_targets_bop19.yml',
+  # 'targets_filename': 'test_targets_bop19.yml',
+  'targets_filename': None,
 
   # Select ID's of scenes, images and GT poses to be processed.
   # Empty list [] means that all ID's will be used.
@@ -47,7 +48,7 @@ p = {
   'vis_rgb_resolve_visib': True,
   
   # Indicates whether to save images of depth differences.
-  'vis_depth_diff': True,
+  'vis_depth_diff': False,
   
   # Whether to use the original model color.
   'vis_orig_color': False,
@@ -111,7 +112,7 @@ renderer_mode = '+'.join(renderer_modalities)
 # Create a renderer.
 width, height = dp_split['im_size']
 ren = renderer.create_renderer(
-  width, height, p['renderer_type'], mode=renderer_mode)
+  width, height, p['renderer_type'], mode=renderer_mode, shading='flat')
 
 # Load object models.
 models = {}

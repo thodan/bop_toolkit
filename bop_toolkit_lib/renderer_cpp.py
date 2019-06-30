@@ -5,8 +5,8 @@
 
 import sys
 
-from bop_toolkit import config
-from bop_toolkit import renderer
+from bop_toolkit_lib import config
+from bop_toolkit_lib import renderer
 
 # C++ renderer (https://github.com/thodan/bop_renderer)
 sys.path.append(config.bop_renderer_path)

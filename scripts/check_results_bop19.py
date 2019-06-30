@@ -6,9 +6,9 @@
 import os
 import argparse
 
-from bop_toolkit import config
-from bop_toolkit import inout
-from bop_toolkit import misc
+from bop_toolkit_lib import config
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS (some can be overwritten by the command line arguments below).
@@ -19,14 +19,7 @@ p = {
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
-    # '/path/to/csv/with/results',
-    'hodan-iros15-vivo-test_icbin-test.csv',
-    'hodan-iros15-vivo-test_icmi-test.csv',
-    'hodan-iros15-vivo-test_lmo-test.csv',
-    'hodan-iros15-vivo-test_lm-test.csv',
-    'hodan-iros15-vivo-test_ruapc-test.csv',
-    'hodan-iros15-vivo-test_tless-test-primesense.csv',
-    'hodan-iros15-vivo-test_tudl-test.csv'
+    '/path/to/csv/with/results',
   ],
 }
 ################################################################################

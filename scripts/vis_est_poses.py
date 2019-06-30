@@ -7,12 +7,12 @@ import os
 import numpy as np
 import itertools
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
-from bop_toolkit import renderer
-from bop_toolkit import visualization
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
+from bop_toolkit_lib import renderer
+from bop_toolkit_lib import visualization
 
 
 # PARAMETERS.

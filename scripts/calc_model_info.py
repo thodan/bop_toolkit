@@ -3,10 +3,10 @@
 
 """Calculates the 3D bounding box and the diameter of 3D object models."""
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS.

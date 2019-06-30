@@ -6,25 +6,25 @@
 import os
 import numpy as np
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
-from bop_toolkit import renderer
-from bop_toolkit import visibility
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
+from bop_toolkit_lib import renderer
+from bop_toolkit_lib import visibility
 
 
 # PARAMETERS.
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'tless',
+  'dataset': 'lm',
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'train',
+  'dataset_split': 'test',
 
   # Dataset split type. None = default. See dataset_params.py for options.
-  'dataset_split_type': 'render_reconst',
+  'dataset_split_type': None,
 
   # Tolerance used in the visibility test [mm].
   'delta': 15,
@@ -48,8 +48,7 @@ if p['dataset'] == 'tless':
 dp_model = dataset_params.get_model_params(
   p['datasets_path'], p['dataset'], model_type)
 
-# for scene_id in dp_split['scene_ids']:
-for scene_id in [29, 30]:
+for scene_id in dp_split['scene_ids']:
 
   # Load scene GT.
   scene_gt_path = dp_split['scene_gt_tpath'].format(

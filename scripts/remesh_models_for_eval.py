@@ -9,16 +9,16 @@ modifier).
 
 import os
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import misc
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS.
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'icbin',
+  'dataset': 'lm',
 
   # Type of input object models.
   # None = default model type.
@@ -37,7 +37,7 @@ p = {
   # Path to scripts/meshlab_scripts/remesh_for_eval.mlx.
   'meshlab_script_path': os.path.join(
     os.path.dirname(os.path.realpath(__file__)), 'meshlab_scripts',
-    r'remesh_for_eval_cell=0.5.mlx'),
+    r'remesh_for_eval_cell=0.25.mlx'),
 }
 ################################################################################
 

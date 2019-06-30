@@ -8,12 +8,12 @@ import time
 import argparse
 import numpy as np
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
-from bop_toolkit import pose_error
-from bop_toolkit import renderer
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
+from bop_toolkit_lib import pose_error
+from bop_toolkit_lib import renderer
 
 
 # PARAMETERS (can be overwritten by the command line arguments below).
@@ -43,8 +43,7 @@ p = {
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
-    # '/path/to/csv/with/results',
-    'hodan-iros15-vivo-test_ruapc-test.csv',
+    '/path/to/csv/with/results',
   ],
 
   # Folder containing the BOP datasets.

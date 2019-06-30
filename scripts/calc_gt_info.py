@@ -12,26 +12,26 @@ selected dataset.
 import os
 import numpy as np
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
-from bop_toolkit import renderer
-from bop_toolkit import visibility
-from bop_toolkit import visualization
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
+from bop_toolkit_lib import renderer
+from bop_toolkit_lib import visibility
+from bop_toolkit_lib import visualization
 
 
 # PARAMETERS.
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'tless',
+  'dataset': 'lm',
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'train',
+  'dataset_split': 'test',
 
   # Dataset split type. None = default. See dataset_params.py for options.
-  'dataset_split_type': 'render_reconst',
+  'dataset_split_type': None,
 
   # Whether to save visualizations of visibility masks.
   'vis_visibility_masks': False,
@@ -122,7 +122,7 @@ for scene_id in dp_split['scene_ids']:
       else:
         visib_fract = 0.0
 
-      # Bounding box of the object projection
+      # Bounding box of the object projection.
       ys, xs = obj_mask_gt.nonzero()
       bbox = misc.calc_2d_bbox(xs, ys, im_size)
 

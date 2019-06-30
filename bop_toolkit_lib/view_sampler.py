@@ -6,8 +6,8 @@
 import math
 import numpy as np
 
-from bop_toolkit import transform
-from bop_toolkit import inout
+from bop_toolkit_lib import transform
+from bop_toolkit_lib import inout
 
 
 def fibonacci_sampling(n_pts, radius=1.0):

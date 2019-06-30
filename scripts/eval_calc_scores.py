@@ -24,12 +24,12 @@ import os
 import time
 import argparse
 
-from bop_toolkit import config
-from bop_toolkit import dataset_params
-from bop_toolkit import inout
-from bop_toolkit import misc
-from bop_toolkit import pose_matching
-from bop_toolkit import score
+from bop_toolkit_lib import config
+from bop_toolkit_lib import dataset_params
+from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
+from bop_toolkit_lib import pose_matching
+from bop_toolkit_lib import score
 
 
 # PARAMETERS (can be overwritten by the command line arguments below).
