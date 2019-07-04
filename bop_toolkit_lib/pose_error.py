@@ -13,7 +13,6 @@ from scipy import spatial
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import visibility
 
-
 def vsd(R_est, t_est, R_gt, t_gt, depth_test, K, delta, tau, renderer, obj_id,
         cost_type='step'):
   """Visible Surface Discrepancy -- by Hodan, Michel et al. (ECCV 2018).
@@ -42,9 +41,9 @@ def vsd(R_est, t_est, R_gt, t_gt, depth_test, K, delta, tau, renderer, obj_id,
     obj_id, R_gt, t_gt, fx, fy, cx, cy)['depth']
 
   # Convert depth images to distance images.
-  dist_test = misc.depth_im_to_dist_im(depth_test, K)
-  dist_gt = misc.depth_im_to_dist_im(depth_gt, K)
-  dist_est = misc.depth_im_to_dist_im(depth_est, K)
+  dist_test = misc.depth_im_to_dist_im_fast(depth_test, K)
+  dist_gt = misc.depth_im_to_dist_im_fast(depth_gt, K)
+  dist_est = misc.depth_im_to_dist_im_fast(depth_est, K)
 
   # Visibility mask of the model in the ground-truth pose.
   visib_gt = visibility.estimate_visib_mask_gt(

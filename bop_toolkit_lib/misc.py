@@ -47,9 +47,63 @@ def project_pts(pts, K, R, t):
   return pts_im[:2, :].T
 
 
-def depth_im_to_dist_im(depth_im, K):
+class Precomputer(object):
+  """ Caches pre_Xs, pre_Ys for a 30% speedup of depth_im_to_dist_im()
+  """
+  xs, ys = None, None
+  pre_Xs,pre_Ys = None,None
+  depth_im_shape = None
+  K = None
+
+  @staticmethod
+  def precompute_lazy(depth_im, K):
+    """ Lazy precomputation for depth_im_to_dist_im() if depth_im.shape or K changes
+
+    :param depth_im: hxw ndarray with the input depth image, where depth_im[y, x]
+      is the Z coordinate of the 3D point [X, Y, Z] that projects to pixel [x, y],
+      or 0 if there is no such 3D point (this is a typical output of the
+      Kinect-like sensors).
+    :param K: 3x3 ndarray with a camera matrix.
+    :return: hxw ndarray (Xs/depth_im, Ys/depth_im)
+    """
+    if depth_im.shape != Precomputer.depth_im_shape:
+      Precomputer.depth_im_shape = depth_im.shape
+      Precomputer.xs, Precomputer.ys = np.meshgrid(
+        np.arange(depth_im.shape[1]), np.arange(depth_im.shape[0]))
+
+    if depth_im.shape != Precomputer.depth_im_shape or not np.all(K==Precomputer.K):
+      Precomputer.K = K
+      Precomputer.pre_Xs = (Precomputer.xs - K[0, 2]) / np.float64(K[0, 0])
+      Precomputer.pre_Ys = (Precomputer.ys - K[1, 2]) / np.float64(K[1, 1])
+
+    return Precomputer.pre_Xs, Precomputer.pre_Ys
+  
+
+def depth_im_to_dist_im_fast(depth_im, K):
   """Converts a depth image to a distance image.
 
+  :param depth_im: hxw ndarray with the input depth image, where depth_im[y, x]
+    is the Z coordinate of the 3D point [X, Y, Z] that projects to pixel [x, y],
+    or 0 if there is no such 3D point (this is a typical output of the
+    Kinect-like sensors).
+  :param K: 3x3 ndarray with a camera matrix.
+  :return: hxw ndarray with the distance image, where dist_im[y, x] is the
+    distance from the camera center to the 3D point [X, Y, Z] that projects to
+    pixel [x, y], or 0 if there is no such 3D point.
+  """
+  # only recomputed if depth_im.shape or K changes
+  pre_Xs, pre_Ys = Precomputer.precompute_lazy(depth_im, K)
+
+  dist_im = np.sqrt(
+    np.multiply(pre_Xs, depth_im)**2 +
+    np.multiply(pre_Ys, depth_im)**2 +
+    depth_im.astype(np.float64)**2)
+
+  return dist_im
+
+
+def depth_im_to_dist_im(depth_im, K):
+  """Converts a depth image to a distance image.
   :param depth_im: hxw ndarray with the input depth image, where depth_im[y, x]
     is the Z coordinate of the 3D point [X, Y, Z] that projects to pixel [x, y],
     or 0 if there is no such 3D point (this is a typical output of the
@@ -72,7 +126,6 @@ def depth_im_to_dist_im(depth_im, K):
   # dist_im = np.linalg.norm(np.dstack((Xs, Ys, depth_im)), axis=2)  # Slower.
 
   return dist_im
-
 
 def clip_pt_to_im(pt, im_size):
   """Clips a 2D point to the image frame.
