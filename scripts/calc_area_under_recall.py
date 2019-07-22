@@ -12,6 +12,7 @@ import numpy as np
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
+from bop_toolkit_lib import visualization
 
 
 # PARAMETERS (some can be overwritten by the command line arguments below).
@@ -52,11 +53,8 @@ p = {
   # Minimum visible surface fraction of a valid GT pose.
   'visib_gt_min': 0.1,
 
-  # See misc.get_symmetry_transformations().
-  'max_sym_disc_step': 0.01,
-
-  # Type of the renderer (used for the VSD pose error function).
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  # Plot Precision Recall curves
+  'plot_precision_recall': True,
 
   # Names of files with results for which to calculate the errors (assumed to be
   # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
@@ -65,31 +63,22 @@ p = {
   'result_filenames': [
     '/path/to/csv/with/results',
   ],
-
-  # File with a list of estimation targets to consider. The file is assumed to
-  # be stored in the dataset folder.
-  'targets_filename': 'test_targets_bop19.json',
 }
 ################################################################################
+
 
 
 # Command line arguments.
 # ------------------------------------------------------------------------------
 parser = argparse.ArgumentParser()
 parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
-parser.add_argument('--max_sym_disc_step', default=p['max_sym_disc_step'])
-parser.add_argument('--renderer_type', default=p['renderer_type'])
 parser.add_argument('--result_filenames',
                     default=','.join(p['result_filenames']),
                     help='Comma-separated names of files with results.')
-parser.add_argument('--targets_filename', default=p['targets_filename'])
 args = parser.parse_args()
 
 p['visib_gt_min'] = float(args.visib_gt_min)
-p['max_sym_disc_step'] = float(args.max_sym_disc_step)
-p['renderer_type'] = str(args.renderer_type)
 p['result_filenames'] = args.result_filenames.split(',')
-p['targets_filename'] = str(args.targets_filename)
 
 # Evaluation.
 # ------------------------------------------------------------------------------
@@ -102,31 +91,9 @@ for result_filename in p['result_filenames']:
   time_start = time.time()
   aur = {}
 
+  recall_dict = {e['type']:{} for e in p['errors']}
+
   for error in p['errors']:
-
-    # Calculate error of the pose estimates.
-    calc_errors_cmd = [
-      'python',
-      os.path.join('scripts', 'eval_calc_errors.py'),
-      '--n_top={}'.format(error['n_top']),
-      '--error_type={}'.format(error['type']),
-      '--result_filenames={}'.format(result_filename),
-      '--renderer_type={}'.format(p['renderer_type']),
-      '--targets_filename={}'.format(p['targets_filename']),
-      '--max_sym_disc_step={}'.format(p['max_sym_disc_step']),
-      '--skip_missing=1',
-    ]
-    if error['type'] == 'vsd':
-      vsd_deltas_str = \
-        ','.join(['{}:{}'.format(k, v) for k, v in error['vsd_deltas'].items()])
-      calc_errors_cmd += [
-        '--vsd_deltas={}'.format(vsd_deltas_str),
-        '--vsd_taus={}'.format(','.join(map(str, error['vsd_taus'])))
-      ]
-
-    misc.log('Running: ' + ' '.join(calc_errors_cmd))
-    if subprocess.call(calc_errors_cmd) != 0:
-      raise RuntimeError('Calculation of VSD failed.')
 
     # Name of the result and the dataset.
     result_name = os.path.splitext(os.path.basename(result_filename))[0]
@@ -152,22 +119,8 @@ for result_filename in p['result_filenames']:
 
     # Calculate performance scores.
     for error_sign, error_dir_path in error_dir_paths.items():
+      recall_dict[error['type']][error_sign] = []
       for correct_th in error['correct_th']:
-
-        calc_scores_cmd = [
-          'python',
-          os.path.join('scripts', 'eval_calc_scores.py'),
-          '--error_dir_paths={}'.format(error_dir_path),
-          '--targets_filename={}'.format(p['targets_filename']),
-          '--visib_gt_min={}'.format(p['visib_gt_min'])
-        ]
-
-        calc_scores_cmd += ['--correct_th_{}={}'.format(
-          error['type'], ','.join(map(str, correct_th)))]
-
-        misc.log('Running: ' + ' '.join(calc_scores_cmd))
-        if subprocess.call(calc_scores_cmd) != 0:
-          raise RuntimeError('Calculation of scores failed.')
 
         # Path to file with calculated scores.
         score_sign = misc.get_score_signature(correct_th, p['visib_gt_min'])
@@ -180,16 +133,15 @@ for result_filename in p['result_filenames']:
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)
         recalls.append(scores['total_recall'])
+        recall_dict[error['type']][error_sign].append(scores['total_recall'])
 
-    # Area under precision recall:
+    # Area under the recall surface/curve.
     aur[error['type']] = np.mean(recalls)
-    misc.log('Recall scores: {}'.format(' '.join(map(str, recalls))))
-    misc.log('Area under the recall surface: {}'.format(aur[error['type']]))
 
   time_total = time.time() - time_start
   misc.log('Evaluation of {} took {}s.'.format(result_filename, time_total))
 
-  # output final scores
+  # output final scores and plot precision recall
   err_types = [e['type'] for e in p['errors']]
   for err_type in err_types:
     misc.log('#### {} #### area under recall surface: {}'.format(err_type, 
@@ -199,5 +151,9 @@ for result_filename in p['result_filenames']:
     test_set = os.path.basename(result_filename)
     mean_error = np.mean([aur[err_type] for err_type in err_types])
     misc.log('Average BOP score on {}: {}'.format(test_set, mean_error))
+
+  if p['plot_precision_recall']:
+    visualization.plot_precision_recall(recall_dict, p)
+
 
 misc.log('Done.')
