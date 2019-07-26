@@ -27,7 +27,7 @@ p = {
 
   # Pose error function.
   # Options: 'vsd', 'mssd', 'mspd', 'ad', 'adi', 'add', 'cus', 're', 'te, etc.
-  'error_type': 'mspd',
+  'error_type': 'vsd',
 
   # VSD parameters.
   'vsd_deltas': {

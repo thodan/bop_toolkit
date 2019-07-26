@@ -64,8 +64,7 @@ p = {
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
-    # '/path/to/csv/with/results',
-    'hodan-iros15_icmi-test.csv',
+    '/path/to/csv/with/results',
   ],
 
   # Folder with results to be evaluated.
@@ -168,7 +167,7 @@ for result_filename in p['result_filenames']:
 
     misc.log('Running: ' + ' '.join(calc_errors_cmd))
     if subprocess.call(calc_errors_cmd) != 0:
-      raise RuntimeError('Calculation of VSD failed.')
+      raise RuntimeError('Calculation of pose errors failed.')
 
     # Paths (rel. to p['eval_path']) to folders with calculated pose errors.
     # For VSD, there is one path for each setting of tau. For the other pose
@@ -235,7 +234,7 @@ for result_filename in p['result_filenames']:
       average_recalls[error['type']]
 
   # Final score for the given dataset.
-  final_scores['bop19_score'] = np.mean([
+  final_scores['bop19_average_recall'] = np.mean([
     average_recalls['vsd'], average_recalls['mssd'], average_recalls['mspd']])
 
   # Average estimation time per image.
