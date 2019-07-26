@@ -316,7 +316,7 @@ def check_bop_results(path, version='bop19'):
             check_passed = False
             check_msg = \
               'The running time for scene {} and image {} is not the same for' \
-              ' all estimates'.format(result['scene_id'], result['im_id'])
+              ' all estimates.'.format(result['scene_id'], result['im_id'])
             misc.log(check_msg)
             break
         else:
@@ -324,7 +324,7 @@ def check_bop_results(path, version='bop19'):
 
   except Exception as e:
     check_passed = False
-    check_msg = 'ERROR when loading file {}:\n{}'.format(path, e)
+    check_msg = 'Error when loading BOP results: {}'.format(e)
     misc.log(check_msg)
 
   return check_passed, check_msg
