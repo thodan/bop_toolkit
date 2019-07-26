@@ -49,24 +49,23 @@ def get_symmetry_transformations(model_info, max_sym_disc_step):
     symmetry travels between consecutive discretized rotations.
   :return: The set of symmetry transformations.
   """
-  # Identity.
-  trans = [{'R': np.eye(3), 't': np.array([[0, 0, 0]]).T}]
-
   # Discrete symmetries.
+  trans_disc = [{'R': np.eye(3), 't': np.array([[0, 0, 0]]).T}]  # Identity.
   if 'symmetries_discrete' in model_info:
     for sym in model_info['symmetries_discrete']:
       sym_4x4 = np.reshape(sym, (4, 4))
       R = sym_4x4[:3, :3]
       t = sym_4x4[:3, 3].reshape((3, 1))
-      trans.append({'R': R, 't': t})
+      trans_disc.append({'R': R, 't': t})
 
   # Discretized continuous symmetries.
+  trans_cont = []
   if 'symmetries_continuous' in model_info:
     for sym in model_info['symmetries_continuous']:
       axis = np.array(sym['axis'])
       offset = np.array(sym['offset']).reshape((3, 1))
 
-      # (PI * diameter) / (max_sym_disc_step * diameter) = discrete_steps_count
+      # (PI * diam.) / (max_sym_disc_step * diam.) = discrete_steps_count
       discrete_steps_count = int(np.ceil(np.pi / max_sym_disc_step))
 
       # Discrete step in radians.
@@ -75,7 +74,18 @@ def get_symmetry_transformations(model_info, max_sym_disc_step):
       for i in range(1, discrete_steps_count):
         R = transform.rotation_matrix(i * discrete_step, axis)[:3, :3]
         t = -R.dot(offset) + offset
+        trans_cont.append({'R': R, 't': t})
+
+  # Combine the discrete and the discretized continuous symmetries.
+  trans = []
+  for tran_disc in trans_disc:
+    if len(trans_cont):
+      for tran_cont in trans_cont:
+        R = tran_cont['R'].dot(tran_disc['R'])
+        t = tran_cont['R'].dot(tran_disc['t']) + tran_cont['t']
         trans.append({'R': R, 't': t})
+    else:
+      trans.append(tran_disc)
 
   return trans
 
