@@ -5,7 +5,8 @@
 
 import os
 import sys
-import time
+import datetime
+import pytz
 import math
 import subprocess
 import numpy as np
@@ -19,7 +20,14 @@ def log(s):
 
   :param s: String to print (with the current date and time).
   """
-  sys.stdout.write('{}: {}\n'.format(time.strftime('%m/%d|%H:%M:%S'), s))
+  # Use PST time for logging.
+  utc_now = pytz.utc.localize(datetime.datetime.utcnow())
+  pst_now = utc_now.astimezone(pytz.timezone("America/Los_Angeles"))
+  pst_now_str = '{}/{}|{:02d}:{:02d}:{:02d}'.format(
+    pst_now.month, pst_now.day, pst_now.hour, pst_now.minute, pst_now.second)
+
+  # sys.stdout.write('{}: {}\n'.format(time.strftime('%m/%d|%H:%M:%S'), s))
+  sys.stdout.write('{}: {}\n'.format(pst_now_str, s))
   sys.stdout.flush()
 
 
