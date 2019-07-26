@@ -20,14 +20,14 @@ def log(s):
 
   :param s: String to print (with the current date and time).
   """
-  # Use PST time for logging.
+  # Use UTC time for logging.
   utc_now = pytz.utc.localize(datetime.datetime.utcnow())
-  pst_now = utc_now.astimezone(pytz.timezone("America/Los_Angeles"))
-  pst_now_str = '{}/{}|{:02d}:{:02d}:{:02d}'.format(
-    pst_now.month, pst_now.day, pst_now.hour, pst_now.minute, pst_now.second)
+  # pst_now = utc_now.astimezone(pytz.timezone("America/Los_Angeles"))
+  utc_now_str = '{}/{}|{:02d}:{:02d}:{:02d}'.format(
+    utc_now.month, utc_now.day, utc_now.hour, utc_now.minute, utc_now.second)
 
   # sys.stdout.write('{}: {}\n'.format(time.strftime('%m/%d|%H:%M:%S'), s))
-  sys.stdout.write('{}: {}\n'.format(pst_now_str, s))
+  sys.stdout.write('{}: {}\n'.format(utc_now_str, s))
   sys.stdout.flush()
 
 
