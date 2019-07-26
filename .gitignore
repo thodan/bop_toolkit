@@ -88,3 +88,7 @@ ENV/
 # Rope project settings
 .ropeproject
 
+# Others
+.idea
+scripts_internal/
+bop_toolkit_lib/config_internal.py

@@ -9,7 +9,7 @@ from collections import defaultdict
 from bop_toolkit_lib import misc
 
 
-def ap(rec, pre):
+def calc_ap(rec, pre):
   """Calculates Average Precision (AP).
 
   Calculated in the PASCAL VOC challenge from 2010 onwards [1]:
@@ -46,7 +46,7 @@ def ap(rec, pre):
   return ap
 
 
-def recall(tp_count, targets_count):
+def calc_recall(tp_count, targets_count):
   """Calculates recall.
 
   :param tp_count: Number of true positives.
@@ -110,23 +110,23 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
       scene_tps[m['scene_id']] += 1
 
   # Total recall.
-  total_recall = recall(tps, tars)
+  recall = calc_recall(tps, tars)
 
   # Recall per object.
   obj_recalls = {}
   for i in obj_ids:
-    obj_recalls[i] = recall(obj_tps[i], obj_tars[i])
+    obj_recalls[i] = calc_recall(obj_tps[i], obj_tars[i])
   mean_obj_recall = float(np.mean(obj_recalls.values()).squeeze())
 
   # Recall per scene.
   scene_recalls = {}
   for i in scene_ids:
-    scene_recalls[i] = float(recall(scene_tps[i], scene_tars[i]))
+    scene_recalls[i] = float(calc_recall(scene_tps[i], scene_tars[i]))
   mean_scene_recall = float(np.mean(scene_recalls.values()).squeeze())
 
   # Final scores.
   scores = {
-    'total_recall': float(total_recall),
+    'recall': float(recall),
     'obj_recalls': obj_recalls,
     'mean_obj_recall': float(mean_obj_recall),
     'scene_recalls': scene_recalls,
@@ -147,7 +147,7 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
     misc.log('GT count:           {:d}'.format(scores['gt_count']))
     misc.log('Target count:       {:d}'.format(scores['targets_count']))
     misc.log('TP count:           {:d}'.format(scores['tp_count']))
-    misc.log('Total recall:       {:.4f}'.format(scores['total_recall']))
+    misc.log('Recall:             {:.4f}'.format(scores['recall']))
     misc.log('Mean object recall: {:.4f}'.format(scores['mean_obj_recall']))
     misc.log('Mean scene recall:  {:.4f}'.format(scores['mean_scene_recall']))
     misc.log('Object recalls:\n{}'.format(obj_recalls_str))
@@ -166,4 +166,4 @@ if __name__ == '__main__':
   fp_c = np.cumsum(fp).astype(np.float)
   rec = tp_c / tp.size
   pre = tp_c / (fp_c + tp_c)
-  misc.log('Average Precision: ' + str(ap(rec, pre)))
+  misc.log('Average Precision: ' + str(calc_ap(rec, pre)))
