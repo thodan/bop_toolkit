@@ -55,12 +55,18 @@ p = {
   'renderer_type': 'python',  # Options: 'cpp', 'python'.
 
   # Names of files with results for which to calculate the errors (assumed to be
-  # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
+  # stored in folder p['eval_path']). See docs/bop_challenge_2019.md for a
   # description of the format. Example results can be found at:
   # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
     '/path/to/csv/with/results',
   ],
+
+  # Folder with results to be evaluated.
+  'results_path': config.results_path,
+
+  # Folder for the calculated pose errors and performance scores.
+  'eval_path': config.eval_path,
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
@@ -71,7 +77,7 @@ p = {
 
   # Template of path to the output file with calculated errors.
   'out_errors_tpath': os.path.join(
-    config.eval_path, '{result_name}', '{error_sign}',
+    '{eval_path}', '{result_name}', '{error_sign}',
     'errors_{scene_id:06d}.json')
 }
 ################################################################################
@@ -95,6 +101,8 @@ parser.add_argument('--renderer_type', default=p['renderer_type'])
 parser.add_argument('--result_filenames',
                     default=','.join(p['result_filenames']),
                     help='Comma-separated names of files with results.')
+parser.add_argument('--results_path', default=p['results_path'])
+parser.add_argument('--eval_path', default=p['eval_path'])
 parser.add_argument('--datasets_path', default=p['datasets_path'])
 parser.add_argument('--targets_filename', default=p['targets_filename'])
 parser.add_argument('--out_errors_tpath', default=p['out_errors_tpath'])
@@ -110,6 +118,8 @@ p['max_sym_disc_step'] = bool(args.max_sym_disc_step)
 p['skip_missing'] = bool(args.skip_missing)
 p['renderer_type'] = str(args.renderer_type)
 p['result_filenames'] = args.result_filenames.split(',')
+p['results_path'] = str(args.results_path)
+p['eval_path'] = str(args.eval_path)
 p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
 p['out_errors_tpath'] = str(args.out_errors_tpath)
@@ -192,7 +202,7 @@ for result_filename in p['result_filenames']:
   # Load pose estimates.
   misc.log('Loading pose estimates...')
   ests = inout.load_bop_results(
-    os.path.join(config.results_path, result_filename))
+    os.path.join(p['results_path'], result_filename))
 
   # Organize the pose estimates by scene, image and object.
   misc.log('Organizing pose estimates...')
@@ -375,7 +385,8 @@ for result_filename in p['result_filenames']:
     def save_errors(_error_sign, _scene_errs):
       # Save the calculated errors to a JSON file.
       errors_path = p['out_errors_tpath'].format(
-        result_name=result_name, error_sign=_error_sign, scene_id=scene_id)
+        eval_path=p['eval_path'], result_name=result_name,
+        error_sign=_error_sign, scene_id=scene_id)
       misc.ensure_dir(os.path.dirname(errors_path))
       misc.log('Saving errors to: {}'.format(errors_path))
       inout.save_json(errors_path, _scene_errs)
