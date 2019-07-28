@@ -213,7 +213,7 @@ for result_filename in p['result_filenames']:
         scores_filename = 'scores_{}.json'.format(score_sign)
         scores_path = os.path.join(
           p['eval_path'], result_name, error_sign, scores_filename)
-
+        
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)
