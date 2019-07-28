@@ -58,12 +58,15 @@ p = {
   # Minimum visible surface fraction of a valid GT pose.
   'visib_gt_min': 0.1,
 
-  # Paths (relative to config.eval_path) to folders with pose errors calculated
+  # Paths (relative to p['eval_path']) to folders with pose errors calculated
   # using eval_calc_errors.py.
   # Example: 'hodan-iros15_lm-test/error=vsd_ntop=1_delta=15_tau=20_cost=step'
   'error_dir_paths': [
     r'/path/to/calculated/errors',
   ],
+
+  # Folder for the calculated pose errors and performance scores.
+  'eval_path': config.eval_path,
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
@@ -74,14 +77,14 @@ p = {
 
   # Template of path to the input file with calculated errors.
   'error_tpath': os.path.join(
-    config.eval_path, '{error_dir_path}', 'errors_{scene_id:06d}.json'),
+    '{eval_path}', '{error_dir_path}', 'errors_{scene_id:06d}.json'),
 
   # Template of path to the output file with established matches and calculated
   # scores.
   'out_matches_tpath': os.path.join(
-    config.eval_path, '{error_dir_path}', 'matches_{score_sign}.json'),
+    '{eval_path}', '{error_dir_path}', 'matches_{score_sign}.json'),
   'out_scores_tpath': os.path.join(
-    config.eval_path, '{error_dir_path}', 'scores_{score_sign}.json'),
+    '{eval_path}', '{error_dir_path}', 'scores_{score_sign}.json'),
 }
 ################################################################################
 
@@ -103,6 +106,7 @@ parser.add_argument('--normalized_by_im_width',
 parser.add_argument('--visib_gt_min', default=p['visib_gt_min'])
 parser.add_argument('--error_dir_paths', default=','.join(p['error_dir_paths']),
                     help='Comma-sep. paths to errors from eval_calc_errors.py.')
+parser.add_argument('--eval_path', default=p['eval_path'])
 parser.add_argument('--datasets_path', default=p['datasets_path'])
 parser.add_argument('--targets_filename', default=p['targets_filename'])
 parser.add_argument('--error_tpath', default=p['error_tpath'])
@@ -120,6 +124,7 @@ p['normalized_by_diameter'] = args.normalized_by_diameter.split(',')
 p['normalized_by_im_width'] = args.normalized_by_im_width.split(',')
 p['visib_gt_min'] = float(args.visib_gt_min)
 p['error_dir_paths'] = args.error_dir_paths.split(',')
+p['eval_path'] = str(args.eval_path)
 p['datasets_path'] = str(args.datasets_path)
 p['targets_filename'] = str(args.targets_filename)
 p['error_tpath'] = str(args.error_tpath)
@@ -212,7 +217,8 @@ for error_dir_path in p['error_dir_paths']:
 
     # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
     scene_errs_path = p['error_tpath'].format(
-      error_dir_path=error_dir_path, scene_id=scene_id)
+      eval_path=p['eval_path'], error_dir_path=error_dir_path,
+      scene_id=scene_id)
     scene_errs = inout.load_json(scene_errs_path, keys_to_int=True)
 
     # Normalize the errors by the object diameter.
@@ -242,12 +248,14 @@ for error_dir_path in p['error_dir_paths']:
 
   # Save scores.
   scores_path = p['out_scores_tpath'].format(
-    error_dir_path=error_dir_path, score_sign=score_sign)
+    eval_path=p['eval_path'], error_dir_path=error_dir_path,
+    score_sign=score_sign)
   inout.save_json(scores_path, scores)
 
   # Save matches.
   matches_path = p['out_matches_tpath'].format(
-    error_dir_path=error_dir_path, score_sign=score_sign)
+    eval_path=p['eval_path'], error_dir_path=error_dir_path,
+    score_sign=score_sign)
   inout.save_json(matches_path, matches)
 
   time_total = time.time() - time_start
