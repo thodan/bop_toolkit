@@ -221,11 +221,11 @@ def vis_object_poses(
     plt.savefig(vis_depth_diff_path, pad=0, bbox_inches='tight', quality=95)
     plt.close()
 
-def plot_precision_recall(recall_dict, p):
-  """Plots precision-recall curves and displays BOP19 metrics
+def plot_recall_curves(recall_dict, p):
+  """Plots recall curves and displays BOP19 metrics
 
   :param recall_dict: dictionary containing bop19 recall results
-  :param p: parameters from eval_bop19.py or calc_area_under_recall.py
+  :param p: parameters from show_performance_bop19.py
   """
 
   for i,error in enumerate(p['errors']):
@@ -247,19 +247,17 @@ def plot_precision_recall(recall_dict, p):
       all_recalls += recalls[key]
       
     plt.legend()
-    plt.ylim([0,1])
+
     plt.xticks(np.arange(len(corr_thres)), corr_thres)
+    plt.ylim([0,1])
     plt.ylabel('recall')
     if error['type'] == 'mspd':
       plt.xlabel('thres @ r px')
     else:
       plt.xlabel('thres @ object diameter')
     
-    if error['type'] == 'vsd':
-      plt.title(error['type'] + ' - ' + 'area under recall surface: ' 
-        + '{:.4f}'.format(np.mean(all_recalls)))
-    else:
-      plt.title(error['type'] + ' - ' + 'area under recall curve: ' 
-        + '{:.4f}'.format(np.mean(all_recalls)))
+    plt.title(error['type'] + ' - ' + 'average recall: ' 
+      + '{:.4f}'.format(np.mean(all_recalls)))
+
   plt.show()
   

@@ -1,7 +1,7 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Evaluation script for the BOP Challenge 2019."""
+"""Shows BOP19 metrics and plots recall curves after running eval_bop19.py"""
 
 import os
 import time
@@ -53,8 +53,8 @@ p = {
   # Minimum visible surface fraction of a valid GT pose.
   'visib_gt_min': 0.1,
 
-  # Plot Precision Recall curves
-  'plot_precision_recall': True,
+  # Plot Recall curves
+  'plot_recall_curves': True,
 
   # Names of files with results for which to calculate the errors (assumed to be
   # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
@@ -85,7 +85,7 @@ p['result_filenames'] = args.result_filenames.split(',')
 for result_filename in p['result_filenames']:
 
   misc.log('===========')
-  misc.log('EVALUATING: {}'.format(result_filename))
+  misc.log('SHOWING: {}'.format(result_filename))
   misc.log('===========')
 
   time_start = time.time()
@@ -139,12 +139,11 @@ for result_filename in p['result_filenames']:
     aur[error['type']] = np.mean(recalls)
 
   time_total = time.time() - time_start
-  misc.log('Evaluation of {} took {}s.'.format(result_filename, time_total))
 
-  # output final scores and plot precision recall
+  # output final scores and plot recall curves
   err_types = [e['type'] for e in p['errors']]
   for err_type in err_types:
-    misc.log('#### {} #### area under recall surface: {}'.format(err_type, 
+    misc.log('Average Recall {}: {}'.format(err_type, 
       aur[err_type]))
     
   if set(['vsd', 'mssd', 'mspd']).issubset(err_types):
@@ -152,8 +151,7 @@ for result_filename in p['result_filenames']:
     mean_error = np.mean([aur[err_type] for err_type in err_types])
     misc.log('Average BOP score on {}: {}'.format(test_set, mean_error))
 
-  if p['plot_precision_recall']:
-    visualization.plot_precision_recall(recall_dict, p)
-
+  if p['plot_recall_curves']:
+    visualization.plot_recall_curves(recall_dict, p)
 
 misc.log('Done.')
