@@ -106,23 +106,27 @@ fx_rgb, fy_rgb, cx_rgb, cy_rgb =\
 K = dp_camera['K']
 fx_d, fy_d, cx_d, cy_d = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
 
-# Create RGB and depth renderers (two are created because the RGB has a higher
-# resolution if SSAA is used).
+# Create the RGB renderer.
 width_rgb, height_rgb = im_size_rgb[0], im_size_rgb[1]
 ren_rgb = renderer.create_renderer(
   width_rgb, height_rgb, renderer_type, mode='rgb', shading=shading)
 ren_rgb.set_light_ambient_weight(ambient_weight)
 
+# Add object models to the RGB renderer.
+for obj_id in obj_ids:
+  ren_rgb.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
+
+# Create the depth renderer.
 width_depth, height_depth,  = dp_camera['im_size'][0], dp_camera['im_size'][1]
 ren_depth = renderer.create_renderer(
   width_depth, height_depth, renderer_type, mode='depth')
 
+# Add object models to the depth renderer.
+for obj_id in obj_ids:
+  ren_depth.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
+
 # Render training images for all object models.
 for obj_id in obj_ids:
-
-  # Add the current object model to the renderer.
-  ren_rgb.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
-  ren_depth.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
 
   # Prepare output folders.
   misc.ensure_dir(os.path.dirname(out_rgb_tpath.format(
@@ -170,7 +174,7 @@ for obj_id in obj_ids:
         obj_id, view['R'], view['t'], fx_d, fy_d, cx_d, cy_d)['depth']
 
       # Convert depth so it is in the same units as other images in the dataset.
-      depth /= dp_camera['depth_scale']
+      depth /= float(dp_camera['depth_scale'])
 
       # The OpenCV function was used for rendering of the training images
       # provided for the SIXD Challenge 2017.
@@ -202,10 +206,6 @@ for obj_id in obj_ids:
       }]
 
       im_id += 1
-
-  # Remove the current object model from the renderer.
-  ren_rgb.remove_object(obj_id)
-  ren_depth.remove_object(obj_id)
 
   # Save metadata.
   inout.save_scene_camera(out_scene_camera_tpath.format(

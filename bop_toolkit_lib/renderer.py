@@ -27,8 +27,8 @@ class Renderer(object):
     self.light_color = (1.0, 1.0, 1.0)  # Used only in C++ renderer.
     self.light_ambient_weight = 0.5
     self.light_diffuse_weight = 1.0  # Used only in C++ renderer.
-    self.light_specular_weight = 1.0  # Used only in C++ renderer.
-    self.light_specular_shininess = 1.0  # Used only in C++ renderer.
+    self.light_specular_weight = 0.0  # Used only in C++ renderer.
+    self.light_specular_shininess = 0.0  # Used only in C++ renderer.
 
   def set_light_cam_pos(self, light_cam_pos):
     """Sets the 3D location of a point light.
