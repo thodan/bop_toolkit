@@ -488,7 +488,7 @@ class RendererPython(renderer.Renderer):
     """
     # Update the OpenGL program.
     program = self.rgb_programs[obj_id]
-    program['u_light_eye_pos'] = [0, 0, 0]  # Camera origin.
+    program['u_light_eye_pos'] = list(self.light_cam_pos)
     program['u_light_ambient_w'] = self.light_ambient_weight
     program['u_mv'] = _calc_model_view(mat_model, mat_view)
     program['u_nm'] = _calc_normal_matrix(mat_model, mat_view)

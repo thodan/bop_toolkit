@@ -22,15 +22,21 @@ class RendererCpp(renderer.Renderer):
     self.renderer = bop_renderer.Renderer()
     self.renderer.init(width, height)
 
+  def _set_light(self):
+    self.renderer.set_light(
+      self.light_cam_pos, self.light_color, self.light_ambient_weight,
+      self.light_diffuse_weight, self.light_specular_weight,
+      self.light_specular_shininess)
+
   def set_light_cam_pos(self, light_cam_pos):
     """See base class."""
     super(RendererCpp, self).set_light_cam_pos(light_cam_pos)
-    self.renderer.set_light_cam_pos(light_cam_pos)
+    self._set_light()
 
   def set_light_ambient_weight(self, light_ambient_weight):
     """See base class."""
     super(RendererCpp, self).set_light_ambient_weight(light_ambient_weight)
-    self.renderer.set_light_ambient_weight(light_ambient_weight)
+    self._set_light()
 
   def add_object(self, obj_id, model_path, **kwargs):
     """See base class."""
