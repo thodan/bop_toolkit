@@ -58,24 +58,24 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
   """
   # Object ID's.
   obj_ids = {
-    'lm': range(1, 16),
+    'lm': list(range(1, 16)),
     'lmo': [1, 5, 6, 8, 9, 10, 11, 12],
-    'tless': range(1, 31),
-    'tudl': range(1, 4),
-    'tyol': range(1, 22),
-    'ruapc': range(1, 15),
-    'icmi': range(1, 7),
-    'icbin': range(1, 3),
-    'itodd': range(1, 29),
+    'tless': list(range(1, 31)),
+    'tudl': list(range(1, 4)),
+    'tyol': list(range(1, 22)),
+    'ruapc': list(range(1, 15)),
+    'icmi': list(range(1, 7)),
+    'icbin': list(range(1, 3)),
+    'itodd': list(range(1, 29)),
     'hb': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
-    # 'hb': range(1, 34),  # Original HB dataset.
+    # 'hb': list(range(1, 34)),  # Original HB dataset.
   }[dataset_name]
 
   # ID's of objects with symmetries.
   symmetric_obj_ids = {
     'lm': [3, 7, 10, 11],
     'lmo': [10, 11],
-    'tless': range(1, 31),
+    'tless': list(range(1, 31)),
     'tudl': [],
     'tyol': [3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21],
     'ruapc': [8, 9, 12, 13],
@@ -144,7 +144,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # Linemod (LM).
   if dataset_name == 'lm':
-    p['scene_ids'] = range(1, 16)
+    p['scene_ids'] = list(range(1, 16))
     p['im_size'] = (640, 480)
 
     if split == 'test':
@@ -164,7 +164,10 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # T-LESS.
   elif dataset_name == 'tless':
-    p['scene_ids'] = {'train': range(1, 31), 'test': range(1, 21)}[split]
+    p['scene_ids'] = {
+      'train': list(range(1, 31)),
+      'test': list(range(1, 21))
+    }[split]
 
     # Use images from the Primesense sensor by default.
     if split_type is None:
@@ -195,7 +198,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     if split == 'train' and split_type is None:
       split_type = 'render'
 
-    p['scene_ids'] = range(1, 4)
+    p['scene_ids'] = list(range(1, 4))
     p['im_size'] = (640, 480)
 
     if split == 'test':
@@ -205,7 +208,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # Toyota Light (TYO-L).
   elif dataset_name == 'tyol':
-    p['scene_ids'] = range(1, 22)
+    p['scene_ids'] = list(range(1, 22))
     p['im_size'] = (640, 480)
 
     if split == 'test':
@@ -215,7 +218,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # Rutgers APC (RU-APC).
   elif dataset_name == 'ruapc':
-    p['scene_ids'] = range(1, 15)
+    p['scene_ids'] = list(range(1, 15))
     p['im_size'] = (640, 480)
 
     if split == 'test':
@@ -225,7 +228,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # Tejani et al. (IC-MI).
   elif dataset_name == 'icmi':
-    p['scene_ids'] = range(1, 7)
+    p['scene_ids'] = list(range(1, 7))
     p['im_size'] = (640, 480)
 
     if split == 'test':
@@ -235,7 +238,10 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # Doumanoglou et al. (IC-BIN).
   elif dataset_name == 'icbin':
-    p['scene_ids'] = {'train': range(1, 3), 'test': range(1, 4)}[split]
+    p['scene_ids'] = {
+      'train': list(range(1, 3)),
+      'test': list(range(1, 4))
+    }[split]
     p['im_size'] = (640, 480)
 
     if split == 'test':
