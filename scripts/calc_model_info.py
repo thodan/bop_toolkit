@@ -51,4 +51,4 @@ for obj_id in dp_model['obj_ids']:
     }
 
 # Save the calculated info about the object models.
-inout.save_json(dp_split['models_info_path'], models_info)
+inout.save_json(dp_model['models_info_path'], models_info)
