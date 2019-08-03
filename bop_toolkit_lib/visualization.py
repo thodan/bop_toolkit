@@ -220,3 +220,44 @@ def vis_object_poses(
       misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
     plt.savefig(vis_depth_diff_path, pad=0, bbox_inches='tight', quality=95)
     plt.close()
+
+def plot_recall_curves(recall_dict, p):
+  """Plots recall curves and displays BOP19 metrics
+
+  :param recall_dict: dictionary containing bop19 recall results
+  :param p: parameters from show_performance_bop19.py
+  """
+
+  for i,error in enumerate(p['errors']):
+    if error['type'] == 'mspd':
+      corr_thres = ['{}'.format(e) for sl in error['correct_th'] for e in sl]
+    else:
+      corr_thres = ['{:.2f}'.format(e) for sl in error['correct_th'] for e in sl]
+
+    recalls = recall_dict[error['type']]
+    all_recalls = []
+    plt.figure()
+
+    for key in sorted(recalls):
+      threshold = key.split('=')[-1]
+      if 'vsd' in key:
+        plt.plot(recalls[key], label='tau: ' + threshold)
+      else:
+        plt.plot(recalls[key])
+      all_recalls += recalls[key]
+      
+    plt.legend()
+
+    plt.xticks(np.arange(len(corr_thres)), corr_thres)
+    plt.ylim([0,1])
+    plt.ylabel('recall')
+    if error['type'] == 'mspd':
+      plt.xlabel('thres @ r px')
+    else:
+      plt.xlabel('thres @ object diameter')
+    
+    plt.title(error['type'] + ' - ' + 'average recall: ' 
+      + '{:.4f}'.format(np.mean(all_recalls)))
+
+  plt.show()
+  
