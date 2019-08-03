@@ -46,3 +46,8 @@ an off-screen C++ renderer with Python bindings.
 See *scripts/eval_calc_errors.py* for an example on how to use the Python and
 C++ renderers - you can switch between them by setting *renderer_type* to
 *'python'* or *'cpp'*.
+
+### Configuration
+
+Paths to the BOP datasets, results to be evaluated etc. are specified in
+[bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py).
