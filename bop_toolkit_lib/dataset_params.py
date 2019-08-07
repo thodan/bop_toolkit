@@ -22,12 +22,16 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
   :param cam_type: Type of camera.
   :return: Dictionary with camera parameters for the specified dataset.
   """
-  # T-LESS includes images captured by three sensors.
   if dataset_name == 'tless':
-
-    # Use images from the Primesense sensor as default.
+    # Includes images captured by three sensors. Use Primesense as default.
     if cam_type is None:
       cam_type = 'primesense'
+    cam_filename = 'camera_{}.json'.format(cam_type)
+
+  elif dataset_name == 'ycbv':
+    # Includes images captured by two sensors. Use the "UW" sensor as default.
+    if cam_type is None:
+      cam_type = 'uw'
     cam_filename = 'camera_{}.json'.format(cam_type)
 
   else:
