@@ -16,7 +16,7 @@ p = {
   'dataset': 'lm',
 
   # Type of input object models.
-  'model_type': 'eval',
+  'model_type': None,
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
@@ -25,9 +25,6 @@ p = {
 
 
 # Load dataset parameters.
-dp_split = dataset_params.get_split_params(
-  p['datasets_path'], p['dataset'], 'train')
-
 dp_model = dataset_params.get_model_params(
   p['datasets_path'], p['dataset'], p['model_type'])
 

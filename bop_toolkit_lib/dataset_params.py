@@ -69,9 +69,11 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'itodd': list(range(1, 29)),
     'hb': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
     # 'hb': list(range(1, 34)),  # Original HB dataset.
+    'ycbv': list(range(1, 22)),
   }[dataset_name]
 
-  # ID's of objects with symmetries.
+  # ID's of objects with ambiguous views evaluated using the ADI pose error
+  # function (the others are evaluated using ADD). See Hodan et al. (ECCVW'16).
   symmetric_obj_ids = {
     'lm': [3, 7, 10, 11],
     'lmo': [10, 11],
@@ -83,6 +85,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'icbin': [1],
     'itodd': [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
     'hb': [6, 10, 11, 12, 13, 14, 18, 24, 29],
+    'ycbv': [1, 13, 14, 16, 18, 19, 20, 21],
   }[dataset_name]
 
   # T-LESS includes two types of object models, CAD and reconstructed.
@@ -280,6 +283,25 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
       p['depth_range'] = (420.0, 1430.0)
       p['azimuth_range'] = (0, 2 * math.pi)
       p['elev_range'] = (0.1920, 1.5184)  # (11, 87) [deg].
+
+  # YCB-Video (YCBV).
+  elif dataset_name == 'ycbv':
+    if split == 'train' and split_type is None:
+      split_type = 'real'
+
+    p['scene_ids'] = {
+      'train': {
+        'real': list(range(48)) + list(range(60, 92)),
+        'synt': list(range(80))
+      }[split_type],
+      'test': list(range(48, 60)),
+    }[split]
+    p['im_size'] = (640, 480)
+
+    if split == 'test':
+      p['depth_range'] = None  # Not calculated yet.
+      p['azimuth_range'] = None  # Not calculated yet.
+      p['elev_range'] = None  # Not calculated yet.
 
   else:
     raise ValueError('Unknown BOP dataset.')
