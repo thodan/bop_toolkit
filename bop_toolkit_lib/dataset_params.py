@@ -293,13 +293,14 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     if split == 'train' and split_type is None:
       split_type = 'real'
 
-    p['scene_ids'] = {
-      'train': {
+    if split == 'train':
+      p['scene_ids'] = {
         'real': list(range(48)) + list(range(60, 92)),
         'synt': list(range(80))
-      }[split_type],
-      'test': list(range(48, 60)),
-    }[split]
+      }[split_type]
+    elif split == 'test':
+      p['scene_ids'] = list(range(48, 60))
+
     p['im_size'] = (640, 480)
 
     if split == 'test':
