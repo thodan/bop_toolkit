@@ -530,15 +530,15 @@ def save_ply(path, model, extra_header_comments=None):
   :param extra_header_comments: Extra header comment (optional).
   """
   pts = model['pts']
-  pts_colors = model['colors'] if 'colors' in model.keys() else np.array([])
-  pts_normals = model['normals'] if 'normals' in model.keys() else np.array([])
-  faces = model['faces'] if 'faces' in model.keys() else np.array([])
+  pts_colors = model['colors'] if 'colors' in model.keys() else None
+  pts_normals = model['normals'] if 'normals' in model.keys() else None
+  faces = model['faces'] if 'faces' in model.keys() else None
   texture_uv = model[
-    'texture_uv'] if 'texture_uv' in model.keys() else np.array([])
+    'texture_uv'] if 'texture_uv' in model.keys() else None
   texture_uv_face = model[
-    'texture_uv_face'] if 'texture_uv_face' in model.keys() else np.array([])
+    'texture_uv_face'] if 'texture_uv_face' in model.keys() else None
   texture_file = model[
-    'texture_file'] if 'texture_file' in model.keys() else np.array([])
+    'texture_file'] if 'texture_file' in model.keys() else None
 
   save_ply2(path, pts, pts_colors, pts_normals, faces, texture_uv,
             texture_uv_face,
@@ -563,8 +563,8 @@ def save_ply2(path, pts, pts_colors=None, pts_normals=None, faces=None,
     PLY file (optional).
   :param extra_header_comments: Extra header comment (optional).
   """
-  pts_colors = np.array(pts_colors)
   if pts_colors is not None:
+    pts_colors = np.array(pts_colors)
     assert (len(pts) == len(pts_colors))
 
   valid_pts_count = 0
