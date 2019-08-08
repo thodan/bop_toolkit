@@ -126,10 +126,11 @@ for result_filename in p['result_filenames']:
       # All estimation times must be provided.
       times_available = False
       break
-    elif result_key in times and abs(times[result_key] - est['time']) > 0.001:
-      raise ValueError(
-        'The running time for scene {} and image {} is not the same for '
-        'all estimates.'.format(est['scene_id'], est['im_id']))
+    elif result_key in times:
+      if abs(times[result_key] - est['time']) > 0.001:
+        raise ValueError(
+          'The running time for scene {} and image {} is not the same for '
+          'all estimates.'.format(est['scene_id'], est['im_id']))
     else:
       times[result_key] = est['time']
 
