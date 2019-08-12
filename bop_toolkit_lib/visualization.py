@@ -195,31 +195,47 @@ def vis_object_poses(
 
   # Blend and save the RGB visualization.
   if vis_rgb:
+    misc.ensure_dir(os.path.dirname(vis_rgb_path))
+
     vis_im_rgb = 0.5 * rgb.astype(np.float32) + \
                  0.5 * ren_rgb.astype(np.float32) + \
                  1.0 * ren_rgb_info.astype(np.float32)
     vis_im_rgb[vis_im_rgb > 255] = 255
-    misc.ensure_dir(os.path.dirname(vis_rgb_path))
     inout.save_im(vis_rgb_path, vis_im_rgb.astype(np.uint8), jpg_quality=95)
 
   # Save the image of depth differences.
   if vis_depth_diff:
-    # Calculate the depth difference at pixels where both depth maps
-    # are valid.
+    misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
+
+    # Calculate the depth difference at pixels where both depth maps are valid.
     valid_mask = (depth > 0) * (ren_depth > 0)
-    depth_diff = valid_mask * (depth - ren_depth.astype(np.float32))
+    depth_diff = valid_mask * (ren_depth.astype(np.float32) - depth)
 
-    f, ax = plt.subplots(1, 1)
-    cax = ax.matshow(depth_diff)
-    ax.axis('off')
-    ax.set_title('captured - GT depth [mm]')
-    f.colorbar(cax, fraction=0.03, pad=0.01)
-    f.tight_layout(pad=0)
+    delta = 15
+    below_delta = valid_mask * (depth_diff < delta)
+    below_delta_vis = (255 * below_delta).astype(np.uint8)
 
-    if not vis_rgb:
-      misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
-    plt.savefig(vis_depth_diff_path, pad=0, bbox_inches='tight', quality=95)
-    plt.close()
+    depth_diff_vis = 255 * depth_for_vis(depth_diff - depth_diff.min())
+    depth_diff_vis = np.dstack(
+      [below_delta_vis, depth_diff_vis, depth_diff_vis]).astype(np.uint8)
+    depth_diff_vis[np.logical_not(valid_mask)] = 0
+    depth_diff_valid = depth_diff[valid_mask]
+    depth_info = [
+      {'name': 'min diff', 'fmt': ':.3f', 'val': np.min(depth_diff_valid)},
+      {'name': 'max diff', 'fmt': ':.3f', 'val': np.max(depth_diff_valid)},
+      {'name': 'mean diff', 'fmt': ':.3f', 'val': np.mean(depth_diff_valid)},
+    ]
+    depth_diff_vis = write_text_on_image(depth_diff_vis, depth_info)
+    inout.save_im(vis_depth_diff_path, depth_diff_vis)
+
+    # f, ax = plt.subplots(1, 1)
+    # cax = ax.matshow(depth_diff)
+    # ax.axis('off')
+    # ax.set_title('captured - GT depth [mm]')
+    # f.colorbar(cax, fraction=0.03, pad=0.01)
+    # f.tight_layout(pad=0)
+    # plt.savefig(vis_depth_diff_path, pad=0, bbox_inches='tight', quality=95)
+    # plt.close()
 
 def plot_recall_curves(recall_dict, p):
   """Plots recall curves and displays BOP19 metrics
