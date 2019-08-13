@@ -159,7 +159,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
       p['azimuth_range'] = (0, 2 * math.pi)
       p['elev_range'] = (0, 0.5 * math.pi)
 
-  # Linemod-Occluded (LM).
+  # Linemod-Occluded (LM-O).
   elif dataset_name == 'lmo':
     p['scene_ids'] = {'train': [1, 5, 6, 8, 9, 10, 11, 12], 'test': [2]}[split]
     p['im_size'] = (640, 480)
