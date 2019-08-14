@@ -8,6 +8,7 @@ import numpy as np
 
 from bop_toolkit_lib import transform
 from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
 
 
 def fibonacci_sampling(n_pts, radius=1.0):
@@ -287,5 +288,5 @@ if __name__ == '__main__':
     elev_range=(-0.5 * math.pi, 0.5 * math.pi),
     mode='fibonacci')
   misc.log('Sampled views: ' + str(len(views)))
-  out_views_vis_path = '../output/view_sphere.ply'
+  out_views_vis_path = 'view_sphere.ply'
   save_vis(out_views_vis_path, views)
