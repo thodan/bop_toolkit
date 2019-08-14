@@ -304,9 +304,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p['im_size'] = (640, 480)
 
     if split == 'test':
-      p['depth_range'] = None  # Not calculated yet.
-      p['azimuth_range'] = None  # Not calculated yet.
-      p['elev_range'] = None  # Not calculated yet.
+      p['depth_range'] = (610.09, 1250.11)
+      p['azimuth_range'] = (0, 2 * math.pi)
+      p['elev_range'] = (-1.2872, 1.1294)  # (-73.75, 64.71) [deg].
 
   else:
     raise ValueError('Unknown BOP dataset.')
