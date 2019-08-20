@@ -47,9 +47,9 @@ In that repo you also find an example [renderer_test.py](https://github.com/thod
 
 ## Usage
 
-### 1. Get the datasets
+### 1. Get the BOP datasets
 
-Download the BOP datasets and make sure it is in the described folder structure:  
+Download the BOP datasets and make sure they are in the described folder structure:  
 [BOP Challenge Datasets](https://bop.felk.cvut.cz/datasets/)
 
 ### 2. Run your method
