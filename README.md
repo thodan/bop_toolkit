@@ -22,7 +22,7 @@ In the case of problems, try to first run: ```pip install --upgrade pip setuptoo
 
 ### Python Renderer
 
-The Python GPU-based renderer is implemented using
+The Python -based renderer is implemented using
 [Glumpy](https://glumpy.github.io/) which depends on
 [freetype](https://www.freetype.org/) and [GLFW](https://www.glfw.org/).
 Glumpy is installed using the pip command above. On Linux, freetype and GLFW can
