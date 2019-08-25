@@ -43,34 +43,27 @@ can be used but were not tested with our code.
 For fast CPU-based rendering on a headless server, we recommend installing [bop_renderer](https://github.com/thodan/bop_renderer),
 an off-screen C++ renderer with Python bindings.
 
-In that repo you also find an example [renderer_test.py](https://github.com/thodan/bop_renderer/blob/master/samples/renderer_test.py) using the Python and the C++ renderer.
-
 ## Usage
 
 ### 1. Get the BOP datasets
 
 Download the BOP datasets and make sure they are in the described folder structure:  
-[BOP Challenge Datasets](https://bop.felk.cvut.cz/datasets/)
+[BOP Datasets](https://bop.felk.cvut.cz/datasets/)
 
 ### 2. Run your method
 
-Predict poses and save them in a .csv file per dataset. For details see:  
+Estimate poses and save them in a .csv file per dataset. For details see:  
 [How to participate](https://bop.felk.cvut.cz/challenges/bop_challenge_2019/#howtoparticipate)
 
-### 3. Configure global config.py
+### 3. Configure the BOP Toolkit
 
-In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py) set the paths to the BOP datasets, result folder to be evaluated and evaluation output.  
+In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py) set the paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for evaluation output. 
 
-The other parameters are necessary if you want to visualize results or run the C++ Renderer.  
+The other parameters are necessary if you want to visualize results or run the C++ Renderer.
 
-### 4. Run the full evaluation, e.g.
+### 4. Evaluate the pose estimates
 ```
-python scripts/eval_bop19.py --renderer_type=python --result_filenames=hodan-iros_lm-test.csv
+python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_CSV_WITH_RESULTS
 ```
 --renderer_type: python / cpp  
---result_filenames: Comma-separated filenames with your pose results in .csv
-
-If all data is in place the whole evaluation should run through. Otherwise, for additional optional parameters see: 
-```
-python scripts/eval_bop19.py -h
-```
+--result_filenames: comma-separated filenames with your pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results))
