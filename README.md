@@ -47,23 +47,19 @@ an off-screen C++ renderer with Python bindings.
 
 ### 1. Get the BOP datasets
 
-Download the BOP datasets and make sure they are in the described folder structure:  
-[BOP Datasets](https://bop.felk.cvut.cz/datasets/)
+Download the BOP datasets and make sure they are in the [expected folder structure](https://bop.felk.cvut.cz/datasets/).
 
 ### 2. Run your method
 
-Estimate poses and save them in a .csv file per dataset. For details see:  
-[How to participate](https://bop.felk.cvut.cz/challenges/bop_challenge_2019/#howtoparticipate)
+Estimate poses and save them in one .csv file per dataset ([format description](https://bop.felk.cvut.cz/challenges/bop_challenge_2019/#howtoparticipate)).
 
 ### 3. Configure the BOP Toolkit
 
-In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py) set the paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for evaluation output. 
-
-The other parameters are necessary if you want to visualize results or run the C++ Renderer.
+In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py), set paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for the evaluation output. The other parameters are necessary if you want to visualize results or run the C++ Renderer.
 
 ### 4. Evaluate the pose estimates
 ```
 python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_CSV_WITH_RESULTS
 ```
 --renderer_type: python / cpp  
---result_filenames: comma-separated filenames with your pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results))
+--result_filenames: comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results))
