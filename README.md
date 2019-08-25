@@ -35,19 +35,35 @@ apt-get install libglfw3
 
 To install freetype and GLFW on Windows, follow [these instructions](https://glumpy.readthedocs.io/en/latest/installation.html#step-by-step-install-for-x64-bit-windows-7-8-and-10).
 
-GLFW serves as a backend of Glumpy. [Another backends](https://glumpy.readthedocs.io/en/latest/api/app-backends.html)
+GLFW serves as a backend of Glumpy. [Another backend](https://glumpy.readthedocs.io/en/latest/api/app-backends.html)
 can be used but were not tested with our code.
 
 ### C++ Renderer
 
-To speed up rendering, we recommend installing [bop_renderer](https://github.com/thodan/bop_renderer),
+For fast CPU-based rendering on a headless server, we recommend installing [bop_renderer](https://github.com/thodan/bop_renderer),
 an off-screen C++ renderer with Python bindings.
 
-See *scripts/eval_calc_errors.py* for an example on how to use the Python and
-C++ renderers - you can switch between them by setting *renderer_type* to
-*'python'* or *'cpp'*.
+## Usage
 
-### Configuration
+### 1. Get the BOP datasets
 
-Paths to the BOP datasets, results to be evaluated etc. are specified in
-[bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py).
+Download the BOP datasets and make sure they are in the described folder structure:  
+[BOP Datasets](https://bop.felk.cvut.cz/datasets/)
+
+### 2. Run your method
+
+Estimate poses and save them in a .csv file per dataset. For details see:  
+[How to participate](https://bop.felk.cvut.cz/challenges/bop_challenge_2019/#howtoparticipate)
+
+### 3. Configure the BOP Toolkit
+
+In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py) set the paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for evaluation output. 
+
+The other parameters are necessary if you want to visualize results or run the C++ Renderer.
+
+### 4. Evaluate the pose estimates
+```
+python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_CSV_WITH_RESULTS
+```
+--renderer_type: python / cpp  
+--result_filenames: comma-separated filenames with your pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results))
