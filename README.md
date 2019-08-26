@@ -49,5 +49,19 @@ C++ renderers - you can switch between them by setting *renderer_type* to
 
 ### Configuration
 
-Paths to the BOP datasets, results to be evaluated etc. are specified in
-[bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py).
+Download the BOP datasets and make sure they are in the [expected folder structure](https://bop.felk.cvut.cz/datasets/).
+
+### 2. Run your method
+
+Estimate poses and save them in one .csv file per dataset ([format description](https://bop.felk.cvut.cz/challenges/bop_challenge_2019/#howtoparticipate)).
+
+### 3. Configure the BOP Toolkit
+
+In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py), set paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for the evaluation output. The other parameters are necessary only if you want to visualize results or run the C++ Renderer.
+
+### 4. Evaluate the pose estimates
+```
+python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_CSV_WITH_RESULTS
+```
+--renderer_type: Either "python" or "cpp" (you need to install the C++ Renderer for the latter).
+--result_filenames: Comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
