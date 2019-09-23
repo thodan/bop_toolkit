@@ -361,7 +361,10 @@ def load_ply(path):
   while True:
 
     # Strip the newline character(s).
-    line = f.readline().rstrip('\n').rstrip('\r')
+    if is_binary:
+      line = f.readline().rstrip('\n').rstrip('\r')
+    else:
+      line = f.readline().decode('utf8').rstrip('\n').rstrip('\r')
 
     if line.startswith('comment TextureFile'):
       texture_file = line.split()[-1]
@@ -451,7 +454,7 @@ def load_ply(path):
         if prop[0] in load_props:
           prop_vals[prop[0]] = val
     else:
-      elems = f.readline().rstrip('\n').rstrip('\r').split()
+      elems = f.readline().decode('utf8').rstrip('\n').rstrip('\r').split()
       for prop_id, prop in enumerate(pt_props):
         if prop[0] in load_props:
           prop_vals[prop[0]] = elems[prop_id]
@@ -490,7 +493,7 @@ def load_ply(path):
         else:
           prop_vals[prop[0]] = val
     else:
-      elems = f.readline().rstrip('\n').rstrip('\r').split()
+      elems = f.readline().decode('utf8').rstrip('\n').rstrip('\r').split()
       for prop_id, prop in enumerate(face_props):
         if prop[0] == 'n_corners':
           if int(elems[prop_id]) != face_n_corners:
