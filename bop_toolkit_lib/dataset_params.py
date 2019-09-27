@@ -171,10 +171,13 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # T-LESS.
   elif dataset_name == 'tless':
-    p['scene_ids'] = {
-      'train': list(range(1, 31)),
-      'test': list(range(1, 21))
-    }[split]
+    if split == 'train':
+      if split_type == 'synthetless':
+        p['scene_ids'] = [1]
+      else:
+        p['scene_ids'] = list(range(1, 31))
+    elif split == 'test':
+      p['scene_ids'] = list(range(1, 21))
 
     # Use images from the Primesense sensor by default.
     if split_type is None:
@@ -185,7 +188,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         'primesense': (400, 400),
         'kinect': (400, 400),
         'canon': (1900, 1900),
-        'render_reconst': (1280, 1024)
+        'render_reconst': (1280, 1024),
+        'synthetless': (400, 400)
       },
       'test': {
         'primesense': (720, 540),
