@@ -361,10 +361,7 @@ def load_ply(path):
   while True:
 
     # Strip the newline character(s).
-    if is_binary:
-      line = f.readline().rstrip('\n').rstrip('\r')
-    else:
-      line = f.readline().decode('utf8').rstrip('\n').rstrip('\r')
+    line = f.readline().decode('utf8').rstrip('\n').rstrip('\r')
 
     if line.startswith('comment TextureFile'):
       texture_file = line.split()[-1]
