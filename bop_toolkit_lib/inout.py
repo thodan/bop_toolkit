@@ -249,9 +249,9 @@ def load_bop_results(path, version='bop19'):
             'obj_id': int(elems[2]),
             'score': float(elems[3]),
             'R': np.array(
-              map(float, elems[4].split()), np.float).reshape((3, 3)),
+              list(map(float, elems[4].split())), np.float).reshape((3, 3)),
             't': np.array(
-              map(float, elems[5].split()), np.float).reshape((3, 1)),
+              list(map(float, elems[5].split())), np.float).reshape((3, 1)),
             'time': float(elems[6])
           }
 

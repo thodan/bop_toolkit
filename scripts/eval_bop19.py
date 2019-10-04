@@ -136,7 +136,7 @@ for result_filename in p['result_filenames']:
       times[result_key] = est['time']
 
   if times_available:
-    average_time_per_image = np.mean(times.values())
+    average_time_per_image = np.mean(list(times.values()))
   else:
     average_time_per_image = -1.0
 
