@@ -118,7 +118,7 @@ args = parser.parse_args()
 
 for err_type in p['correct_th']:
   p['correct_th'][err_type] =\
-    map(float, args.__dict__['correct_th_' + err_type].split(','))
+    list(map(float, args.__dict__['correct_th_' + err_type].split(',')))
 
 p['normalized_by_diameter'] = args.normalized_by_diameter.split(',')
 p['normalized_by_im_width'] = args.normalized_by_im_width.split(',')

@@ -113,7 +113,7 @@ p['n_top'] = int(args.n_top)
 p['error_type'] = str(args.error_type)
 p['vsd_deltas'] = {str(e.split(':')[0]): float(e.split(':')[1])
                    for e in args.vsd_deltas.split(',')}
-p['vsd_taus'] = map(float, args.vsd_taus.split(','))
+p['vsd_taus'] = list(map(float, args.vsd_taus.split(',')))
 p['vsd_normalized_by_diameter'] = bool(args.vsd_normalized_by_diameter)
 p['max_sym_disc_step'] = bool(args.max_sym_disc_step)
 p['skip_missing'] = bool(args.skip_missing)

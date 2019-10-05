@@ -91,9 +91,9 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
 
       # Count the number of targets for the current object in the current scene.
       if n_top > 0:
-        count = sum(np.minimum(n_top, scene_insts.values()))
+        count = sum(np.minimum(n_top, list(scene_insts.values())))
       else:
-        count = sum(scene_insts.values())
+        count = sum(list(scene_insts.values()))
 
       tars += count
       obj_tars[obj_id] += count
@@ -116,13 +116,13 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
   obj_recalls = {}
   for i in obj_ids:
     obj_recalls[i] = calc_recall(obj_tps[i], obj_tars[i])
-  mean_obj_recall = float(np.mean(obj_recalls.values()).squeeze())
+  mean_obj_recall = float(np.mean(list(obj_recalls.values())).squeeze())
 
   # Recall per scene.
   scene_recalls = {}
   for i in scene_ids:
     scene_recalls[i] = float(calc_recall(scene_tps[i], scene_tars[i]))
-  mean_scene_recall = float(np.mean(scene_recalls.values()).squeeze())
+  mean_scene_recall = float(np.mean(list(scene_recalls.values())).squeeze())
 
   # Final scores.
   scores = {
