@@ -274,9 +274,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p['im_modalities'] = ['gray', 'depth']
 
     if split == 'test':
-      p['depth_range'] = None
-      p['azimuth_range'] = None
-      p['elev_range'] = None
+      p['depth_range'] = (638.38, 775.97)
+      p['azimuth_range'] = (0, 2 * math.pi)
+      p['elev_range'] = (-0.5 * math.pi, 0.5 * math.pi)
 
   # HomebrewedDB (HB).
   elif dataset_name == 'hb':
@@ -308,9 +308,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p['im_size'] = (640, 480)
 
     if split == 'test':
-      p['depth_range'] = (610.09, 1250.11)
+      p['depth_range'] = (612.92, 1243.59)
       p['azimuth_range'] = (0, 2 * math.pi)
-      p['elev_range'] = (-1.2872, 1.1294)  # (-73.75, 64.71) [deg].
+      p['elev_range'] = (-1.2788, 1.1291)  # (-73.27, 64.69) [deg].
 
   else:
     raise ValueError('Unknown BOP dataset.')
