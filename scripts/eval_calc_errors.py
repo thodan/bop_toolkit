@@ -115,7 +115,7 @@ p['vsd_deltas'] = {str(e.split(':')[0]): float(e.split(':')[1])
                    for e in args.vsd_deltas.split(',')}
 p['vsd_taus'] = list(map(float, args.vsd_taus.split(',')))
 p['vsd_normalized_by_diameter'] = bool(args.vsd_normalized_by_diameter)
-p['max_sym_disc_step'] = bool(args.max_sym_disc_step)
+p['max_sym_disc_step'] = float(args.max_sym_disc_step)
 p['skip_missing'] = bool(args.skip_missing)
 p['renderer_type'] = str(args.renderer_type)
 p['result_filenames'] = args.result_filenames.split(',')
