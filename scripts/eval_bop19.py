@@ -52,7 +52,9 @@ p = {
   ],
 
   # Minimum visible surface fraction of a valid GT pose.
-  'visib_gt_min': 0.1,
+  # -1 == k most visible GT poses will be considered, where k is given by
+  # the "inst_count" item loaded from "targets_filename".
+  'visib_gt_min': -1,
 
   # See misc.get_symmetry_transformations().
   'max_sym_disc_step': 0.01,
