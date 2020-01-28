@@ -1,7 +1,6 @@
 # Re-evaluation of submissions to the BOP Challenge 2019
 
-On 27th January 2020, all submissions to the BOP Challenge 2019 were re-evaluated after discovering and fixing two bugs in the evaluation system.
-The change in scores is not dramatic and the ordering of the participated methods stays largely the same. The winners of [all presented awards](https://bop.felk.cvut.cz/media/bop_challenge_2019_results.pdf) stay the same.
+**On 27th January 2020, all submissions to the BOP Challenge 2019 were re-evaluated after discovering and fixing two bugs in the evaluation system. The change in scores is not dramatic and the ordering of the participated methods stays largely the same. The winners of [all presented awards](https://bop.felk.cvut.cz/media/bop_challenge_2019_results.pdf) stay the same.**
 
 Scores before the re-evaluation can be found [here](https://docs.google.com/spreadsheets/d/1EHxOsktqPKCZWwmSTPj7CDHxkhHP6YIx_X083zMMhws/edit?usp=sharing). Scores after the re-evaluation are visible in the leaderboards on [bop.felk.cvut.cz](https://bop.felk.cvut.cz/leaderboards/bop19_core-datasets/).
 [Slides presenting the challenge winners](https://bop.felk.cvut.cz/media/bop_challenge_2019_results.pdf) and [slides from the R6D'19 workshop](http://cmp.felk.cvut.cz/sixd/workshop_2019/slides/r6d19_hodan_bop_challenge_2019.pdf) were updated with the new scores.
