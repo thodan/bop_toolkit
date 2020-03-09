@@ -220,7 +220,7 @@ for error_dir_path in p['error_dir_paths']:
         for gt_id, gt in enumerate(im_gt):
           is_target = gt['obj_id'] in im_targets.keys()
           is_visib = im_gt_info[gt_id]['visib_fract'] >= p['visib_gt_min']
-          scene_gt_valid[im_id].append(is_target and is_visib)
+          scene_gt_valid[im_id][gt_id] = is_target and is_visib
       else:
         # k most visible GT poses are considered valid, where k is given by
         # the "inst_count" item loaded from "targets_filename".
