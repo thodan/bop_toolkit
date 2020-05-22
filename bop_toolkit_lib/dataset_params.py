@@ -71,8 +71,9 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'icmi': list(range(1, 7)),
     'icbin': list(range(1, 3)),
     'itodd': list(range(1, 29)),
-    'hb': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
-    # 'hb': list(range(1, 34)),  # Original HB dataset.
+    # Subset of the HB dataset used in the BOP Challenge 2019/2020:
+    # 'hb': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
+    'hb': list(range(1, 34)),  # Full HB dataset.
     'ycbv': list(range(1, 22)),
   }[dataset_name]
 
@@ -280,12 +281,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # HomebrewedDB (HB).
   elif dataset_name == 'hb':
+    # Use images from the Primesense sensor by default.
+    if split_type is None:
+      split_type = 'primesense'
+
     p['scene_ids'] = {
       'train': [],
-      'val': [3, 5, 13],
-      'test': [3, 5, 13],
+      'val': list(range(1, 14)),
+      'test': list(range(1, 14))
     }[split]
-    p['im_size'] = (640, 480)
+
+    p['im_size'] = {
+      'primesense': (640, 480),
+      'kinect': (1920, 1080)
+    }[split_type]
 
     if split == 'test':
       p['depth_range'] = (420.0, 1430.0)
