@@ -17,10 +17,13 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'lmo',
+  'dataset': 'lm',
 
   # Dataset split. Options: 'train', 'val', 'test'.
   'dataset_split': 'test',
+
+  # Dataset split type. None = default. See dataset_params.py for options.
+  'dataset_split_type': None,
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
@@ -30,7 +33,7 @@ p = {
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
-  p['datasets_path'], p['dataset'], p['dataset_split'])
+  p['datasets_path'], p['dataset'], p['dataset_split'], p['dataset_split_type'])
 
 scene_ids = dp_split['scene_ids']
 dists = []
@@ -39,8 +42,8 @@ elevs = []
 visib_fracts = []
 ims_count = 0
 for scene_id in scene_ids:
-  misc.log('Processing - dataset: {} {}, scene: {}'.format(
-    p['dataset'], p['dataset_split'], scene_id))
+  misc.log('Processing - dataset: {} ({}, {}), scene: {}'.format(
+    p['dataset'], p['dataset_split'], p['dataset_split_type'], scene_id))
 
   # Load GT poses.
   scene_gt = inout.load_scene_gt(
