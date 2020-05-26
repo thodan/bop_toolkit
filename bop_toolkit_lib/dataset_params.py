@@ -28,6 +28,12 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
       cam_type = 'primesense'
     cam_filename = 'camera_{}.json'.format(cam_type)
 
+  elif dataset_name == 'hb':
+    # Includes images captured by two sensors. Use Primesense as default.
+    if cam_type is None:
+      cam_type = 'primesense'
+    cam_filename = 'camera_{}.json'.format(cam_type)
+
   elif dataset_name == 'ycbv':
     # Includes images captured by two sensors. Use the "UW" sensor as default.
     if cam_type is None:
@@ -296,10 +302,11 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
       'kinect': (1920, 1080)
     }[split_type]
 
+    # The following holds for Primesense, but is similar for Kinect.
     if split == 'test':
-      p['depth_range'] = (420.0, 1430.0)
+      p['depth_range'] = (438.24, 1416.97)
       p['azimuth_range'] = (0, 2 * math.pi)
-      p['elev_range'] = (0.1920, 1.5184)  # (11, 87) [deg].
+      p['elev_range'] = (-0.5 * math.pi, 0.5 * math.pi)
 
   # YCB-Video (YCBV).
   elif dataset_name == 'ycbv':
