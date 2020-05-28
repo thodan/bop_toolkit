@@ -337,6 +337,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     split_path += '_' + split_type
 
   p.update({
+    # Path to the split directory.
+    'split_path': split_path,
+
     # Path template to a file with per-image camera parameters.
     'scene_camera_tpath': join(
       split_path, '{scene_id:06d}', 'scene_camera.json'),
