@@ -87,8 +87,8 @@ p\_m = [x, y, z, 1]' in the model coordinate system to 2D point p\_i =
 
 The following meta information about the ground-truth poses is provided in files
 *scene_gt_info.json* (calculated using *scripts/calc_gt_info.py*, with delta =
-5mm for ITODD and for the photorealistic training images provided for the BOP Challenge 2020,
-and 15mm for other datasets):
+5mm for ITODD, 15mm for other datasets, and 5mm for all photorealistic training
+images provided for the BOP Challenge 2020):
 
 * *bbox\_obj* - 2D bounding box of the object silhouette given by (x, y, width,
   height), where (x, y) is the top-left corner of the bounding box.
