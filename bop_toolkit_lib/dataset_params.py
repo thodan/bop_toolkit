@@ -301,6 +301,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     }[split]
 
     p['im_size'] = {
+      'synt': (640, 480),
       'primesense': (640, 480),
       'kinect': (1920, 1080)
     }[split_type]
@@ -319,6 +320,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     if split == 'train':
       p['scene_ids'] = {
         'real': list(range(48)) + list(range(60, 92)),
+        'synt': None,  # Use function get_present_scene_ids().
         'synt_orig': list(range(80))
       }[split_type]
     elif split == 'test':
