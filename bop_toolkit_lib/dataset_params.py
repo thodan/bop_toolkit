@@ -4,13 +4,15 @@
 """Parameters of the BOP datasets."""
 
 import math
+import glob
+import os
 from os.path import join
 
 from bop_toolkit_lib import inout
 
 
 def get_camera_params(datasets_path, dataset_name, cam_type=None):
-  """Return camera parameters for the specified dataset.
+  """Returns camera parameters for the specified dataset.
 
   Note that parameters returned by this functions are meant only for simulation
   of the used sensor when rendering training images. To get per-image camera
@@ -59,7 +61,7 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
 
 
 def get_model_params(datasets_path, dataset_name, model_type=None):
-  """Return parameters of object models for the specified dataset.
+  """Returns parameters of object models for the specified dataset.
 
   :param datasets_path: Path to a folder with datasets.
   :param dataset_name: Name of the dataset for which to return the parameters.
@@ -130,7 +132,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
 
 
 def get_split_params(datasets_path, dataset_name, split, split_type=None):
-  """Return parameters (camera params, paths etc.) for the specified dataset.
+  """Returns parameters (camera params, paths etc.) for the specified dataset.
 
   :param datasets_path: Path to a folder with datasets.
   :param dataset_name: Name of the dataset for which to return the parameters.
@@ -196,7 +198,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         'kinect': (400, 400),
         'canon': (1900, 1900),
         'render_reconst': (1280, 1024),
-        'synthetless': (400, 400)
+        'synt': (720, 540),
+        'synthetless': (400, 400),
       },
       'test': {
         'primesense': (720, 540),
@@ -375,3 +378,15 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   })
 
   return p
+
+
+def get_present_scene_ids(dp_split):
+  """Returns ID's of scenes present in the specified dataset split.
+
+  :param dp_split: Path to a folder with datasets.
+  :return: List with scene ID's.
+  """
+  scene_dirs = [d for d in glob.glob(os.path.join(dp_split['split_path'], '*'))
+                if os.path.isdir(d)]
+  scene_ids = [int(os.path.basename(scene_dir)) for scene_dir in scene_dirs]
+  return scene_ids
