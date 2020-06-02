@@ -391,4 +391,5 @@ def get_present_scene_ids(dp_split):
   scene_dirs = [d for d in glob.glob(os.path.join(dp_split['split_path'], '*'))
                 if os.path.isdir(d)]
   scene_ids = [int(os.path.basename(scene_dir)) for scene_dir in scene_dirs]
+  scene_ids = sorted(scene_ids)
   return scene_ids
