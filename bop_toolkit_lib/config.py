@@ -6,21 +6,21 @@
 ######## Basic ########
 
 # Folder with the BOP datasets.
-datasets_path = r'/path/to/bop/datasets'
+datasets_path = r'C:\Users\tomho\th_data\cmp\projects\bop\datasets\bop'
 
 # Folder with pose results to be evaluated.
-results_path = r'/path/to/folder/with/results'
+results_path = r'C:\Users\tomho\th_data\cmp\projects\bop\bop_results\bop_challenge_2019'
 
 # Folder for the calculated pose errors and performance scores.
-eval_path = r'/path/to/eval/folder'
+eval_path = r'C:\Users\tomho\th_data\cmp\projects\bop\bop_results\bop_challenge_2019_eval'
 
 ######## Extended ########
 
 # Folder for outputs (e.g. visualizations).
-output_path = r'/path/to/output/folder'
+output_path = r'C:\Users\tomho\th_data\cmp\projects\bop\datasets\output'
 
 # For offscreen C++ rendering: Path to the build folder of bop_renderer (github.com/thodan/bop_renderer).
-bop_renderer_path = r'/path/to/bop_renderer/build'
+bop_renderer_path = r''
 
 # Executable of the MeshLab server.
-meshlab_server_path = r'/path/to/meshlabserver.exe'
+meshlab_server_path = r'C:\Program Files\VCG\MeshLab133\meshlabserver.exe'
