@@ -153,8 +153,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   }
 
   gray_ext = '.png'
-  rgb_ext = '.png'
   depth_ext = '.png'
+
+  rgb_ext = '.png'
+  if split_type == 'synt':
+    # The photorealistic synthetic images are provided in the JPG format.
+    rgb_ext = '.jpg'
 
   p['im_modalities'] = ['rgb', 'depth']
 
