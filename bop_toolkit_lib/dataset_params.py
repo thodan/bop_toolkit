@@ -156,7 +156,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   depth_ext = '.png'
 
   rgb_ext = '.png'
-  if split_type == 'synt':
+  if split_type == 'pbr':
     # The photorealistic synthetic images are provided in the JPG format.
     rgb_ext = '.jpg'
 
@@ -202,7 +202,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         'kinect': (400, 400),
         'canon': (1900, 1900),
         'render_reconst': (1280, 1024),
-        'synt': (720, 540),
+        'pbr': (720, 540),
         'synthetless': (400, 400),
       },
       'test': {
@@ -305,7 +305,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     }[split]
 
     p['im_size'] = {
-      'synt': (640, 480),
+      'pbr': (640, 480),
       'primesense': (640, 480),
       'kinect': (1920, 1080)
     }[split_type]
@@ -324,8 +324,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     if split == 'train':
       p['scene_ids'] = {
         'real': list(range(48)) + list(range(60, 92)),
-        'synt': None,  # Use function get_present_scene_ids().
-        'synt_orig': list(range(80))
+        'pbr': None,  # Use function get_present_scene_ids().
+        'synt': list(range(80))
       }[split_type]
     elif split == 'test':
       p['scene_ids'] = list(range(48, 60))
