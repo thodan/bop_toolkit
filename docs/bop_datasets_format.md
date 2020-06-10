@@ -37,7 +37,9 @@ The images in *train*, *val* and *test* folders are organized into subfolders:
 
 The corresponding images across the subolders have the same ID, e.g.
 *rgb/000000.png* and *depth/000000.png* is the color and the depth image
-of the same RGB-D frame.
+of the same RGB-D frame. The naming convention for the masks is IMID_GTID.png,
+where IMID is an image ID and GTID is the index of the ground-truth annotation
+(stored in *scene_gt.json*).
 
 
 ## Training, validation and test images
