@@ -1,7 +1,7 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Evaluation script for the BOP Challenge 2019."""
+"""Evaluation script for the BOP Challenge 2019/2020."""
 
 import os
 import time

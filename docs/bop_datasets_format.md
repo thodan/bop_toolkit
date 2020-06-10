@@ -22,7 +22,9 @@ The datasets have the following structure:
   camera parameters are in files *scene_camera.json* - see below).
 * *dataset_info.md* - Dataset-specific information.
 * *test_targets_bop19.json* - A list of test targets used for the evaluation in
-  the BOP paper [1] and in the BOP Challenge 2019.
+the BOP Challenge 2019/2020. The same list was used also in the ECCV 2018
+paper [1], with exception of T-LESS, for which list from
+*test_targets_bop18.json* was used.
 
 
 *MODELTYPE*, *TRAINTYPE*, *VALTYPE* and *TESTTYPE* are optional and used if more
