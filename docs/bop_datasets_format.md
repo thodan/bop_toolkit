@@ -23,7 +23,7 @@ The datasets have the following structure:
 * *dataset_info.md* - Dataset-specific information.
 * *test_targets_bop19.json* - A list of test targets used for the evaluation in
 the BOP Challenge 2019/2020. The same list was used also in the ECCV 2018
-paper [1], with exception of T-LESS, for which list from
+paper [1], with exception of T-LESS, for which the list from
 *test_targets_bop18.json* was used.
 
 
