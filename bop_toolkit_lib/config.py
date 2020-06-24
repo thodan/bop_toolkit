@@ -5,16 +5,16 @@
 
 
 # Folder with the BOP datasets.
-datasets_path = r'/home_local/sund_ma/src/foreign_packages/bop/datasets/bop'
+datasets_path = r'/net/rmc-lx0314/home_local/sund_ma/bop_bp_ws/icbin_random/bop_data'
 
 # Folder for outputs (e.g. visualizations).
 output_path = r'/home_local/sund_ma/src/foreign_packages/bop/my_util_scripts/eval'
 
 # Folder with results to be evaluated.
-results_path = r'/home_local/sund_ma/src/foreign_packages/bop/my_util_scripts'
+results_path = r'/home_local/sund_ma/src/foreign_packages/bop/bop_results/bop_challenge_2019'
 
 # Folder for the calculated pose errors and performance scores.
-eval_path = r'/home_local/sund_ma/src/foreign_packages/bop/my_util_scripts/eval'
+eval_path = r'/home_local/sund_ma/src/foreign_packages/bop/bop_results/bop_challenge_2019_eval'
 
 # Path to the build folder of bop_renderer (github.com/thodan/bop_renderer).
 bop_renderer_path = r'/path/to/bop_renderer/build'
