@@ -249,9 +249,9 @@ def load_bop_results(path, version='bop19'):
             'obj_id': int(elems[2]),
             'score': float(elems[3]),
             'R': np.array(
-              map(float, elems[4].split()), np.float).reshape((3, 3)),
+              list(map(float, elems[4].split())), np.float).reshape((3, 3)),
             't': np.array(
-              map(float, elems[5].split()), np.float).reshape((3, 1)),
+              list(map(float, elems[5].split())), np.float).reshape((3, 1)),
             'time': float(elems[6])
           }
 
@@ -361,7 +361,7 @@ def load_ply(path):
   while True:
 
     # Strip the newline character(s).
-    line = f.readline().rstrip('\n').rstrip('\r')
+    line = f.readline().decode('utf8').rstrip('\n').rstrip('\r')
 
     if line.startswith('comment TextureFile'):
       texture_file = line.split()[-1]
@@ -451,7 +451,7 @@ def load_ply(path):
         if prop[0] in load_props:
           prop_vals[prop[0]] = val
     else:
-      elems = f.readline().rstrip('\n').rstrip('\r').split()
+      elems = f.readline().decode('utf8').rstrip('\n').rstrip('\r').split()
       for prop_id, prop in enumerate(pt_props):
         if prop[0] in load_props:
           prop_vals[prop[0]] = elems[prop_id]
@@ -490,7 +490,7 @@ def load_ply(path):
         else:
           prop_vals[prop[0]] = val
     else:
-      elems = f.readline().rstrip('\n').rstrip('\r').split()
+      elems = f.readline().decode('utf8').rstrip('\n').rstrip('\r').split()
       for prop_id, prop in enumerate(face_props):
         if prop[0] == 'n_corners':
           if int(elems[prop_id]) != face_n_corners:

@@ -4,13 +4,15 @@
 """Parameters of the BOP datasets."""
 
 import math
+import glob
+import os
 from os.path import join
 
 from bop_toolkit_lib import inout
 
 
 def get_camera_params(datasets_path, dataset_name, cam_type=None):
-  """Return camera parameters for the specified dataset.
+  """Returns camera parameters for the specified dataset.
 
   Note that parameters returned by this functions are meant only for simulation
   of the used sensor when rendering training images. To get per-image camera
@@ -24,6 +26,12 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
   """
   if dataset_name == 'tless':
     # Includes images captured by three sensors. Use Primesense as default.
+    if cam_type is None:
+      cam_type = 'primesense'
+    cam_filename = 'camera_{}.json'.format(cam_type)
+
+  elif dataset_name == 'hb':
+    # Includes images captured by two sensors. Use Primesense as default.
     if cam_type is None:
       cam_type = 'primesense'
     cam_filename = 'camera_{}.json'.format(cam_type)
@@ -53,7 +61,7 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
 
 
 def get_model_params(datasets_path, dataset_name, model_type=None):
-  """Return parameters of object models for the specified dataset.
+  """Returns parameters of object models for the specified dataset.
 
   :param datasets_path: Path to a folder with datasets.
   :param dataset_name: Name of the dataset for which to return the parameters.
@@ -71,8 +79,9 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'icmi': list(range(1, 7)),
     'icbin': list(range(1, 3)),
     'itodd': list(range(1, 29)),
-    'hb': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
-    # 'hb': list(range(1, 34)),  # Original HB dataset.
+    # Subset of the HB dataset used in the BOP Challenge 2019/2020:
+    # 'hb': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
+    'hb': list(range(1, 34)),  # Full HB dataset.
     'ycbv': list(range(1, 22)),
   }[dataset_name]
 
@@ -123,7 +132,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
 
 
 def get_split_params(datasets_path, dataset_name, split, split_type=None):
-  """Return parameters (camera params, paths etc.) for the specified dataset.
+  """Returns parameters (camera params, paths etc.) for the specified dataset.
 
   :param datasets_path: Path to a folder with datasets.
   :param dataset_name: Name of the dataset for which to return the parameters.
@@ -144,8 +153,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   }
 
   gray_ext = '.png'
-  rgb_ext = '.png'
   depth_ext = '.png'
+
+  rgb_ext = '.png'
+  if split_type == 'pbr':
+    # The photorealistic synthetic images are provided in the JPG format.
+    rgb_ext = '.jpg'
 
   p['im_modalities'] = ['rgb', 'depth']
 
@@ -171,10 +184,13 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
   # T-LESS.
   elif dataset_name == 'tless':
-    p['scene_ids'] = {
-      'train': list(range(1, 31)),
-      'test': list(range(1, 21))
-    }[split]
+    if split == 'train':
+      if split_type == 'synthetless':
+        p['scene_ids'] = [1]
+      else:
+        p['scene_ids'] = list(range(1, 31))
+    elif split == 'test':
+      p['scene_ids'] = list(range(1, 21))
 
     # Use images from the Primesense sensor by default.
     if split_type is None:
@@ -185,7 +201,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         'primesense': (400, 400),
         'kinect': (400, 400),
         'canon': (1900, 1900),
-        'render_reconst': (1280, 1024)
+        'render_reconst': (1280, 1024),
+        'pbr': (720, 540),
+        'synthetless': (400, 400),
       },
       'test': {
         'primesense': (720, 540),
@@ -270,23 +288,33 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p['im_modalities'] = ['gray', 'depth']
 
     if split == 'test':
-      p['depth_range'] = None
-      p['azimuth_range'] = None
-      p['elev_range'] = None
+      p['depth_range'] = (638.38, 775.97)
+      p['azimuth_range'] = (0, 2 * math.pi)
+      p['elev_range'] = (-0.5 * math.pi, 0.5 * math.pi)
 
   # HomebrewedDB (HB).
   elif dataset_name == 'hb':
+    # Use images from the Primesense sensor by default.
+    if split_type is None:
+      split_type = 'primesense'
+
     p['scene_ids'] = {
       'train': [],
-      'val': [3, 5, 13],
-      'test': [3, 5, 13],
+      'val': list(range(1, 14)),
+      'test': list(range(1, 14))
     }[split]
-    p['im_size'] = (640, 480)
 
+    p['im_size'] = {
+      'pbr': (640, 480),
+      'primesense': (640, 480),
+      'kinect': (1920, 1080)
+    }[split_type]
+
+    # The following holds for Primesense, but is similar for Kinect.
     if split == 'test':
-      p['depth_range'] = (420.0, 1430.0)
+      p['depth_range'] = (438.24, 1416.97)
       p['azimuth_range'] = (0, 2 * math.pi)
-      p['elev_range'] = (0.1920, 1.5184)  # (11, 87) [deg].
+      p['elev_range'] = (-0.5 * math.pi, 0.5 * math.pi)
 
   # YCB-Video (YCBV).
   elif dataset_name == 'ycbv':
@@ -296,6 +324,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     if split == 'train':
       p['scene_ids'] = {
         'real': list(range(48)) + list(range(60, 92)),
+        'pbr': None,  # Use function get_present_scene_ids().
         'synt': list(range(80))
       }[split_type]
     elif split == 'test':
@@ -304,9 +333,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p['im_size'] = (640, 480)
 
     if split == 'test':
-      p['depth_range'] = (610.09, 1250.11)
+      p['depth_range'] = (612.92, 1243.59)
       p['azimuth_range'] = (0, 2 * math.pi)
-      p['elev_range'] = (-1.2872, 1.1294)  # (-73.75, 64.71) [deg].
+      p['elev_range'] = (-1.2788, 1.1291)  # (-73.27, 64.69) [deg].
 
   else:
     raise ValueError('Unknown BOP dataset.')
@@ -319,6 +348,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     split_path += '_' + split_type
 
   p.update({
+    # Path to the split directory.
+    'split_path': split_path,
+
     # Path template to a file with per-image camera parameters.
     'scene_camera_tpath': join(
       split_path, '{scene_id:06d}', 'scene_camera.json'),
@@ -354,3 +386,16 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   })
 
   return p
+
+
+def get_present_scene_ids(dp_split):
+  """Returns ID's of scenes present in the specified dataset split.
+
+  :param dp_split: Path to a folder with datasets.
+  :return: List with scene ID's.
+  """
+  scene_dirs = [d for d in glob.glob(os.path.join(dp_split['split_path'], '*'))
+                if os.path.isdir(d)]
+  scene_ids = [int(os.path.basename(scene_dir)) for scene_dir in scene_dirs]
+  scene_ids = sorted(scene_ids)
+  return scene_ids

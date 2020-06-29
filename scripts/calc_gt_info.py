@@ -10,6 +10,7 @@ selected dataset.
 """
 
 import os
+import glob
 import numpy as np
 
 from bop_toolkit_lib import config
@@ -68,13 +69,20 @@ dp_model = dataset_params.get_model_params(
 
 # Initialize a renderer.
 misc.log('Initializing renderer...')
-width, height = dp_split['im_size']
-ren = renderer.create_renderer(
-  width, height, p['renderer_type'], mode='depth')
-for obj_id in dp_model['obj_ids']:
-  ren.add_object(obj_id, dp_model['model_tpath'].format(obj_id=obj_id))
 
-for scene_id in dp_split['scene_ids']:
+# The renderer has a larger canvas for generation of masks of truncated objects.
+im_width, im_height = dp_split['im_size']
+ren_width, ren_height = 3 * im_width, 3 * im_height
+ren_cx_offset, ren_cy_offset = im_width, im_height
+ren = renderer.create_renderer(
+  ren_width, ren_height, p['renderer_type'], mode='depth')
+
+for obj_id in dp_model['obj_ids']:
+  model_fpath = dp_model['model_tpath'].format(obj_id=obj_id)
+  ren.add_object(obj_id, model_fpath)
+
+scene_ids = dataset_params.get_present_scene_ids(dp_split)
+for scene_id in scene_ids:
 
   # Load scene info and ground-truth poses.
   scene_camera = inout.load_scene_camera(
@@ -92,8 +100,10 @@ for scene_id in dp_split['scene_ids']:
           im_id))
 
     # Load depth image.
-    depth = inout.load_depth(dp_split['depth_tpath'].format(
-      scene_id=scene_id, im_id=im_id))
+    depth_fpath = dp_split['depth_tpath'].format(scene_id=scene_id, im_id=im_id)
+    if not os.path.exists(depth_fpath):
+      depth_fpath = depth_fpath.replace('.tif', '.png')
+    depth = inout.load_depth(depth_fpath)
     depth *= scene_camera[im_id]['depth_scale']  # Convert to [mm].
 
     K = scene_camera[im_id]['cam_K']
@@ -104,8 +114,12 @@ for scene_id in dp_split['scene_ids']:
     for gt_id, gt in enumerate(scene_gt[im_id]):
 
       # Render depth image of the object model in the ground-truth pose.
-      depth_gt = ren.render_object(
-        gt['obj_id'], gt['cam_R_m2c'], gt['cam_t_m2c'], fx, fy, cx, cy)['depth']
+      depth_gt_large = ren.render_object(
+        gt['obj_id'], gt['cam_R_m2c'], gt['cam_t_m2c'],
+        fx, fy, cx + ren_cx_offset, cy + ren_cy_offset)['depth']
+      depth_gt = depth_gt_large[
+                   ren_cy_offset:(ren_cy_offset + im_height),
+                   ren_cx_offset:(ren_cx_offset + im_width)]
 
       # Convert depth images to distance images.
       dist_gt = misc.depth_im_to_dist_im(depth_gt, K)
@@ -115,20 +129,34 @@ for scene_id in dp_split['scene_ids']:
       visib_gt = visibility.estimate_visib_mask_gt(
         dist_im, dist_gt, p['delta'], visib_mode='bop19')
 
-      # Visible surface fraction.
+      # Mask of the object in the GT pose.
+      obj_mask_gt_large = depth_gt_large > 0
       obj_mask_gt = dist_gt > 0
+
+      # Number of pixels in the whole object silhouette
+      # (even in the truncated part).
+      px_count_all = np.sum(obj_mask_gt_large)
+
+      # Number of pixels in the object silhouette with a valid depth measurement
+      # (i.e. with a non-zero value in the depth image).
       px_count_valid = np.sum(dist_im[obj_mask_gt] > 0)
+
+      # Number of pixels in the visible part of the object silhouette.
       px_count_visib = visib_gt.sum()
-      px_count_all = obj_mask_gt.sum()
+
+      # Visible surface fraction.
       if px_count_all > 0:
         visib_fract = px_count_visib / float(px_count_all)
       else:
         visib_fract = 0.0
 
-      # Bounding box of the object projection.
+      # Bounding box of the whole object silhouette
+      # (including the truncated part).
       bbox = [-1, -1, -1, -1]
       if px_count_visib > 0:
-        ys, xs = obj_mask_gt.nonzero()
+        ys, xs = obj_mask_gt_large.nonzero()
+        ys -= ren_cy_offset
+        xs -= ren_cx_offset
         bbox = misc.calc_2d_bbox(xs, ys, im_size)
 
       # Bounding box of the visible surface part.
@@ -140,8 +168,8 @@ for scene_id in dp_split['scene_ids']:
       # Store the calculated info.
       scene_gt_info[im_id].append({
         'px_count_all': int(px_count_all),
-        'px_count_visib': int(px_count_visib),
         'px_count_valid': int(px_count_valid),
+        'px_count_visib': int(px_count_visib),
         'visib_fract': float(visib_fract),
         'bbox_obj': [int(e) for e in bbox],
         'bbox_visib': [int(e) for e in bbox_visib]

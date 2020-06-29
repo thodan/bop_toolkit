@@ -1,7 +1,7 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Evaluation script for the BOP Challenge 2019."""
+"""Evaluation script for the BOP Challenge 2019/2020."""
 
 import os
 import time
@@ -52,7 +52,9 @@ p = {
   ],
 
   # Minimum visible surface fraction of a valid GT pose.
-  'visib_gt_min': 0.1,
+  # -1 == k most visible GT poses will be considered, where k is given by
+  # the "inst_count" item loaded from "targets_filename".
+  'visib_gt_min': -1,
 
   # See misc.get_symmetry_transformations().
   'max_sym_disc_step': 0.01,
@@ -136,7 +138,7 @@ for result_filename in p['result_filenames']:
       times[result_key] = est['time']
 
   if times_available:
-    average_time_per_image = np.mean(times.values())
+    average_time_per_image = np.mean(list(times.values()))
   else:
     average_time_per_image = -1.0
 

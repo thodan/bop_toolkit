@@ -194,14 +194,14 @@ for obj_id in obj_ids:
       # obj_bb = misc.calc_2d_bbox(xs, ys, dp_camera['im_size'])
 
       scene_camera[im_id] = {
-        'cam_K': dp_camera['K'].flatten().tolist(),
+        'cam_K': dp_camera['K'],
         'depth_scale': dp_camera['depth_scale'],
         'view_level': int(views_level[view_id])
       }
 
       scene_gt[im_id] = [{
-        'cam_R_m2c': view['R'].flatten().tolist(),
-        'cam_t_m2c': view['t'].flatten().tolist(),
+        'cam_R_m2c': view['R'],
+        'cam_t_m2c': view['t'],
         'obj_id': int(obj_id)
       }]
 
