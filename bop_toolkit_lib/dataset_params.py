@@ -314,6 +314,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   base_path = join(datasets_path, dataset_name)
   split_path = join(base_path, split)
   if split_type is not None:
+    if split_type == 'pbr':
+      p['scene_ids'] = list(range(50))
     split_path += '_' + split_type
 
   p.update({
