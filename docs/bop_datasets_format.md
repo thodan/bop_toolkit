@@ -22,7 +22,9 @@ The datasets have the following structure:
   camera parameters are in files *scene_camera.json* - see below).
 * *dataset_info.md* - Dataset-specific information.
 * *test_targets_bop19.json* - A list of test targets used for the evaluation in
-  the BOP paper [1] and in the BOP Challenge 2019.
+the BOP Challenge 2019/2020. The same list was used also in the ECCV 2018
+paper [1], with exception of T-LESS, for which the list from
+*test_targets_bop18.json* was used.
 
 
 *MODELTYPE*, *TRAINTYPE*, *VALTYPE* and *TESTTYPE* are optional and used if more
@@ -37,7 +39,9 @@ The images in *train*, *val* and *test* folders are organized into subfolders:
 
 The corresponding images across the subolders have the same ID, e.g.
 *rgb/000000.png* and *depth/000000.png* is the color and the depth image
-of the same RGB-D frame.
+of the same RGB-D frame. The naming convention for the masks is IMID_GTID.png,
+where IMID is an image ID and GTID is the index of the ground-truth annotation
+(stored in *scene_gt.json*).
 
 
 ## Training, validation and test images
@@ -87,7 +91,8 @@ p\_m = [x, y, z, 1]' in the model coordinate system to 2D point p\_i =
 
 The following meta information about the ground-truth poses is provided in files
 *scene_gt_info.json* (calculated using *scripts/calc_gt_info.py*, with delta =
-5mm for ITODD and 15mm for other datasets):
+5mm for ITODD, 15mm for other datasets, and 5mm for all photorealistic training
+images provided for the BOP Challenge 2020):
 
 * *bbox\_obj* - 2D bounding box of the object silhouette given by (x, y, width,
   height), where (x, y) is the top-left corner of the bounding box.

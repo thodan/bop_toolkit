@@ -113,9 +113,9 @@ p['n_top'] = int(args.n_top)
 p['error_type'] = str(args.error_type)
 p['vsd_deltas'] = {str(e.split(':')[0]): float(e.split(':')[1])
                    for e in args.vsd_deltas.split(',')}
-p['vsd_taus'] = map(float, args.vsd_taus.split(','))
+p['vsd_taus'] = list(map(float, args.vsd_taus.split(',')))
 p['vsd_normalized_by_diameter'] = bool(args.vsd_normalized_by_diameter)
-p['max_sym_disc_step'] = bool(args.max_sym_disc_step)
+p['max_sym_disc_step'] = float(args.max_sym_disc_step)
 p['skip_missing'] = bool(args.skip_missing)
 p['renderer_type'] = str(args.renderer_type)
 p['result_filenames'] = args.result_filenames.split(',')
@@ -159,7 +159,7 @@ for result_filename in p['result_filenames']:
 
   # Load object models.
   models = {}
-  if p['error_type'] in ['ad', 'add', 'adi', 'mssd', 'mspd']:
+  if p['error_type'] in ['ad', 'add', 'adi', 'mssd', 'mspd', 'proj']:
     misc.log('Loading object models...')
     for obj_id in dp_model['obj_ids']:
       models[obj_id] = inout.load_ply(
@@ -359,6 +359,10 @@ for result_filename in p['result_filenames']:
                   R_e, t_e, R_g, t_g, K, ren, obj_id)]
               else:
                 e = [1.0]
+
+            elif p['error_type'] == 'proj':
+              e = [pose_error.proj(
+                R_e, t_e, R_g, t_g, K, models[obj_id]['pts'])]
 
             elif p['error_type'] == 'rete':
               e = [pose_error.re(R_e, R_g), pose_error.te(t_e, t_g)]

@@ -48,7 +48,8 @@ if p['dataset'] == 'tless':
 dp_model = dataset_params.get_model_params(
   p['datasets_path'], p['dataset'], model_type)
 
-for scene_id in dp_split['scene_ids']:
+scene_ids = dataset_params.get_present_scene_ids(dp_split)
+for scene_id in scene_ids:
 
   # Load scene GT.
   scene_gt_path = dp_split['scene_gt_tpath'].format(

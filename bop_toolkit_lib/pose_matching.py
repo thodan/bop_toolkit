@@ -45,7 +45,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
     errs_sorted = errs_sorted[:max_ests_count]
 
   # Number of values defining the error (e.g. 1 for "ADD", 2 for "5deg 5cm").
-  error_num_elems = len(error_ths)
+  error_num_elems = len(list(error_ths))
 
   # Greedily match the estimated poses to the ground truth poses in the order of
   # decreasing score of the estimates.

@@ -314,6 +314,9 @@ def overlapping_sphere_projections(radius, p1, p2):
   :param p2: [X2, Y2, Z2] center of the second sphere.
   :return: True if the projections of the two spheres overlap.
   """
+  if p1[2] == 0 or p2[2] == 0:
+    return False
+
   # 2D projections of centers of the spheres.
   proj1 = (p1 / p1[2])[:2]
   proj2 = (p2 / p2[2])[:2]

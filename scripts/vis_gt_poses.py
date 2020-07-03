@@ -172,7 +172,7 @@ for scene_id in scene_ids_curr:
     if p['vis_rgb']:
       if 'rgb' in dp_split['im_modalities']:
         rgb = inout.load_im(dp_split['rgb_tpath'].format(
-          scene_id=scene_id, im_id=im_id))
+          scene_id=scene_id, im_id=im_id))[:, :, :3]
       elif 'gray' in dp_split['im_modalities']:
         gray = inout.load_im(dp_split['gray_tpath'].format(
           scene_id=scene_id, im_id=im_id))
