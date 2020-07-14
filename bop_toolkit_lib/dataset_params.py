@@ -152,13 +152,16 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     'elev_range': None,
   }
 
+  rgb_ext = '.png'
   gray_ext = '.png'
   depth_ext = '.png'
 
-  rgb_ext = '.png'
   if split_type == 'pbr':
     # The photorealistic synthetic images are provided in the JPG format.
     rgb_ext = '.jpg'
+  elif dataset_name == 'itodd':
+    gray_ext = '.tif'
+    depth_ext = '.tif'
 
   p['im_modalities'] = ['rgb', 'depth']
 
@@ -283,8 +286,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     }[split]
     p['im_size'] = (1280, 960)
 
-    gray_ext = '.tif'
-    depth_ext = '.tif'
     p['im_modalities'] = ['gray', 'depth']
 
     if split == 'test':
