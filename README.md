@@ -51,7 +51,7 @@ Download the BOP datasets and make sure they are in the [expected folder structu
 
 ### 2. Run your method
 
-Estimate poses and save them in one .csv file per dataset ([format description](https://bop.felk.cvut.cz/challenges/bop_challenge_2019/#howtoparticipate)).
+Estimate poses and save them in one .csv file per dataset ([format description](https://bop.felk.cvut.cz/challenges/bop-challenge-2020/#howtoparticipate)).
 
 ### 3. Configure the BOP Toolkit
 
