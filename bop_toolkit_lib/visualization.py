@@ -211,13 +211,19 @@ def vis_object_poses(
     valid_mask = (depth > 0) * (ren_depth > 0)
     depth_diff = valid_mask * (ren_depth.astype(np.float32) - depth)
 
+    # Get mask of pixels where the rendered depth is at most by the tolerance
+    # delta behind the captured depth (this tolerance is used in VSD).
     delta = 15
     below_delta = valid_mask * (depth_diff < delta)
     below_delta_vis = (255 * below_delta).astype(np.uint8)
 
     depth_diff_vis = 255 * depth_for_vis(depth_diff - depth_diff.min())
+
+    # Pixels where the rendered depth is more than the tolerance delta behing
+    # the captured depth will be cyan.
     depth_diff_vis = np.dstack(
       [below_delta_vis, depth_diff_vis, depth_diff_vis]).astype(np.uint8)
+
     depth_diff_vis[np.logical_not(valid_mask)] = 0
     depth_diff_valid = depth_diff[valid_mask]
     depth_info = [
