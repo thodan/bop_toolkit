@@ -172,8 +172,8 @@ for result_filename in p['result_filenames']:
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)
-        recalls.append(scores['total_recall'])
-        recall_dict[error['type']][error_sign].append(scores['total_recall'])
+        recalls.append(scores['recall'])
+        recall_dict[error['type']][error_sign].append(scores['recall'])
 
     # Area under the recall surface/curve.
     aur[error['type']] = np.mean(recalls)
