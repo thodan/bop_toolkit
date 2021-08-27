@@ -3,10 +3,16 @@
 
 """Configuration of the BOP Toolkit."""
 
+import os
+
+
 ######## Basic ########
 
 # Folder with the BOP datasets.
-datasets_path = r'/path/to/bop/datasets'
+if 'BOP_PATH' in os.environ:
+  datasets_path = os.environ['BOP_PATH']
+else:
+  datasets_path = r'/path/to/bop/datasets'
 
 # Folder with pose results to be evaluated.
 results_path = r'/path/to/folder/with/results'
