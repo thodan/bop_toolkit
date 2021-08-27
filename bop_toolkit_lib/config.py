@@ -6,7 +6,7 @@
 ######## Basic ########
 
 # Folder with the BOP datasets.
-datasets_path = r'/net/rmc-lx0314/home_local/sund_ma/bop_bp_ws/icbin_random/bop_data'
+datasets_path = r'/volume/pekdat/datasets/public/bop/original'
 
 # Folder for outputs (e.g. visualizations).
 output_path = r'/home_local/sund_ma/src/foreign_packages/bop/my_util_scripts/eval'
@@ -21,7 +21,7 @@ eval_path = r'/home_local/sund_ma/src/foreign_packages/bop/bop_results/bop_chall
 ######## Extended ########
 
 # Folder for outputs (e.g. visualizations).
-output_path = r'/path/to/output/folder'
+output_path = r'/home_local/sund_ma/src/foreign_packages/bop/my_util_scripts/eval'
 
 # For offscreen C++ rendering: Path to the build folder of bop_renderer (github.com/thodan/bop_renderer).
 bop_renderer_path = r'/path/to/bop_renderer/build'
