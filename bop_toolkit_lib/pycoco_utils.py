@@ -60,7 +60,7 @@ def create_annotation_info(annotation_id, image_id, object_id, binary_mask, mask
         "image_id": image_id,
         "category_id": object_id,
         "iscrowd": iscrowd,
-        "area": area,
+        "area": int(area),
         "bbox": bounding_box,
         "segmentation": segmentation,
         "width": binary_mask.shape[1],
