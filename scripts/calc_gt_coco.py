@@ -3,10 +3,8 @@
 
 """Calculates Instance Mask Annotations in Coco Format."""
 
-import math
 import numpy as np
 import os
-import argparse
 import datetime
 import json
 
@@ -35,7 +33,6 @@ p = {
 }
 ################################################################################
 
-
 datasets_path = p['datasets_path']
 dataset_name = p['dataset']
 split = p['dataset_split']
@@ -57,14 +54,14 @@ INFO = {
     "description": dataset_name + '_' + split,
     "url": "https://github.com/thodan/bop_toolkit",
     "version": "0.1.0",
-    "year": 2020,
+    "year": datetime.date.today().year,
     "contributor": "",
     "date_created": datetime.datetime.utcnow().isoformat(' ')
 }
 
 for scene_id in dp_split['scene_ids']:
     image_id = 0
-    segmentation_id = 1
+    segmentation_id = 0
 
     coco_scene_output = {
         "info": INFO,
