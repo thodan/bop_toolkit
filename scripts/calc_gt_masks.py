@@ -18,19 +18,19 @@ from bop_toolkit_lib import visibility
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'lm',
+  'dataset': 'itodd',
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'test',
+  'dataset_split': 'train',
 
   # Dataset split type. None = default. See dataset_params.py for options.
-  'dataset_split_type': None,
+  'dataset_split_type': 'pbr',
 
   # Tolerance used in the visibility test [mm].
   'delta': 15,  # 5 for ITODD, 15 for the other datasets.
 
   # Type of the renderer.
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'cpp',  # Options: 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
@@ -45,8 +45,8 @@ dp_split = dataset_params.get_split_params(
 model_type = None
 if p['dataset'] == 'tless':
   model_type = 'cad'
-dp_model = dataset_params.get_model_params(
-  p['datasets_path'], p['dataset'], model_type)
+dp_model = dataset_params.get_model_params(p['datasets_path'], p['dataset'], model_type)
+# dp_model = dataset_params.get_model_params('/volume/pekdat/datasets/public/bop/original', p['dataset'], model_type)
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
@@ -99,7 +99,7 @@ for scene_id in scene_ids:
       scene_id=scene_id, im_id=im_id)
     depth_im = inout.load_depth(depth_path)
     depth_im *= scene_camera[im_id]['depth_scale']  # to [mm]
-    dist_im = misc.depth_im_to_dist_im(depth_im, K)
+    dist_im = misc.depth_im_to_dist_im_fast(depth_im, K)
 
     for gt_id, gt in enumerate(scene_gt[im_id]):
 
@@ -108,7 +108,7 @@ for scene_id in scene_ids:
         gt['obj_id'], gt['cam_R_m2c'], gt['cam_t_m2c'], fx, fy, cx, cy)['depth']
 
       # Convert depth image to distance image.
-      dist_gt = misc.depth_im_to_dist_im(depth_gt, K)
+      dist_gt = misc.depth_im_to_dist_im_fast(depth_gt, K)
 
       # Mask of the full object silhouette.
       mask = dist_gt > 0

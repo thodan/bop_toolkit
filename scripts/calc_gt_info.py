@@ -25,13 +25,13 @@ from bop_toolkit_lib import visibility
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'lm',
+  'dataset': 'itodd',
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'test',
+  'dataset_split': 'train',
 
   # Dataset split type. None = default. See dataset_params.py for options.
-  'dataset_split_type': None,
+  'dataset_split_type': 'pbr',
 
   # Whether to save visualizations of visibility masks.
   'vis_visibility_masks': False,
@@ -43,7 +43,7 @@ p = {
   'renderer_type': 'python',  # Options: 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
-  'datasets_path': config.datasets_path,
+  'datasets_path': '/net/rmc-lx0314/home_local/sund_ma/bop_bp_ws/itodd_random/bop_data',
 
   # Path template for output images with object masks.
   'vis_mask_visib_tpath': os.path.join(
@@ -64,8 +64,9 @@ dp_split = dataset_params.get_split_params(
 model_type = None
 if p['dataset'] == 'tless':
   model_type = 'cad'
-dp_model = dataset_params.get_model_params(
-  p['datasets_path'], p['dataset'], model_type)
+# dp_model = dataset_params.get_model_params(
+#   p['datasets_path'], p['dataset'], model_type)
+dp_model = dataset_params.get_model_params('/volume/pekdat/datasets/public/bop/original', p['dataset'], model_type)
 
 # Initialize a renderer.
 misc.log('Initializing renderer...')
@@ -122,8 +123,8 @@ for scene_id in scene_ids:
                    ren_cx_offset:(ren_cx_offset + im_width)]
 
       # Convert depth images to distance images.
-      dist_gt = misc.depth_im_to_dist_im(depth_gt, K)
-      dist_im = misc.depth_im_to_dist_im(depth, K)
+      dist_gt = misc.depth_im_to_dist_im_fast(depth_gt, K)
+      dist_im = misc.depth_im_to_dist_im_fast(depth, K)
 
       # Estimation of the visibility mask.
       visib_gt = visibility.estimate_visib_mask_gt(
