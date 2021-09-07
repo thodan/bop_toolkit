@@ -168,25 +168,16 @@ def rle_to_binary_mask(rle):
 
 def compute_ious(gt, dt, iou_type):
     """
-    Compute the Intersection over Union between two masks
-
-    Raises:
-        Exception: [description]
-        Exception: [description]
-        Exception: [description]
-
-    Returns:
-        [type] -- [description]
+    Compute the Intersection over Union between masks in RLE format
+    :param gt: Masks in RLE format
+    :param dt: Masks in RLE format
+    :param iou_type: Can be 'segm' or 'bbox'
+    :return: matrix of ious between all gt and dt masks
     """
      
     if iou_type == 'segm':
         gt_bin = np.array([rle_to_binary_mask(g['segmentation']) for g in gt])
         dt_bin = np.array([rle_to_binary_mask(d['segmentation']) for d in dt])
-        # for g in gt_bin:
-        #     for d in dt_bin:
-        #         intersection = g*d
-        #         union = (g+d) > 0 
-        #         iou = intersection / union
         intersections = np.einsum('ijk,ljk->il', dt_bin, gt_bin)
         unions =  np.sum((np.expand_dims(dt_bin,1) + np.expand_dims(gt_bin,0)) > 0, axis=(2,3))
         ious = intersections / unions

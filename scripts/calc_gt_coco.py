@@ -57,7 +57,7 @@ INFO = {
 
 for scene_id in dp_split['scene_ids']:
     image_id = 0
-    segmentation_id = 0
+    segmentation_id = 1
 
     coco_scene_output = {
         "info": INFO,

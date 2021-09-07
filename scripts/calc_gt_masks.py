@@ -18,22 +18,22 @@ from bop_toolkit_lib import visibility
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'itodd',
+  'dataset': 'lm',
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'train',
+  'dataset_split': 'test',
 
   # Dataset split type. None = default. See dataset_params.py for options.
-  'dataset_split_type': 'pbr',
+  'dataset_split_type': None,
 
   # Tolerance used in the visibility test [mm].
-  'delta': 5,  # 5 for ITODD, 15 for the other datasets.
+  'delta': 15,  # 5 for ITODD, 15 for the other datasets.
 
   # Type of the renderer.
-  'renderer_type': 'cpp',  # Options: 'cpp', 'python'.
+  'renderer_type': 'python',  # Options: 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
-  'datasets_path': '/net/rmc-lx0314/home_local/sund_ma/bop_bp_ws/itodd_random/bop_data',
+  'datasets_path': config.datasets_path,
 }
 ################################################################################
 
@@ -45,8 +45,8 @@ dp_split = dataset_params.get_split_params(
 model_type = None
 if p['dataset'] == 'tless':
   model_type = 'cad'
-# dp_model = dataset_params.get_model_params(p['datasets_path'], p['dataset'], model_type)
-dp_model = dataset_params.get_model_params('/volume/pekdat/datasets/public/bop/original', p['dataset'], model_type)
+dp_model = dataset_params.get_model_params(
+  p['datasets_path'], p['dataset'], model_type)
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:

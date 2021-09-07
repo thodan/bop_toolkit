@@ -295,8 +295,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     }[split]
     p['im_size'] = (1280, 960)
 
-    gray_ext = '.tif'
-    depth_ext = '.png'
     p['im_modalities'] = ['gray', 'depth']
 
     if split == 'test':
