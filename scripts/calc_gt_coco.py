@@ -3,10 +3,8 @@
 
 """Calculates Instance Mask Annotations in Coco Format."""
 
-import math
 import numpy as np
 import os
-import argparse
 import datetime
 import json
 
@@ -24,17 +22,16 @@ p = {
   'dataset': 'lmo',
 
   # Dataset split. Options: 'train', 'test'.
-  'dataset_split': 'train',
+  'dataset_split': 'test',
 
   # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
-  'dataset_split_type': 'pbr',
+  'dataset_split_type': None,
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
 
 }
 ################################################################################
-
 
 datasets_path = p['datasets_path']
 dataset_name = p['dataset']
@@ -48,23 +45,19 @@ complete_split = split
 if dp_split['split_type'] is not None:
     complete_split += '_' + dp_split['split_type']
 
-ROOT_DIR = os.path.join(dp_split['base_path'], complete_split, 'coco_annotations')
-if not os.path.exists(ROOT_DIR):
-    os.makedirs(ROOT_DIR)
-
 CATEGORIES = [{'id': obj_id, 'name':str(obj_id), 'supercategory': dataset_name} for obj_id in dp_model['obj_ids']]
 INFO = {
     "description": dataset_name + '_' + split,
     "url": "https://github.com/thodan/bop_toolkit",
     "version": "0.1.0",
-    "year": 2020,
+    "year": datetime.date.today().year,
     "contributor": "",
     "date_created": datetime.datetime.utcnow().isoformat(' ')
 }
 
 for scene_id in dp_split['scene_ids']:
     image_id = 0
-    segmentation_id = 1
+    segmentation_id = 0
 
     coco_scene_output = {
         "info": INFO,
@@ -75,6 +68,7 @@ for scene_id in dp_split['scene_ids']:
     }
 
     scene_gt = inout.load_scene_gt(dp_split['scene_gt_tpath'].format(scene_id=scene_id))
+    coco_gt_path = dp_split['scene_gt_coco_tpath'].format(scene_id=scene_id)
 
     misc.log('Calculating Coco Annotations - dataset: {} ({}, {}), scene: {}'.format(
           p['dataset'], p['dataset_split'], p['dataset_split_type'], scene_id))
@@ -83,8 +77,7 @@ for scene_id in dp_split['scene_ids']:
         im_id = int(scene_view)
         mask_paths = os.path.join(dp_split['base_path'], complete_split, '{:06d}/mask_visib'.format(scene_id))
         img_path = dp_split['rgb_tpath'].format(scene_id=scene_id, im_id=im_id)
-        relative_img_path = os.path.relpath(img_path, ROOT_DIR)
-        
+        relative_img_path = os.path.relpath(img_path, os.path.dirname(coco_gt_path))
         image_info = pycoco_utils.create_image_info(image_id, relative_img_path, dp_split['im_size'])
         coco_scene_output["images"].append(image_info)
         
@@ -104,7 +97,5 @@ for scene_id in dp_split['scene_ids']:
 
         image_id = image_id + 1
 
-    with open('{}/coco_{}_{}_{:06d}.json'.format(ROOT_DIR, dataset_name, split, scene_id), 'w') as output_json_file:
+    with open(coco_gt_path, 'w') as output_json_file:
         json.dump(coco_scene_output, output_json_file)
-
-

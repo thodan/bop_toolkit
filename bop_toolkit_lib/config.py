@@ -1,18 +1,13 @@
-# Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
-# Center for Machine Perception, Czech Technical University in Prague
+import os
 
-"""Configuration of the BOP Toolkit."""
 
 ######## Basic ########
 
 # Folder with the BOP datasets.
-datasets_path = r'/volume/pekdat/datasets/public/bop/original'
-
-# Folder for outputs (e.g. visualizations).
-output_path = r'/home_local/sund_ma/src/foreign_packages/bop/my_util_scripts/eval'
-
-# Folder with results to be evaluated.
-results_path = r'/home_local/sund_ma/src/foreign_packages/bop/bop_results/bop_challenge_2019'
+if 'BOP_PATH' in os.environ:
+  datasets_path = os.environ['BOP_PATH']
+else:
+  datasets_path = r'/path/to/bop/datasets'
 
 
 # Folder for the calculated pose errors and performance scores.

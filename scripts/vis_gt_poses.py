@@ -48,7 +48,7 @@ p = {
   'vis_rgb_resolve_visib': True,
   
   # Indicates whether to save images of depth differences.
-  'vis_depth_diff': False,
+  'vis_depth_diff': True,
   
   # Whether to use the original model color.
   'vis_orig_color': False,
@@ -124,7 +124,8 @@ for obj_id in dp_model['obj_ids']:
     model_color = tuple(colors[(obj_id - 1) % len(colors)])
   ren.add_object(obj_id, model_path, surf_color=model_color)
 
-for scene_id in scene_ids_curr:
+scene_ids = dataset_params.get_present_scene_ids(dp_split)
+for scene_id in scene_ids:
 
   # Load scene info and ground-truth poses.
   scene_camera = inout.load_scene_camera(
@@ -170,7 +171,7 @@ for scene_id in scene_ids_curr:
     # Load the color and depth images and prepare images for rendering.
     rgb = None
     if p['vis_rgb']:
-      if 'rgb' in dp_split['im_modalities']:
+      if 'rgb' in dp_split['im_modalities'] or p['dataset_split_type'] == 'pbr':
         rgb = inout.load_im(dp_split['rgb_tpath'].format(
           scene_id=scene_id, im_id=im_id))[:, :, :3]
       elif 'gray' in dp_split['im_modalities']:

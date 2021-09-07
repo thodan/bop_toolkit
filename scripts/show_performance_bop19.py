@@ -12,7 +12,6 @@ import numpy as np
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import visualization
 
 
 # PARAMETERS (some can be overwritten by the command line arguments below).
@@ -67,7 +66,6 @@ p = {
 ################################################################################
 
 
-
 # Command line arguments.
 # ------------------------------------------------------------------------------
 parser = argparse.ArgumentParser()
@@ -82,6 +80,48 @@ p['result_filenames'] = args.result_filenames.split(',')
 
 # Evaluation.
 # ------------------------------------------------------------------------------
+def plot_recall_curves(recall_dict, p):
+  """Plots recall curves and displays BOP19 metrics
+
+  :param recall_dict: dictionary containing bop19 recall results
+  :param p: parameters from show_performance_bop19.py
+  """
+
+  for i, error in enumerate(p['errors']):
+    if error['type'] == 'mspd':
+      corr_thres = ['{}'.format(e) for sl in error['correct_th'] for e in sl]
+    else:
+      corr_thres = ['{:.2f}'.format(e) for sl in error['correct_th'] for e in
+                    sl]
+
+    recalls = recall_dict[error['type']]
+    all_recalls = []
+    plt.figure()
+
+    for key in sorted(recalls):
+      threshold = key.split('=')[-1]
+      if 'vsd' in key:
+        plt.plot(recalls[key], label='tau: ' + threshold)
+      else:
+        plt.plot(recalls[key])
+      all_recalls += recalls[key]
+
+    plt.legend()
+
+    plt.xticks(np.arange(len(corr_thres)), corr_thres)
+    plt.ylim([0, 1])
+    plt.ylabel('recall')
+    if error['type'] == 'mspd':
+      plt.xlabel('thres @ r px')
+    else:
+      plt.xlabel('thres @ object diameter')
+
+    plt.title(error['type'] + ' - ' + 'average recall: '
+              + '{:.4f}'.format(np.mean(all_recalls)))
+
+  plt.show()
+
+
 for result_filename in p['result_filenames']:
 
   misc.log('===========')
@@ -132,8 +172,8 @@ for result_filename in p['result_filenames']:
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)
-        recalls.append(scores['total_recall'])
-        recall_dict[error['type']][error_sign].append(scores['total_recall'])
+        recalls.append(scores['recall'])
+        recall_dict[error['type']][error_sign].append(scores['recall'])
 
     # Area under the recall surface/curve.
     aur[error['type']] = np.mean(recalls)
@@ -152,6 +192,6 @@ for result_filename in p['result_filenames']:
     misc.log('Average BOP score on {}: {}'.format(test_set, mean_error))
 
   if p['plot_recall_curves']:
-    visualization.plot_recall_curves(recall_dict, p)
+    plot_recall_curves(recall_dict, p)
 
 misc.log('Done.')

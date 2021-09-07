@@ -27,13 +27,13 @@ p = {
   'dataset_split_type': 'pbr',
 
   # Tolerance used in the visibility test [mm].
-  'delta': 15,  # 5 for ITODD, 15 for the other datasets.
+  'delta': 5,  # 5 for ITODD, 15 for the other datasets.
 
   # Type of the renderer.
   'renderer_type': 'cpp',  # Options: 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
-  'datasets_path': config.datasets_path,
+  'datasets_path': '/net/rmc-lx0314/home_local/sund_ma/bop_bp_ws/itodd_random/bop_data',
 }
 ################################################################################
 
@@ -45,8 +45,8 @@ dp_split = dataset_params.get_split_params(
 model_type = None
 if p['dataset'] == 'tless':
   model_type = 'cad'
-dp_model = dataset_params.get_model_params(p['datasets_path'], p['dataset'], model_type)
-# dp_model = dataset_params.get_model_params('/volume/pekdat/datasets/public/bop/original', p['dataset'], model_type)
+# dp_model = dataset_params.get_model_params(p['datasets_path'], p['dataset'], model_type)
+dp_model = dataset_params.get_model_params('/volume/pekdat/datasets/public/bop/original', p['dataset'], model_type)
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
