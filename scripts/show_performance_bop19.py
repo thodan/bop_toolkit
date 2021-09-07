@@ -33,8 +33,6 @@ p = {
         'tless': 15,
         'tudl': 15,
         'tyol': 15,
-        'ycbv': 15,
-        'hope': 15,
       },
       'vsd_taus': list(np.arange(0.05, 0.51, 0.05)),
       'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
