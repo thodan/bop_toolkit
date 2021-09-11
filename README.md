@@ -63,3 +63,11 @@ python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_C
 ```
 --renderer_type: Either "python" or "cpp" (you need to install the C++ Renderer for the latter).
 --result_filenames: Comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
+
+## Convert BOP to COCO format
+
+```
+python scripts/calc_gt_coco.py
+```
+
+Set the dataset and split parameters in the top section of the script.

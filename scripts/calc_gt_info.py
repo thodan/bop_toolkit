@@ -122,8 +122,8 @@ for scene_id in scene_ids:
                    ren_cx_offset:(ren_cx_offset + im_width)]
 
       # Convert depth images to distance images.
-      dist_gt = misc.depth_im_to_dist_im(depth_gt, K)
-      dist_im = misc.depth_im_to_dist_im(depth, K)
+      dist_gt = misc.depth_im_to_dist_im_fast(depth_gt, K)
+      dist_im = misc.depth_im_to_dist_im_fast(depth, K)
 
       # Estimation of the visibility mask.
       visib_gt = visibility.estimate_visib_mask_gt(

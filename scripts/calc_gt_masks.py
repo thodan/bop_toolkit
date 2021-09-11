@@ -99,7 +99,7 @@ for scene_id in scene_ids:
       scene_id=scene_id, im_id=im_id)
     depth_im = inout.load_depth(depth_path)
     depth_im *= scene_camera[im_id]['depth_scale']  # to [mm]
-    dist_im = misc.depth_im_to_dist_im(depth_im, K)
+    dist_im = misc.depth_im_to_dist_im_fast(depth_im, K)
 
     for gt_id, gt in enumerate(scene_gt[im_id]):
 
@@ -108,7 +108,7 @@ for scene_id in scene_ids:
         gt['obj_id'], gt['cam_R_m2c'], gt['cam_t_m2c'], fx, fy, cx, cy)['depth']
 
       # Convert depth image to distance image.
-      dist_gt = misc.depth_im_to_dist_im(depth_gt, K)
+      dist_gt = misc.depth_im_to_dist_im_fast(depth_gt, K)
 
       # Mask of the full object silhouette.
       mask = dist_gt > 0

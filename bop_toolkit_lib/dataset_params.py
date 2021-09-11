@@ -379,6 +379,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
   base_path = join(datasets_path, dataset_name)
   split_path = join(base_path, split)
   if split_type is not None:
+    if split_type == 'pbr':
+      p['scene_ids'] = list(range(50))
     split_path += '_' + split_type
 
   p.update({
@@ -396,6 +398,10 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # Path template to a file with meta information about the GT annotations.
     'scene_gt_info_tpath': join(
       split_path, '{scene_id:06d}', 'scene_gt_info.json'),
+    
+    # Path template to a file with the coco GT annotations.
+    'scene_gt_coco_tpath': join(
+      split_path, '{scene_id:06d}', 'scene_gt_coco.json'),
 
     # Path template to a gray image.
     'gray_tpath': join(

@@ -34,7 +34,7 @@ def save_im(path, im, jpg_quality=95):
   if ext.lower() in ['jpg', 'jpeg']:
     imageio.imwrite(path, im, quality=jpg_quality)
   else:
-    imageio.imwrite(path, im)
+    imageio.imwrite(path, im, compression=3)
 
 
 def load_depth(path):
