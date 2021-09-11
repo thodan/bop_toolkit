@@ -8,6 +8,7 @@ import time
 import argparse
 import subprocess
 import numpy as np
+import matplotlib.pyplot as plt
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
