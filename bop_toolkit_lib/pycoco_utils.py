@@ -31,16 +31,17 @@ def create_image_info(image_id, file_name, image_size):
 
     return image_info
 
-def create_annotation_info(annotation_id, image_id, object_id, binary_mask, mask_encoding_format='rle', tolerance=2, iscrowd=0):
+def create_annotation_info(annotation_id, image_id, object_id, binary_mask, bounding_box, mask_encoding_format='rle', tolerance=2, ignore=None):
     """Creates info section of coco annotation
 
     :param annotation_id: integer to uniquly identify the annotation
     :param image_id: integer to uniquly identify image
     :param object_id: The object id, should match with the object's category id
     :param binary_mask: A binary image mask of the object with the shape [H, W].
+    :param bounding_box: [x,y,w,h] in pixels
     :param mask_encoding_format: Encoding format of the mask. Type: string.
     :param tolerance: The tolerance for fitting polygons to the objects mask.
-    :param tolerance: The tolerance for fitting polygons to the objects mask.
+    :param ignore: whether to ignore this gt annotation during evaluation (also matched detections with IoU>thres)
     :return: Dict containing coco annotations infos of an instance.
     """
 
@@ -57,19 +58,70 @@ def create_annotation_info(annotation_id, image_id, object_id, binary_mask, mask
     else:
         raise RuntimeError("Unknown encoding format: {}".format(mask_encoding_format))
 
-    bounding_box = bbox_from_binary_mask(binary_mask)   
     annotation_info = {
         "id": annotation_id,
         "image_id": image_id,
         "category_id": object_id,
-        "iscrowd": iscrowd,
+        "iscrowd": 0,
         "area": int(area),
         "bbox": bounding_box,
         "segmentation": segmentation,
         "width": binary_mask.shape[1],
-        "height": binary_mask.shape[0],
+        "height": binary_mask.shape[0]
     }
+    if ignore is not None:
+        annotation_info["ignore"] = ignore
+    
     return annotation_info
+
+
+def merge_coco_results(existing_coco_results, new_coco_results, image_id_offset):
+    """ Merges the two given coco result dicts into one.
+
+    :param existing_coco_results: A dict describing the first coco results.
+    :param new_coco_results: A dict describing the second coco results.
+    :return: A dict containing the merged coco results.
+    """
+
+    for res in new_coco_results:
+        res['image_id'] += image_id_offset
+    existing_coco_results += new_coco_results
+    
+    return existing_coco_results
+
+
+def merge_coco_annotations(existing_coco_annotations, new_coco_annotations):
+    """ Merges the two given coco annotation dicts into one.
+
+    The "images" and "annotations" sections are concatenated and respective ids are adjusted.
+
+    :param existing_coco_annotations: A dict describing the first coco annotations.
+    :param new_coco_annotations: A dict describing the second coco annotations.
+    :return: A dict containing the merged coco annotations.
+    """
+
+    # Concatenate category sections
+    for cat_dict in new_coco_annotations["categories"]:
+        if cat_dict not in existing_coco_annotations["categories"]:
+            existing_coco_annotations["categories"].append(cat_dict)
+
+    # Concatenate images sections
+    image_id_offset = max([image["id"] for image in existing_coco_annotations["images"]]) + 1
+    for image in new_coco_annotations["images"]:
+        image["id"] += image_id_offset
+    existing_coco_annotations["images"].extend(new_coco_annotations["images"])
+
+    # Concatenate annotations sections
+    if len(existing_coco_annotations["annotations"]) > 0:
+        annotation_id_offset = max([annotation["id"] for annotation in existing_coco_annotations["annotations"]]) + 1
+    else:
+        annotation_id_offset = 0
+    for annotation in new_coco_annotations["annotations"]:
+        annotation["id"] += annotation_id_offset
+        annotation["image_id"] += image_id_offset
+    existing_coco_annotations["annotations"].extend(new_coco_annotations["annotations"])
+
+    return existing_coco_annotations, image_id_offset
 
 def bbox_from_binary_mask(binary_mask):
     """ Returns the smallest bounding box containing all pixels marked "1" in the given image mask.
