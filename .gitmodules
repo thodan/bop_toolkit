@@ -1,0 +1,3 @@
+[submodule "cocoapi"]
+	path = cocoapi
+	url = https://github.com/MartinSmeyer/cocoapi
