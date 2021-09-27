@@ -11,7 +11,7 @@ import png
 import json
 
 from bop_toolkit_lib import misc
-
+from bop_toolkit_lib import pycoco_utils
 
 def load_im(path):
   """Loads an image from a file.
@@ -329,6 +329,32 @@ def check_bop_results(path, version='bop19'):
 
   return check_passed, check_msg
 
+def save_coco_results(path, results, version='bop22'):
+  """Saves detections/instance segmentations for each scene in coco format.
+
+  :param path: Path to the output file.
+  :param results: Dictionary with detection results 
+  :param version: Version of the results.
+  """
+
+  # See docs/bop_challenge_2022.md for details.
+  if version == 'bop22':
+    coco_results = {}
+    for res in results:
+      if 'time' in res:
+        run_time = res['time']
+      else:
+        run_time = -1
+      segmentation = pycoco_utils.binary_mask_to_rle(res['segmentation']) if 'segmentation' in res else -1
+      coco_results.setdefault(res['scene_id'], []).append({'image_id':res['im_id'],
+                                                           'category_id':res['obj_id'],
+                                                           'score':res['score'],
+                                                           'bbox':res['bbox'].tolist() if 'bbox' in res else -1,
+                                                           'segmentation': segmentation,
+                                                           'time':run_time})
+    save_json(path, coco_results)
+  else:
+    raise ValueError('Unknown version of BOP detection results.')
 
 def load_ply(path):
   """Loads a 3D mesh model from a PLY file.
