@@ -20,6 +20,16 @@ pip install -r requirements.txt
 
 In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
 
+### CocoAPI
+
+To run evaluations on detections or instance segmentations, compile the cocoAPI:
+
+```
+git submodule update --init --recursive
+cd cocoapi/PythonAPI
+make
+```
+
 ### Python Renderer
 
 The Python based renderer is implemented using
@@ -63,6 +73,13 @@ python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_C
 ```
 --renderer_type: Either "python" or "cpp" (you need to install the C++ Renderer for the latter).
 --result_filenames: Comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
+
+### 5. Evaluate the detections / instance segmentations
+```
+python scripts/eval_bop_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESULTS --ann_type='bbox'
+```
+--result_filenames: Comma-separated filenames with per-dataset coco results (place them under your `results_path` defined in your [config.py](bop_toolkit_lib/config.py)).  
+--ann_type: 'bbox' to evaluate amodal bounding boxes. 'segm' to evaluate segmentation masks.
 
 ## Convert BOP to COCO format
 

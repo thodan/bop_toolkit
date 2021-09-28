@@ -40,7 +40,7 @@ p = {
   'datasets_path': config.datasets_path,
   
   # Annotation type that should be evaluated. Can be 'segm' or 'bbox'.
-  'annType': 'bbox',
+  'ann_type': 'bbox',
 
   # File with a list of estimation targets to consider. The file is assumed to
   # be stored in the dataset folder.
@@ -58,12 +58,14 @@ parser.add_argument('--result_filenames',
 parser.add_argument('--results_path', default=p['results_path'])
 parser.add_argument('--eval_path', default=p['eval_path'])
 parser.add_argument('--targets_filename', default=p['targets_filename'])
+parser.add_argument('--ann_type', default=p['ann_type'])
 args = parser.parse_args()
 
 p['result_filenames'] = args.result_filenames.split(',')
 p['results_path'] = str(args.results_path)
 p['eval_path'] = str(args.eval_path)
 p['targets_filename'] = str(args.targets_filename)
+p['ann_type'] = str(args.ann_type)
 
 
 # Evaluation.
@@ -130,7 +132,7 @@ for result_filename in p['result_filenames']:
   cocoDt=cocoGt.loadRes(dataset_coco_results)
 
   # running evaluation
-  cocoEval = COCOeval(cocoGt, cocoDt, p['annType'])
+  cocoEval = COCOeval(cocoGt, cocoDt, p['ann_type'])
   cocoEval.params.imgIds = sorted(cocoGt.getImgIds())
   cocoEval.evaluate()
   cocoEval.accumulate()
@@ -142,6 +144,6 @@ for result_filename in p['result_filenames']:
   
   # Save the final scores.
   os.makedirs(os.path.join(p['eval_path'], result_name), exist_ok=True)
-  final_scores_path = os.path.join(p['eval_path'], result_name, 'scores_bop22_coco_{}.json'.format(p['annType']))
+  final_scores_path = os.path.join(p['eval_path'], result_name, 'scores_bop22_coco_{}.json'.format(p['ann_type']))
   inout.save_json(final_scores_path, coco_results)
   
