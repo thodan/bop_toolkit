@@ -91,6 +91,7 @@ for result_filename in p['result_filenames']:
   dp_model = dataset_params.get_model_params(
     p['datasets_path'], dataset, model_type)
   
+  misc.log('Loading coco results...')
   # Load coco results
   coco_results = inout.load_json(os.path.join(p['results_path'], result_filename), keys_to_int=True)
   
@@ -103,6 +104,7 @@ for result_filename in p['result_filenames']:
   for target in targets:
     targets_org.setdefault(target['scene_id'], {}).setdefault(target['im_id'], {})
   
+  misc.log('Merging coco annotations and predictions...')
   # Merge coco scene annotations and results 
   for i, scene_id in enumerate(dp_split['scene_ids']):
     
@@ -122,7 +124,7 @@ for result_filename in p['result_filenames']:
     else:
       dataset_coco_ann, image_id_offset = pycoco_utils.merge_coco_annotations(dataset_coco_ann, scene_coco_ann)
       dataset_coco_results = pycoco_utils.merge_coco_results(dataset_coco_results, scene_coco_results, image_id_offset)
-      
+  
   #initialize COCO ground truth api
   cocoGt=COCO(dataset_coco_ann)
   cocoDt=cocoGt.loadRes(dataset_coco_results)
@@ -133,3 +135,13 @@ for result_filename in p['result_filenames']:
   cocoEval.evaluate()
   cocoEval.accumulate()
   cocoEval.summarize()
+  
+  res_type = ['AP', 'AP50', 'AP75', 'AP_small', 'AP_medium', 'AP_large', 
+              'AR1', 'AR10', 'AR100', 'AR_small', 'AR_medium', 'AR_large']
+  coco_results = {res_type[i]:stat for i, stat in enumerate(cocoEval.stats)}
+  
+  # Save the final scores.
+  os.makedirs(os.path.join(p['eval_path'], result_name), exist_ok=True)
+  final_scores_path = os.path.join(p['eval_path'], result_name, 'scores_bop22_coco_{}.json'.format(p['annType']))
+  inout.save_json(final_scores_path, coco_results)
+  
