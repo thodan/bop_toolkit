@@ -11,7 +11,6 @@ import png
 import json
 
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import pycoco_utils
 
 def load_im(path):
   """Loads an image from a file.
@@ -331,6 +330,9 @@ def check_bop_results(path, version='bop19'):
 
 def save_coco_results(path, results, version='bop22'):
   """Saves detections/instance segmentations for each scene in coco format.
+  
+  "bbox" should be [x,y,w,h] in pixels
+  "segmentation" should be an RLE encoded mask, use pycoco_utils.binary_mask_to_rle(binary_mask)
 
   :param path: Path to the output file.
   :param results: Dictionary with detection results 
@@ -341,17 +343,12 @@ def save_coco_results(path, results, version='bop22'):
   if version == 'bop22':
     coco_results = {}
     for res in results:
-      if 'time' in res:
-        run_time = res['time']
-      else:
-        run_time = -1
-      segmentation = pycoco_utils.binary_mask_to_rle(res['segmentation']) if 'segmentation' in res else -1
       coco_results.setdefault(res['scene_id'], []).append({'image_id':res['im_id'],
                                                            'category_id':res['obj_id'],
                                                            'score':res['score'],
                                                            'bbox':res['bbox'].tolist() if 'bbox' in res else -1,
-                                                           'segmentation': segmentation,
-                                                           'time':run_time})
+                                                           'segmentation':res['segmentation'] if 'segmentation' in res else -1,
+                                                           'time':res['run_time'] if 'run_time' in res else -1})
     save_json(path, coco_results)
   else:
     raise ValueError('Unknown version of BOP detection results.')

@@ -38,6 +38,9 @@ p = {
   
   # Folder with BOP datasets.
   'datasets_path': config.datasets_path,
+  
+  # Annotation type that should be evaluated. Can be 'segm' or 'bbox'.
+  'annType': 'bbox',
 
   # File with a list of estimation targets to consider. The file is assumed to
   # be stored in the dataset folder.
@@ -91,33 +94,42 @@ for result_filename in p['result_filenames']:
   # Load coco results
   coco_results = inout.load_json(os.path.join(p['results_path'], result_filename), keys_to_int=True)
   
+  # Load the estimation targets.
+  targets = inout.load_json(os.path.join(dp_split['base_path'], p['targets_filename']))
+  
+  # Organize the targets by scene, image and object.
+  misc.log('Organizing estimation targets...')
+  targets_org = {}
+  for target in targets:
+    targets_org.setdefault(target['scene_id'], {}).setdefault(target['im_id'], {})
+  
   # Merge coco scene annotations and results 
   for i, scene_id in enumerate(dp_split['scene_ids']):
     
     scene_coco_ann_path = dp_split['scene_gt_coco_tpath'].format(scene_id=scene_id)
     scene_coco_ann = inout.load_json(scene_coco_ann_path, keys_to_int=True)
-    
     scene_coco_results = coco_results[scene_id] if scene_id in coco_results else []
     
+    # filter target image ids
+    target_img_ids = targets_org[scene_id].keys()
+    scene_coco_ann['images'] = [img for img in scene_coco_ann['images'] if img['id'] in target_img_ids] 
+    scene_coco_ann['annotations'] = [ann for ann in scene_coco_ann['annotations'] if ann['image_id'] in target_img_ids] 
+    scene_coco_results = [res for res in scene_coco_results if res["image_id"] in target_img_ids]
+
     if i == 0:
       dataset_coco_ann = scene_coco_ann
       dataset_coco_results = scene_coco_results
     else:
       dataset_coco_ann, image_id_offset = pycoco_utils.merge_coco_annotations(dataset_coco_ann, scene_coco_ann)
       dataset_coco_results = pycoco_utils.merge_coco_results(dataset_coco_results, scene_coco_results, image_id_offset)
+      
+  #initialize COCO ground truth api
+  cocoGt=COCO(dataset_coco_ann)
+  cocoDt=cocoGt.loadRes(dataset_coco_results)
 
-
-annType = 'segm' #'bbox'      #specify type here
-
-#initialize COCO ground truth api
-cocoGt=COCO(dataset_coco_ann)
-cocoDt=cocoGt.loadRes(dataset_coco_results)
-
-imgIds=sorted(cocoGt.getImgIds())
-
-# running evaluation
-cocoEval = COCOeval(cocoGt, cocoDt, annType)
-cocoEval.params.imgIds  = imgIds
-cocoEval.evaluate()
-cocoEval.accumulate()
-cocoEval.summarize()
+  # running evaluation
+  cocoEval = COCOeval(cocoGt, cocoDt, p['annType'])
+  cocoEval.params.imgIds = sorted(cocoGt.getImgIds())
+  cocoEval.evaluate()
+  cocoEval.accumulate()
+  cocoEval.summarize()

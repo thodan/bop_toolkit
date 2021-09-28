@@ -60,7 +60,6 @@ INFO = {
 }
 
 for scene_id in dp_split['scene_ids']:
-    image_id = 1
     segmentation_id = 1
 
     coco_scene_output = {
@@ -80,14 +79,14 @@ for scene_id in dp_split['scene_ids']:
         coco_gt_path = coco_gt_path.replace('scene_gt_coco', 'scene_gt_coco_modal')
     misc.log('Calculating Coco Annotations - dataset: {} ({}, {}), scene: {}'.format(
           p['dataset'], p['dataset_split'], p['dataset_split_type'], scene_id))
-
+    
     # Go through each view in scene_gt
     for scene_view, inst_list in scene_gt.items():
         im_id = int(scene_view)
         
         img_path = dp_split['rgb_tpath'].format(scene_id=scene_id, im_id=im_id)
         relative_img_path = os.path.relpath(img_path, os.path.dirname(coco_gt_path))
-        image_info = pycoco_utils.create_image_info(image_id, relative_img_path, dp_split['im_size'])
+        image_info = pycoco_utils.create_image_info(im_id, relative_img_path, dp_split['im_size'])
         coco_scene_output["images"].append(image_info)
         gt_info = scene_gt_info[scene_view]
         
@@ -114,14 +113,12 @@ for scene_id in dp_split['scene_ids']:
                 raise Exception('{} is not a valid bounding box type'.format(p['bbox_type']))
 
             annotation_info = pycoco_utils.create_annotation_info(
-                segmentation_id, image_id, category_info, binary_inst_mask_visib, bounding_box, tolerance=2, ignore=ignore_gt)
+                segmentation_id, im_id, category_info, binary_inst_mask_visib, bounding_box, tolerance=2, ignore=ignore_gt)
 
             if annotation_info is not None:
                 coco_scene_output["annotations"].append(annotation_info)
 
             segmentation_id = segmentation_id + 1
-
-        image_id = image_id + 1
 
     with open(coco_gt_path, 'w') as output_json_file:
         json.dump(coco_scene_output, output_json_file)
