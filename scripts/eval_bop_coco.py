@@ -42,12 +42,14 @@ p = {
   # Annotation type that should be evaluated. Can be 'segm' or 'bbox'.
   'ann_type': 'bbox',
 
+  # bbox type. Options: 'modal', 'amodal'.
+  'bbox_type': 'amodal',
+
   # File with a list of estimation targets to consider. The file is assumed to
   # be stored in the dataset folder.
   'targets_filename': 'test_targets_bop19.json',
 }
 ################################################################################
-
 
 # Command line arguments.
 # ------------------------------------------------------------------------------
@@ -59,6 +61,7 @@ parser.add_argument('--results_path', default=p['results_path'])
 parser.add_argument('--eval_path', default=p['eval_path'])
 parser.add_argument('--targets_filename', default=p['targets_filename'])
 parser.add_argument('--ann_type', default=p['ann_type'])
+parser.add_argument('--bbox_type', default=p['bbox_type'])
 args = parser.parse_args()
 
 p['result_filenames'] = args.result_filenames.split(',')
@@ -66,7 +69,7 @@ p['results_path'] = str(args.results_path)
 p['eval_path'] = str(args.eval_path)
 p['targets_filename'] = str(args.targets_filename)
 p['ann_type'] = str(args.ann_type)
-
+p['bbox_type'] = str(args.bbox_type)
 
 # Evaluation.
 # ------------------------------------------------------------------------------
@@ -93,26 +96,44 @@ for result_filename in p['result_filenames']:
   dp_model = dataset_params.get_model_params(
     p['datasets_path'], dataset, model_type)
   
-  misc.log('Loading coco results...')
-  # Load coco results
-  coco_results = inout.load_json(os.path.join(p['results_path'], result_filename), keys_to_int=True)
+  # Checking coco result file
+  check_passed,_ = inout.check_coco_results(os.path.join(p['results_path'], result_filename))
+  if not check_passed:
+    misc.log('Please correct the coco result format of {}'.format(result_filename))
+    exit()
   
+  # Load coco results
+  misc.log('Loading coco results...')
+  coco_results = inout.load_json(os.path.join(p['results_path'], result_filename), keys_to_int=True)
+
   # Load the estimation targets.
   targets = inout.load_json(os.path.join(dp_split['base_path'], p['targets_filename']))
   
-  # Organize the targets by scene, image and object.
+  # Organize the targets by scene and image.
   misc.log('Organizing estimation targets...')
   targets_org = {}
   for target in targets:
     targets_org.setdefault(target['scene_id'], {}).setdefault(target['im_id'], {})
+    
+  # Organize the results by scene.
+  misc.log('Organizing estimation results...')
+  results_org = {}
+  for result in coco_results:
+    if (p['ann_type'] == 'bbox' and result['bbox']) or (p['ann_type'] == 'segm' and result['segmentation']):    
+      results_org.setdefault(result['scene_id'], []).append(result) 
+
+  if not results_org:
+    raise ValueError('No valid coco results for annotation type: {}'.format(p['ann_type']))
   
   misc.log('Merging coco annotations and predictions...')
   # Merge coco scene annotations and results 
   for i, scene_id in enumerate(dp_split['scene_ids']):
     
     scene_coco_ann_path = dp_split['scene_gt_coco_tpath'].format(scene_id=scene_id)
+    if p['ann_type'] == 'bbox' and p['bbox_type'] == 'modal':
+      scene_coco_ann_path = scene_coco_ann_path.replace('scene_gt_coco', 'scene_gt_coco_modal')
     scene_coco_ann = inout.load_json(scene_coco_ann_path, keys_to_int=True)
-    scene_coco_results = coco_results[scene_id] if scene_id in coco_results else []
+    scene_coco_results = results_org[scene_id] if scene_id in results_org else []
     
     # filter target image ids
     target_img_ids = targets_org[scene_id].keys()
@@ -145,5 +166,7 @@ for result_filename in p['result_filenames']:
   # Save the final scores.
   os.makedirs(os.path.join(p['eval_path'], result_name), exist_ok=True)
   final_scores_path = os.path.join(p['eval_path'], result_name, 'scores_bop22_coco_{}.json'.format(p['ann_type']))
+  if p['ann_type'] == 'bbox' and p['bbox_type'] == 'modal':
+    final_scores_path = final_scores_path.replace('.json', '_modal.json')
   inout.save_json(final_scores_path, coco_results)
   

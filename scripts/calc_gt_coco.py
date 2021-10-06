@@ -19,16 +19,16 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'hb',
+  'dataset': 'tudl',
 
   # Dataset split. Options: 'train', 'test'.
   'dataset_split': 'train',
 
-  # Dataset split. Options: 'modal', 'amodal'.
-  'bbox_type': 'amodal',
-
   # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
   'dataset_split_type': 'pbr',
+
+  # bbox type. Options: 'modal', 'amodal'.
+  'bbox_type': 'amodal',
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
