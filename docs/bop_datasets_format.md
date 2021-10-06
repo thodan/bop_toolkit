@@ -22,7 +22,7 @@ The datasets have the following structure:
   camera parameters are in files *scene_camera.json* - see below).
 * *dataset_info.md* - Dataset-specific information.
 * *test_targets_bop19.json* - A list of test targets used for the evaluation in
-the BOP Challenge 2019/2020. The same list was used also in the ECCV 2018
+the BOP Challenge 2019/2020/2022. The same list was used also in the ECCV 2018
 paper [1], with exception of T-LESS, for which the list from
 *test_targets_bop18.json* was used.
 
@@ -86,6 +86,8 @@ contain the following information for each annotated object instance:
 P\_m2i = K * [R\_m2c, t\_m2c] is the camera matrix which transforms 3D point
 p\_m = [x, y, z, 1]' in the model coordinate system to 2D point p\_i =
 [u, v, 1]' in the image coordinate system: s * p\_i = P\_m2i * p\_m.
+
+Ground truth bounding boxes and instance masks are also provided in COCO format under *scene_gt_coco.json*. The RLE format is used for segmentations. Detailed information about the COCO format can be found [here](https://cocodataset.org/#format-data). 
 
 ### Meta information about the ground-truth poses
 
