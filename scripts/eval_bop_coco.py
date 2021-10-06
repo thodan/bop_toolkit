@@ -102,7 +102,7 @@ for result_filename in p['result_filenames']:
     misc.log('Please correct the coco result format of {}'.format(result_filename))
     exit()
   
-  # Load coco results
+  # Load coco resultsZ
   misc.log('Loading coco results...')
   coco_results = inout.load_json(os.path.join(p['results_path'], result_filename), keys_to_int=True)
 
@@ -123,7 +123,7 @@ for result_filename in p['result_filenames']:
       results_org.setdefault(result['scene_id'], []).append(result) 
 
   if not results_org:
-    raise ValueError('No valid coco results for annotation type: {}'.format(p['ann_type']))
+    misc.log('No valid coco results for annotation type: {}'.format(p['ann_type']))
   
   misc.log('Merging coco annotations and predictions...')
   # Merge coco scene annotations and results 
