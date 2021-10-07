@@ -1,14 +1,8 @@
-import matplotlib.pyplot as plt
 import os
-import sys
-sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), '../cocoapi/PythonAPI'))
-
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from bop_toolkit_lib import pycoco_utils
-import skimage.io as io
 import argparse
-import numpy as np
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
@@ -40,7 +34,7 @@ p = {
   'datasets_path': config.datasets_path,
   
   # Annotation type that should be evaluated. Can be 'segm' or 'bbox'.
-  'ann_type': 'bbox',
+  'ann_type': 'segm',
 
   # bbox type. Options: 'modal', 'amodal'.
   'bbox_type': 'amodal',
