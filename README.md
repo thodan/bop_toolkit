@@ -20,16 +20,6 @@ pip install -r requirements.txt
 
 In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
 
-### CocoAPI
-
-To run evaluations on detections or instance segmentations, compile the cocoAPI:
-
-```
-git submodule update --init --recursive
-cd cocoapi/PythonAPI
-make
-```
-
 ### Python Renderer
 
 The Python based renderer is implemented using
