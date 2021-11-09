@@ -8,7 +8,9 @@ modifier).
 """
 
 import os
-
+import sys
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(cur_dir, "../"))
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import misc
@@ -36,7 +38,7 @@ p = {
 
   # Path to scripts/meshlab_scripts/remesh_for_eval.mlx.
   'meshlab_script_path': os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'meshlab_scripts',
+    cur_dir, 'meshlab_scripts',
     r'remesh_for_eval_cell=0.25.mlx'),
 }
 ################################################################################

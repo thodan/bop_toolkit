@@ -1,24 +1,26 @@
-# Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
-# Center for Machine Perception, Czech Technical University in Prague
-
-"""A Python based renderer."""
+# Author: Gu Wang (guwang12@foxmail.com)
+# Tsinghua University
+# Adapted based on the glumpy version: "./renderer_py.py"
+"""A Python Vispy based renderer."""
 
 import os
+
+os.environ["PYOPENGL_PLATFORM"] = "egl"
 import numpy as np
-from glumpy import app, gloo, gl
+import vispy
+from vispy import app, gloo
+import OpenGL.GL as gl
 
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import renderer
 
-# Set glumpy logging level.
-from glumpy.log import log
-import logging
-log.setLevel(logging.WARNING)  # Options: ERROR, WARNING, DEBUG, INFO.
-
-# Set backend (http://glumpy.readthedocs.io/en/latest/api/app-backends.html).
-# app.use('glfw')  # Options: 'glfw', 'qt5', 'pyside', 'pyglet'.
-
+# app backends: glfw, pyglet, egl
+# gl backends: gl2, pyopengl2, gl+
+app_backend = "egl"
+gl_backend = "gl2"  # "pyopengl2"  # speed: 'gl+' < 'gl2' < 'pyopengl2'
+vispy.use(app=app_backend, gl=gl_backend)
+print("vispy uses app: {}, gl: {}".format(app_backend, gl_backend))
 
 # RGB vertex shader.
 _rgb_vertex_code = """
@@ -182,7 +184,7 @@ def _calc_normal_matrix(model, view):
   return np.linalg.inv(np.dot(model, view)).T
 
 
-def _calc_calib_proj(K, x0, y0, w, h, nc, fc, window_coords='y_down'):
+def _calc_calib_proj(K, x0, y0, w, h, nc, fc, window_coords="y_down"):
   """Conversion of Hartley-Zisserman intrinsic matrix to OpenGL proj. matrix.
 
   Ref:
@@ -205,32 +207,47 @@ def _calc_calib_proj(K, x0, y0, w, h, nc, fc, window_coords='y_down'):
 
   # Draw our images upside down, so that all the pixel-based coordinate
   # systems are the same.
-  if window_coords == 'y_up':
-    proj = np.array([
-      [2 * K[0, 0] / w, -2 * K[0, 1] / w, (-2 * K[0, 2] + w + 2 * x0) / w, 0],
-      [0, -2 * K[1, 1] / h, (-2 * K[1, 2] + h + 2 * y0) / h, 0],
-      [0, 0, q, qn],  # Sets near and far planes (glPerspective).
-      [0, 0, -1, 0]
-    ])
+  if window_coords == "y_up":
+    proj = np.array(
+        [
+            [2 * K[0, 0] / w, -2 * K[0, 1] / w, (-2 * K[0, 2] + w + 2 * x0) / w, 0],
+            [0, -2 * K[1, 1] / h, (-2 * K[1, 2] + h + 2 * y0) / h, 0],
+            [0, 0, q, qn],  # Sets near and far planes (glPerspective).
+            [0, 0, -1, 0],
+        ]
+    )
 
   # Draw the images upright and modify the projection matrix so that OpenGL
   # will generate window coords that compensate for the flipped image coords.
   else:
-    assert window_coords == 'y_down'
-    proj = np.array([
-      [2 * K[0, 0] / w, -2 * K[0, 1] / w, (-2 * K[0, 2] + w + 2 * x0) / w, 0],
-      [0, 2 * K[1, 1] / h, (2 * K[1, 2] - h + 2 * y0) / h, 0],
-      [0, 0, q, qn],  # Sets near and far planes (glPerspective).
-      [0, 0, -1, 0]
-    ])
+    assert window_coords == "y_down"
+    proj = np.array(
+        [
+            [2 * K[0, 0] / w, -2 * K[0, 1] / w, (-2 * K[0, 2] + w + 2 * x0) / w, 0],
+            [0, 2 * K[1, 1] / h, (2 * K[1, 2] - h + 2 * y0) / h, 0],
+            [0, 0, q, qn],  # Sets near and far planes (glPerspective).
+            [0, 0, -1, 0],
+        ]
+    )
   return proj.T
 
 
-class RendererPython(renderer.Renderer):
+def singleton(cls):
+  instances = {}
+
+  def get_instance(width, height, mode="rgb+depth", shading="phong", bg_color=(0.0, 0.0, 0.0, 0.0)):
+    if cls not in instances:
+      instances[cls] = cls(width, height, mode, shading, bg_color)
+    return instances[cls]
+
+  return get_instance
+
+
+@singleton  # Don't throw GL context into trash when having more than one Renderer instance
+class RendererVispy(renderer.Renderer, app.Canvas):
   """A Python based renderer."""
 
-  def __init__(self, width, height, mode='rgb+depth', shading='phong',
-               bg_color=(0.0, 0.0, 0.0, 0.0)):
+  def __init__(self, width, height, mode="rgb+depth", shading="phong", bg_color=(0.0, 0.0, 0.0, 0.0)):
     """Constructor.
 
     :param width: Width of the rendered image.
@@ -239,15 +256,21 @@ class RendererPython(renderer.Renderer):
     :param shading: Type of shading ('flat', 'phong').
     :param bg_color: Color of the background (R, G, B, A).
     """
-    super(RendererPython, self).__init__(width, height)
+    renderer.Renderer.__init__(self, width=width, height=height)
+    app.Canvas.__init__(self, show=False, size=(width, height))
 
     self.mode = mode
     self.shading = shading
     self.bg_color = bg_color
 
+    # yz flip: opencv to opengl
+    pose_cv_to_gl = np.eye(4, dtype=np.float32)
+    pose_cv_to_gl[1, 1], pose_cv_to_gl[2, 2] = -1, -1
+    self.pose_cv_to_gl = pose_cv_to_gl
+
     # Indicators whether to render RGB and/or depth image.
-    self.render_rgb = self.mode in ['rgb', 'rgb+depth']
-    self.render_depth = self.mode in ['depth', 'rgb+depth']
+    self.render_rgb = self.mode in ["rgb", "rgb+depth"]
+    self.render_depth = self.mode in ["depth", "rgb+depth"]
 
     # Structures to store object models and related info.
     self.models = {}
@@ -258,9 +281,6 @@ class RendererPython(renderer.Renderer):
     self.rgb = None
     self.depth = None
 
-    # Window for rendering.
-    self.window = app.Window(visible=False)
-
     # Per-object vertex and index buffer.
     self.vertex_buffers = {}
     self.index_buffers = {}
@@ -270,12 +290,9 @@ class RendererPython(renderer.Renderer):
     self.depth_programs = {}
 
     # The frame buffer object.
-    rgb_buf = np.zeros(
-      (self.height, self.width, 4), np.float32).view(gloo.TextureFloat2D)
-    depth_buf = np.zeros(
-      (self.height, self.width), np.float32).view(gloo.DepthTexture)
+    rgb_buf = gloo.Texture2D(shape=(self.height, self.width, 3))
+    depth_buf = gloo.RenderBuffer(shape=(self.height, self.width))
     self.fbo = gloo.FrameBuffer(color=rgb_buf, depth=depth_buf)
-
     # Activate the created frame buffer object.
     self.fbo.activate()
 
@@ -284,8 +301,8 @@ class RendererPython(renderer.Renderer):
     # Color of the object model (the original color saved with the object model
     # will be used if None).
     surf_color = None
-    if 'surf_color' in kwargs:
-      surf_color = kwargs['surf_color']
+    if "surf_color" in kwargs:
+      surf_color = kwargs["surf_color"]
 
     # Load the object model.
     model = inout.load_ply(model_path)
@@ -293,33 +310,33 @@ class RendererPython(renderer.Renderer):
 
     # Calculate the 3D bounding box of the model (will be used to set the near
     # and far clipping plane).
-    bb = misc.calc_3d_bbox(
-      model['pts'][:, 0], model['pts'][:, 1], model['pts'][:, 2])
-    self.model_bbox_corners[obj_id] = np.array([
-      [bb[0], bb[1], bb[2]],
-      [bb[0], bb[1], bb[2] + bb[5]],
-      [bb[0], bb[1] + bb[4], bb[2]],
-      [bb[0], bb[1] + bb[4], bb[2] + bb[5]],
-      [bb[0] + bb[3], bb[1], bb[2]],
-      [bb[0] + bb[3], bb[1], bb[2] + bb[5]],
-      [bb[0] + bb[3], bb[1] + bb[4], bb[2]],
-      [bb[0] + bb[3], bb[1] + bb[4], bb[2] + bb[5]],
-    ])
+    bb = misc.calc_3d_bbox(model["pts"][:, 0], model["pts"][:, 1], model["pts"][:, 2])
+    self.model_bbox_corners[obj_id] = np.array(
+        [
+            [bb[0], bb[1], bb[2]],
+            [bb[0], bb[1], bb[2] + bb[5]],
+            [bb[0], bb[1] + bb[4], bb[2]],
+            [bb[0], bb[1] + bb[4], bb[2] + bb[5]],
+            [bb[0] + bb[3], bb[1], bb[2]],
+            [bb[0] + bb[3], bb[1], bb[2] + bb[5]],
+            [bb[0] + bb[3], bb[1] + bb[4], bb[2]],
+            [bb[0] + bb[3], bb[1] + bb[4], bb[2] + bb[5]],
+        ]
+    )
 
     # Set texture/color of vertices.
     self.model_textures[obj_id] = None
 
     # Use the specified uniform surface color.
     if surf_color is not None:
-      colors = np.tile(list(surf_color) + [1.0], [model['pts'].shape[0], 1])
+      colors = np.tile(list(surf_color) + [1.0], [model["pts"].shape[0], 1])
 
       # Set UV texture coordinates to dummy values.
-      texture_uv = np.zeros((model['pts'].shape[0], 2), np.float32)
+      texture_uv = np.zeros((model["pts"].shape[0], 2), np.float32)
 
     # Use the model texture.
-    elif 'texture_file' in self.models[obj_id].keys():
-      model_texture_path = os.path.join(
-        os.path.dirname(model_path), self.models[obj_id]['texture_file'])
+    elif "texture_file" in self.models[obj_id].keys():
+      model_texture_path = os.path.join(os.path.dirname(model_path), self.models[obj_id]["texture_file"])
       model_texture = inout.load_im(model_texture_path)
 
       # Normalize the texture image.
@@ -329,82 +346,76 @@ class RendererPython(renderer.Renderer):
       self.model_textures[obj_id] = model_texture
 
       # UV texture coordinates.
-      texture_uv = model['texture_uv']
+      texture_uv = model["texture_uv"]
 
       # Set the per-vertex color to dummy values.
-      colors = np.zeros((model['pts'].shape[0], 3), np.float32)
+      colors = np.zeros((model["pts"].shape[0], 3), np.float32)
 
     # Use the original model color.
-    elif 'colors' in model.keys():
-      assert (model['pts'].shape[0] == model['colors'].shape[0])
-      colors = model['colors']
+    elif "colors" in model.keys():
+      assert model["pts"].shape[0] == model["colors"].shape[0]
+      colors = model["colors"]
       if colors.max() > 1.0:
         colors /= 255.0  # Color values are expected in range [0, 1].
 
       # Set UV texture coordinates to dummy values.
-      texture_uv = np.zeros((model['pts'].shape[0], 2), np.float32)
+      texture_uv = np.zeros((model["pts"].shape[0], 2), np.float32)
 
     # Set the model color to gray.
     else:
-      colors = np.ones((model['pts'].shape[0], 3), np.float32) * 0.5
+      colors = np.ones((model["pts"].shape[0], 3), np.float32) * 0.5
 
       # Set UV texture coordinates to dummy values.
-      texture_uv = np.zeros((model['pts'].shape[0], 2), np.float32)
+      texture_uv = np.zeros((model["pts"].shape[0], 2), np.float32)
 
     # Set the vertex data.
-    if self.mode == 'depth':
-      vertices_type = [
-        ('a_position', np.float32, 3),
-        ('a_color', np.float32, colors.shape[1])
-      ]
-      vertices = np.array(list(zip(model['pts'], colors)), vertices_type)
+    if self.mode == "depth":
+      vertices_type = [("a_position", np.float32, 3), ("a_color", np.float32, colors.shape[1])]
+      vertices = np.array(list(zip(model["pts"], colors)), vertices_type)
     else:
-      if self.shading == 'flat':
+      if self.shading == "flat":
         vertices_type = [
-          ('a_position', np.float32, 3),
-          ('a_color', np.float32, colors.shape[1]),
-          ('a_texcoord', np.float32, 2)
+            ("a_position", np.float32, 3),
+            ("a_color", np.float32, colors.shape[1]),
+            ("a_texcoord", np.float32, 2),
         ]
-        vertices = np.array(list(zip(model['pts'], colors, texture_uv)),
-                            vertices_type)
-      elif self.shading == 'phong':
+        vertices = np.array(list(zip(model["pts"], colors, texture_uv)), vertices_type)
+      elif self.shading == "phong":
         vertices_type = [
-          ('a_position', np.float32, 3),
-          ('a_normal', np.float32, 3),
-          ('a_color', np.float32, colors.shape[1]),
-          ('a_texcoord', np.float32, 2)
+            ("a_position", np.float32, 3),
+            ("a_normal", np.float32, 3),
+            ("a_color", np.float32, colors.shape[1]),
+            ("a_texcoord", np.float32, 2),
         ]
-        vertices = np.array(list(zip(model['pts'], model['normals'],
-                                     colors, texture_uv)), vertices_type)
+        vertices = np.array(list(zip(model["pts"], model["normals"], colors, texture_uv)), vertices_type)
       else:
-        raise ValueError('Unknown shading type.')
+        raise ValueError("Unknown shading type.")
 
     # Create vertex and index buffer for the loaded object model.
-    self.vertex_buffers[obj_id] = vertices.view(gloo.VertexBuffer)
-    self.index_buffers[obj_id] = \
-      model['faces'].flatten().astype(np.uint32).view(gloo.IndexBuffer)
+    self.vertex_buffers[obj_id] = gloo.VertexBuffer(vertices)
+    self.index_buffers[obj_id] = gloo.IndexBuffer(model["faces"].flatten().astype(np.uint32))
 
     # Set shader for the selected shading.
-    if self.shading == 'flat':
+    if self.shading == "flat":
       rgb_fragment_code = _rgb_fragment_flat_code
-    elif self.shading == 'phong':
+    elif self.shading == "phong":
       rgb_fragment_code = _rgb_fragment_phong_code
     else:
-      raise ValueError('Unknown shading type.')
+      raise ValueError("Unknown shading type.")
 
     # Prepare the RGB OpenGL program.
     rgb_program = gloo.Program(_rgb_vertex_code, rgb_fragment_code)
     rgb_program.bind(self.vertex_buffers[obj_id])
     if self.model_textures[obj_id] is not None:
-      rgb_program['u_use_texture'] = int(True)
-      rgb_program['u_texture'] = self.model_textures[obj_id]
+      rgb_program["u_use_texture"] = int(True)
+      rgb_program["u_texture"] = self.model_textures[obj_id]
     else:
-      rgb_program['u_use_texture'] = int(False)
-      rgb_program['u_texture'] = np.zeros((1, 1, 4), np.float32)
+      rgb_program["u_use_texture"] = int(False)
+      rgb_program["u_texture"] = np.zeros((1, 1, 4), np.float32)
     self.rgb_programs[obj_id] = rgb_program
 
     # Prepare the depth OpenGL program.
-    depth_program = gloo.Program(_depth_vertex_code,_depth_fragment_code)
+    depth_program = gloo.Program(_depth_vertex_code, _depth_fragment_code)
     depth_program.bind(self.vertex_buffers[obj_id])
     self.depth_programs[obj_id] = depth_program
 
@@ -419,13 +430,8 @@ class RendererPython(renderer.Renderer):
     del self.rgb_programs[obj_id]
     del self.depth_programs[obj_id]
 
-  def render_object(self, obj_id, R, t, fx, fy, cx, cy):
+  def render_object(self, obj_id, R, t, fx, fy, cx, cy, clear=True):
     """See base class."""
-
-    # Define the following variables as global so their latest values are always
-    # seen in function on_draw below.
-    global curr_obj_id, mat_model, mat_view, mat_proj
-    curr_obj_id = obj_id
 
     # Model matrix (from object space to world space).
     mat_model = np.eye(4, dtype=np.float32)
@@ -434,48 +440,46 @@ class RendererPython(renderer.Renderer):
     # system from OpenCV to OpenGL camera space).
     mat_view_cv = np.eye(4, dtype=np.float32)
     mat_view_cv[:3, :3], mat_view_cv[:3, 3] = R, t.squeeze()
-    yz_flip = np.eye(4, dtype=np.float32)
-    yz_flip[1, 1], yz_flip[2, 2] = -1, -1
-    mat_view = yz_flip.dot(mat_view_cv)  # OpenCV to OpenGL camera system.
+
+    mat_view = self.pose_cv_to_gl.dot(mat_view_cv)  # OpenCV to OpenGL camera system.
     mat_view = mat_view.T  # OpenGL expects column-wise matrix format.
 
     # Calculate the near and far clipping plane from the 3D bounding box.
     bbox_corners = self.model_bbox_corners[obj_id]
-    bbox_corners_ht = np.concatenate(
-      (bbox_corners, np.ones((bbox_corners.shape[0], 1))), axis=1).transpose()
+    bbox_corners_ht = np.concatenate((bbox_corners, np.ones((bbox_corners.shape[0], 1))), axis=1).transpose()
     bbox_corners_eye_z = mat_view_cv[2, :].reshape((1, 4)).dot(bbox_corners_ht)
-    clip_near = bbox_corners_eye_z.min()
-    clip_far = bbox_corners_eye_z.max()
+    self.clip_near = bbox_corners_eye_z.min()
+    self.clip_far = bbox_corners_eye_z.max()
 
     # Projection matrix.
     K = np.array([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]])
-    mat_proj = _calc_calib_proj(
-      K, 0, 0, self.width, self.height, clip_near, clip_far)
+    mat_proj = _calc_calib_proj(K, 0, 0, self.width, self.height, self.clip_near, self.clip_far)
 
-    @self.window.event
-    def on_draw(dt):
-      self.window.clear()
-      global curr_obj_id, mat_model, mat_view, mat_proj
+    self.update()
+    self.on_draw(obj_id, mat_model, mat_view, mat_proj, clear=clear)
 
-      # Render the RGB image.
+    if self.mode == "rgb":
+      return {"rgb": self.rgb}
+    elif self.mode == "depth":
+      return {"depth": self.depth}
+    elif self.mode == "rgb+depth":
+      return {"rgb": self.rgb, "depth": self.depth}
+
+  def on_draw(self, obj_id, mat_model, mat_view, mat_proj, clear=True):
+    with self.fbo:
+      gloo.set_state(depth_test=True, blend=False, cull_face=False)
+      gl.glEnable(gl.GL_LINE_SMOOTH)
+      # gl.glDisable(gl.GL_LINE_SMOOTH)
+      if clear:
+        gloo.set_clear_color((self.bg_color[0], self.bg_color[1], self.bg_color[2], self.bg_color[3]))
+        gloo.clear(color=True, depth=True)
+      gloo.set_viewport(0, 0, self.width, self.height)
+
       if self.render_rgb:
-        self.rgb = self._draw_rgb(
-          curr_obj_id, mat_model, mat_view, mat_proj)
+        self.rgb = self._draw_rgb(obj_id, mat_model, mat_view, mat_proj)
 
-      # Render the depth image.
       if self.render_depth:
-        self.depth = self._draw_depth(
-          curr_obj_id, mat_model, mat_view, mat_proj)
-
-    # The on_draw function is called framecount+1 times.
-    app.run(framecount=0)
-
-    if self.mode == 'rgb':
-      return {'rgb': self.rgb}
-    elif self.mode == 'depth':
-      return {'depth': self.depth}
-    elif self.mode == 'rgb+depth':
-      return {'rgb': self.rgb, 'depth': self.depth}
+        self.depth = self._draw_depth(obj_id, mat_model, mat_view, mat_proj)
 
   def _draw_rgb(self, obj_id, mat_model, mat_view, mat_proj):
     """Renders an RGB image.
@@ -488,33 +492,18 @@ class RendererPython(renderer.Renderer):
     """
     # Update the OpenGL program.
     program = self.rgb_programs[obj_id]
-    program['u_light_eye_pos'] = list(self.light_cam_pos)
-    program['u_light_ambient_w'] = self.light_ambient_weight
-    program['u_mv'] = _calc_model_view(mat_model, mat_view)
-    program['u_nm'] = _calc_normal_matrix(mat_model, mat_view)
-    program['u_mvp'] = _calc_model_view_proj(mat_model, mat_view, mat_proj)
-
-    # OpenGL setup.
-    gl.glEnable(gl.GL_DEPTH_TEST)
-    gl.glClearColor(
-      self.bg_color[0], self.bg_color[1], self.bg_color[2], self.bg_color[3])
-    gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-    gl.glViewport(0, 0, self.width, self.height)
-
-    # Keep the back-face culling disabled because of objects which do not have
-    # well-defined surface (e.g. the lamp from the lm dataset).
-    gl.glDisable(gl.GL_CULL_FACE)
+    program["u_light_eye_pos"] = list(self.light_cam_pos)
+    program["u_light_ambient_w"] = self.light_ambient_weight
+    program["u_mv"] = _calc_model_view(mat_model, mat_view)
+    program["u_nm"] = _calc_normal_matrix(mat_model, mat_view)
+    program["u_mvp"] = _calc_model_view_proj(mat_model, mat_view, mat_proj)
 
     # Rendering.
-    program.draw(gl.GL_TRIANGLES, self.index_buffers[obj_id])
+    program.draw("triangles", self.index_buffers[obj_id])
 
     # Get the content of the FBO texture.
-    rgb = np.zeros((self.height, self.width, 4), dtype=np.float32)
-    gl.glReadPixels(0, 0, self.width, self.height, gl.GL_RGBA, gl.GL_FLOAT, rgb)
-    rgb.shape = (self.height, self.width, 4)
-    rgb = rgb[::-1, :]
-    rgb = np.round(rgb[:, :, :3] * 255).astype(np.uint8)  # Convert to [0, 255].
-
+    rgb = gl.glReadPixels(0, 0, self.width, self.height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
+    rgb = np.frombuffer(rgb, dtype=np.uint8).reshape((self.height, self.width, 3))[::-1, :]
     return rgb
 
   def _draw_depth(self, obj_id, mat_model, mat_view, mat_proj):
@@ -528,28 +517,22 @@ class RendererPython(renderer.Renderer):
     """
     # Update the OpenGL program.
     program = self.depth_programs[obj_id]
-    program['u_mv'] = _calc_model_view(mat_model, mat_view)
-    program['u_mvp'] = _calc_model_view_proj(mat_model, mat_view, mat_proj)
-
-    # OpenGL setup.
-    gl.glEnable(gl.GL_DEPTH_TEST)
-    gl.glClearColor(0.0, 0.0, 0.0, 0.0)
-    gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-    gl.glViewport(0, 0, self.width, self.height)
-
-    # Keep the back-face culling disabled because of objects which do not have
-    # well-defined surface (e.g. the lamp from the lm dataset).
-    gl.glDisable(gl.GL_CULL_FACE)
+    program["u_mv"] = _calc_model_view(mat_model, mat_view)
+    program["u_mvp"] = _calc_model_view_proj(mat_model, mat_view, mat_proj)
 
     # Rendering.
-    program.draw(gl.GL_TRIANGLES, self.index_buffers[obj_id])
+    program.draw("triangles", self.index_buffers[obj_id])
 
-    # Get the content of the FBO texture.
-    depth = np.zeros((self.height, self.width, 4), dtype=np.float32)
-    gl.glReadPixels(
-      0, 0, self.width, self.height, gl.GL_RGBA, gl.GL_FLOAT, depth)
-    depth.shape = (self.height, self.width, 4)
-    depth = depth[::-1, :]
-    depth = depth[:, :, 0]  # Depth is saved in the first channel
+    dep = gl.glReadPixels(0, 0, self.width, self.height, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT)
+    # self.depth = self.depth.reshape(self.height, self.width)
+    # Read buffer and flip X
+    dep = np.copy(np.frombuffer(dep, np.float32)).reshape(self.height, self.width)[::-1, :]
 
-    return depth
+    # Convert z-buffer to depth map
+    mult = (self.clip_near * self.clip_far) / (self.clip_near - self.clip_far)
+    addi = self.clip_far / (self.clip_near - self.clip_far)
+    bg = dep == 1
+    dep = mult / (dep + addi)
+    dep[bg] = 0
+
+    return dep

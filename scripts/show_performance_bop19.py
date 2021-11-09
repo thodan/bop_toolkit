@@ -4,12 +4,13 @@
 """Shows BOP19 metrics and plots recall curves after running eval_bop19.py"""
 
 import os
+import sys
 import time
 import argparse
-import subprocess
 import numpy as np
 import matplotlib.pyplot as plt
-
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(cur_dir, "../"))
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
@@ -186,9 +187,9 @@ for result_filename in p['result_filenames']:
   # output final scores and plot recall curves
   err_types = [e['type'] for e in p['errors']]
   for err_type in err_types:
-    misc.log('Average Recall {}: {}'.format(err_type, 
+    misc.log('Average Recall {}: {}'.format(err_type,
       aur[err_type]))
-    
+
   if set(['vsd', 'mssd', 'mspd']).issubset(err_types):
     test_set = os.path.basename(result_filename)
     mean_error = np.mean([aur[err_type] for err_type in err_types])

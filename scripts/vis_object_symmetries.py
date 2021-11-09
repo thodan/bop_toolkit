@@ -4,8 +4,10 @@
 """Visualizes object models under all identified symmetry transformations."""
 
 import os
+import sys
 import numpy as np
-
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(cur_dir, "../"))
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -34,13 +36,13 @@ p = {
       't': np.array([[0, 0, 500]]).T
     }
   ],
-  
+
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
-  
+
   # Folder for output visualisations.
   'vis_path': os.path.join(config.output_path, 'vis_object_symmetries'),
-  
+
   # Path templates for output images.
   'vis_rgb_tpath': os.path.join(
     '{vis_path}', '{dataset}', '{obj_id:06d}',

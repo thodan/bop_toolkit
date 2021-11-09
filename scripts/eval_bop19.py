@@ -4,11 +4,13 @@
 """Evaluation script for the BOP Challenge 2019/2020."""
 
 import os
+import sys
 import time
 import argparse
 import subprocess
 import numpy as np
-
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(cur_dir, "../"))
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
@@ -149,7 +151,7 @@ for result_filename in p['result_filenames']:
     # Calculate error of the pose estimates.
     calc_errors_cmd = [
       'python',
-      os.path.join('scripts', 'eval_calc_errors.py'),
+      os.path.join(cur_dir, 'eval_calc_errors.py'),
       '--n_top={}'.format(error['n_top']),
       '--error_type={}'.format(error['type']),
       '--result_filenames={}'.format(result_filename),
@@ -198,7 +200,7 @@ for result_filename in p['result_filenames']:
 
         calc_scores_cmd = [
           'python',
-          os.path.join('scripts', 'eval_calc_scores.py'),
+          os.path.join(cur_dir, 'eval_calc_scores.py'),
           '--error_dir_paths={}'.format(error_dir_path),
           '--eval_path={}'.format(p['eval_path']),
           '--targets_filename={}'.format(p['targets_filename']),
@@ -218,7 +220,7 @@ for result_filename in p['result_filenames']:
         scores_filename = 'scores_{}.json'.format(score_sign)
         scores_path = os.path.join(
           p['eval_path'], result_name, error_sign, scores_filename)
-        
+
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)

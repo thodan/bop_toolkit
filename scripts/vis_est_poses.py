@@ -4,9 +4,11 @@
 """Visualizes object models in pose estimates saved in the BOP format."""
 
 import os
+import sys
 import numpy as np
 import itertools
-
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(cur_dir, "../"))
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -53,10 +55,10 @@ p = {
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
-  
+
   # Folder for output visualisations.
   'vis_path': os.path.join(config.output_path, 'vis_est_poses'),
-  
+
   # Path templates for output images.
   'vis_rgb_tpath': os.path.join(
     '{vis_path}', '{result_name}', '{scene_id:06d}', '{vis_name}.jpg'),

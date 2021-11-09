@@ -10,9 +10,10 @@ selected dataset.
 """
 
 import os
-import glob
+import sys
 import numpy as np
-
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(cur_dir, "../"))
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout

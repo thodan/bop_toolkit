@@ -92,7 +92,9 @@ def create_renderer(width, height, renderer_type='cpp', mode='rgb+depth',
   if renderer_type == 'python':
     from . import renderer_py
     return renderer_py.RendererPython(width, height, mode, shading, bg_color)
-
+  elif renderer_type == "vispy":
+    from . import renderer_vispy
+    return renderer_vispy.RendererVispy(width, height, mode, shading, bg_color)
   elif renderer_type == 'cpp':
     from . import renderer_cpp
     return renderer_cpp.RendererCpp(width, height)
