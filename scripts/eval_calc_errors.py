@@ -4,13 +4,11 @@
 """Calculates error of 6D object pose estimates."""
 
 import os
-import sys
 import time
 import argparse
 import copy
 import numpy as np
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(cur_dir, "../"))
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -56,7 +54,7 @@ p = {
   'skip_missing': True,
 
   # Type of the renderer (used for the VSD pose error function).
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Names of files with results for which to calculate the errors (assumed to be
   # stored in folder p['results_path']). See docs/bop_challenge_2019.md for a

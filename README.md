@@ -20,11 +20,19 @@ pip install -r requirements.txt
 
 In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
 
-### Python Renderer
+### Vispy Renderer
 
-The Python based renderer is implemented using
+The Python based headless renderer with egl backend is implemented using [Vispy](https://github.com/vispy/vispy).
+Vispy is installed using the pip command above.
+Note that the [nvidia opengl driver](https://developer.nvidia.com/opengl-driver) might be required in case of any errors.
+
+### Python Renderer (deprecated)
+
+Another Python based renderer is implemented using
 [Glumpy](https://glumpy.github.io/) which depends on
 [freetype](https://www.freetype.org/) and [GLFW](https://www.glfw.org/).
+This implementation is similar to the vispy renderer since glumpy and vispy have similar apis,
+but this renderer does not support headless rendering.
 Glumpy is installed using the pip command above. On Linux, freetype and GLFW can
 be installed by:
 
@@ -61,8 +69,9 @@ In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master
 ```
 python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_CSV_WITH_RESULTS
 ```
---renderer_type: Either "python" or "cpp" (you need to install the C++ Renderer for the latter).
---result_filenames: Comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
+`--renderer_type`: "vispy", "python", or "cpp" (We recommend using "vispy" since it is easy to install and works headlessly. For "cpp", you need to install the C++ Renderer [bop_renderer](https://github.com/thodan/bop_renderer).).
+
+`--result_filenames`: Comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
 
 ## Convert BOP to COCO format
 

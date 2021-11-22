@@ -4,10 +4,8 @@
 """Calculates masks of object models in the ground-truth poses."""
 
 import os
-import sys
 import numpy as np
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(cur_dir, "../"))
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -32,7 +30,7 @@ p = {
   'delta': 15,  # 5 for ITODD, 15 for the other datasets.
 
   # Type of the renderer.
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,

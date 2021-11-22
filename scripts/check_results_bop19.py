@@ -4,10 +4,8 @@
 """Evaluation script for the BOP Challenge 2019/2020."""
 
 import os
-import sys
 import argparse
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(cur_dir, "../"))
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc

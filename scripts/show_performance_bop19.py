@@ -4,13 +4,11 @@
 """Shows BOP19 metrics and plots recall curves after running eval_bop19.py"""
 
 import os
-import sys
 import time
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(cur_dir, "../"))
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc

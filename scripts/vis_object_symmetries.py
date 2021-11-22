@@ -4,10 +4,8 @@
 """Visualizes object models under all identified symmetry transformations."""
 
 import os
-import sys
 import numpy as np
-cur_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(cur_dir, "../"))
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -23,7 +21,7 @@ p = {
   'dataset': 'itodd',
 
   # Type of the renderer (used for the VSD pose error function).
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # See misc.get_symmetry_transformations().
   'max_sym_disc_step': 0.01,
