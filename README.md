@@ -67,7 +67,7 @@ In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master
 
 ### 4. Evaluate the pose estimates
 ```
-python scripts/eval_bop19.py --renderer_type=python --result_filenames=NAME_OF_CSV_WITH_RESULTS
+python scripts/eval_bop19.py --renderer_type=vispy --result_filenames=NAME_OF_CSV_WITH_RESULTS
 ```
 `--renderer_type`: "vispy", "python", or "cpp" (We recommend using "vispy" since it is easy to install and works headlessly. For "cpp", you need to install the C++ Renderer [bop_renderer](https://github.com/thodan/bop_renderer).).
 
