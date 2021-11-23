@@ -36,7 +36,7 @@ p = {
 
   # Path to scripts/meshlab_scripts/remesh_for_eval.mlx.
   'meshlab_script_path': os.path.join(
-    cur_dir, 'meshlab_scripts',
+    os.path.dirname(os.path.realpath(__file__)), 'meshlab_scripts',
     r'remesh_for_eval_cell=0.25.mlx'),
 }
 ################################################################################
