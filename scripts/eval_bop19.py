@@ -149,7 +149,7 @@ for result_filename in p['result_filenames']:
     # Calculate error of the pose estimates.
     calc_errors_cmd = [
       'python',
-      os.path.join(cur_dir, 'eval_calc_errors.py'),
+      os.path.join(os.path.dirname(os.path.realpath(__file__)), 'eval_calc_errors.py'),
       '--n_top={}'.format(error['n_top']),
       '--error_type={}'.format(error['type']),
       '--result_filenames={}'.format(result_filename),
