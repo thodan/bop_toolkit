@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
 
-### Vispy Renderer
+### Vispy Renderer (default)
 
 The Python based headless renderer with egl backend is implemented using [Vispy](https://github.com/vispy/vispy).
 Vispy is installed using the pip command above.
