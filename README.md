@@ -15,7 +15,7 @@ A Python toolkit of the BOP benchmark for 6D object pose estimation
 
 To install the required python libraries, run:
 ```
-pip install -r requirements.txt
+pip install -r requirements.txt -e .
 ```
 
 In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
