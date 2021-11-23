@@ -198,7 +198,7 @@ for result_filename in p['result_filenames']:
 
         calc_scores_cmd = [
           'python',
-          os.path.join(cur_dir, 'eval_calc_scores.py'),
+          os.path.join(os.path.dirname(os.path.realpath(__file__)), 'eval_calc_scores.py'),
           '--error_dir_paths={}'.format(error_dir_path),
           '--eval_path={}'.format(p['eval_path']),
           '--targets_filename={}'.format(p['targets_filename']),
