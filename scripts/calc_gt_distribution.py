@@ -2,7 +2,6 @@
 # Center for Machine Perception, Czech Technical University in Prague
 
 """Calculates distribution of GT poses."""
-
 import math
 import numpy as np
 import matplotlib.pyplot as plt

@@ -61,7 +61,7 @@ p = {
   'max_sym_disc_step': 0.01,
 
   # Type of the renderer (used for the VSD pose error function).
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Names of files with results for which to calculate the errors (assumed to be
   # stored in folder p['results_path']). See docs/bop_challenge_2019.md for a
@@ -149,7 +149,7 @@ for result_filename in p['result_filenames']:
     # Calculate error of the pose estimates.
     calc_errors_cmd = [
       'python',
-      os.path.join('scripts', 'eval_calc_errors.py'),
+      os.path.join(os.path.dirname(os.path.realpath(__file__)), 'eval_calc_errors.py'),
       '--n_top={}'.format(error['n_top']),
       '--error_type={}'.format(error['type']),
       '--result_filenames={}'.format(result_filename),
@@ -198,7 +198,7 @@ for result_filename in p['result_filenames']:
 
         calc_scores_cmd = [
           'python',
-          os.path.join('scripts', 'eval_calc_scores.py'),
+          os.path.join(os.path.dirname(os.path.realpath(__file__)), 'eval_calc_scores.py'),
           '--error_dir_paths={}'.format(error_dir_path),
           '--eval_path={}'.format(p['eval_path']),
           '--targets_filename={}'.format(p['targets_filename']),
@@ -218,7 +218,7 @@ for result_filename in p['result_filenames']:
         scores_filename = 'scores_{}.json'.format(score_sign)
         scores_path = os.path.join(
           p['eval_path'], result_name, error_sign, scores_filename)
-        
+
         # Load the scores.
         misc.log('Loading calculated scores from: {}'.format(scores_path))
         scores = inout.load_json(scores_path)

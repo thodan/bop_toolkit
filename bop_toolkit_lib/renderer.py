@@ -79,11 +79,12 @@ def create_renderer(width, height, renderer_type='cpp', mode='rgb+depth',
   """A factory to create a renderer.
 
   Note: Parameters mode, shading and bg_color are currently supported only by
-  the Python renderer (renderer_type='python').
+  the 'vispy' and 'python' renderers (renderer_type='vispy' or renderer_type='python').
+  To render on a headless server, either 'vispy' or 'cpp' can be used.
 
   :param width: Width of the rendered image.
   :param height: Height of the rendered image.
-  :param renderer_type: Type of renderer (options: 'cpp', 'python').
+  :param renderer_type: Type of renderer (options: 'vispy', 'cpp', 'python').
   :param mode: Rendering mode ('rgb+depth', 'rgb', 'depth').
   :param shading: Type of shading ('flat', 'phong').
   :param bg_color: Color of the background (R, G, B, A).
@@ -92,7 +93,9 @@ def create_renderer(width, height, renderer_type='cpp', mode='rgb+depth',
   if renderer_type == 'python':
     from . import renderer_py
     return renderer_py.RendererPython(width, height, mode, shading, bg_color)
-
+  elif renderer_type == "vispy":
+    from . import renderer_vispy
+    return renderer_vispy.RendererVispy(width, height, mode, shading, bg_color)
   elif renderer_type == 'cpp':
     from . import renderer_cpp
     return renderer_cpp.RendererCpp(width, height)

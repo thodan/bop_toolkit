@@ -41,7 +41,7 @@ p = {
   'vis_orig_color': False,
 
   # Type of the renderer (used for the VSD pose error function).
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Names of files with pose estimates to visualize (assumed to be stored in
   # folder config.eval_path). See docs/bop_challenge_2019.md for a description
@@ -53,10 +53,10 @@ p = {
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
-  
+
   # Folder for output visualisations.
   'vis_path': os.path.join(config.output_path, 'vis_est_poses'),
-  
+
   # Path templates for output images.
   'vis_rgb_tpath': os.path.join(
     '{vis_path}', '{result_name}', '{scene_id:06d}', '{vis_name}.jpg'),

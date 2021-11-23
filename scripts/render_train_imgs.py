@@ -55,8 +55,8 @@ min_n_views = 1000
 ambient_weight = 0.5  # Weight of ambient light [0, 1]
 shading = 'phong'  # 'flat', 'phong'
 
-# Type of the renderer. Options: 'cpp', 'python'.
-renderer_type = 'python'
+# Type of the renderer. Options: 'vispy', 'cpp', 'python'.
+renderer_type = 'vispy'
 
 # Super-sampling anti-aliasing (SSAA) - the RGB image is rendered at ssaa_fact
 # times higher resolution and then down-sampled to the required resolution.
