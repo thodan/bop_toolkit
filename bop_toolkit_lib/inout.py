@@ -12,7 +12,6 @@ import json
 
 from bop_toolkit_lib import misc
 
-
 def load_im(path):
   """Loads an image from a file.
 
@@ -329,6 +328,74 @@ def check_bop_results(path, version='bop19'):
 
   return check_passed, check_msg
 
+def check_coco_results(path, version='bop22', ann_type='segm'):
+  """Checks if the format of extended COCO results is correct.
+
+  :param result_filenames: Path to a file with coco estimates.
+  :param version: Version of the results.
+  :return: True if the format is correct, False if it is not correct.
+  """
+
+  misc.log("Checking coco result format...")
+  check_passed = True
+  check_msg = 'OK'
+  try:
+    results = load_json(path, keys_to_int=True)
+  except Exception as e:
+    check_passed = False
+    check_msg = 'Error when loading COCO results: {}'.format(e)
+    misc.log(check_msg)
+
+  if version == 'bop22':
+    try:
+      for result in results:
+        assert 'scene_id' in result, 'scene_id key missing' 
+        assert 'image_id' in result, 'image_id key missing'
+        assert 'category_id' in result, 'category_id key missing'
+        assert 'score' in result, 'score key missing'
+        assert isinstance(result['scene_id'], int)
+        assert isinstance(result['image_id'], int)
+        assert isinstance(result['category_id'], int)
+        assert isinstance(result['score'], float)
+        if 'bbox' in result:
+          assert isinstance(result['bbox'], list)
+        if 'segmentation' in result and ann_type == 'segm':
+          assert isinstance(result['segmentation'], dict), "Segmentation not in RLE format!"
+          assert "counts" in result['segmentation'], "Incorrect RLE format!"
+          assert "size" in result['segmentation'], "Incorrect RLE format!"
+        if 'time' in result:
+          assert isinstance(result['time'], (float, int))
+    except AssertionError as msg:
+      check_msg = 'Error when checking keys and types: {}'.format(msg)
+      check_passed = False
+      misc.log(check_msg)
+  return check_passed, check_msg
+
+def save_coco_results(path, results, version='bop22'):
+  """Saves detections/instance segmentations for each scene in coco format.
+  
+  "bbox" should be [x,y,w,h] in pixels
+  "segmentation" should be an RLE encoded mask, use pycoco_utils.binary_mask_to_rle(binary_mask)
+
+  :param path: Path to the output file.
+  :param results: Dictionary with detection results 
+  :param version: Version of the results.
+  """
+
+  # See docs/bop_challenge_2022.md for details.
+  if version == 'bop22':
+    coco_results = []
+    for res in results:
+      coco_results.append({'scene_id': res['scene_id'],
+                           'image_id':res['im_id'],
+                           'category_id':res['obj_id'],
+                           'score':res['score'],
+                           'bbox':res['bbox'].tolist() if 'bbox' in res else [],
+                           'segmentation':res['segmentation'] if 'segmentation' in res else {},
+                           'time':res['run_time'] if 'run_time' in res else -1})
+    save_json(path, coco_results)
+  else:
+    raise ValueError('Unknown version of BOP detection results.')
 
 def load_ply(path):
   """Loads a 3D mesh model from a PLY file.
