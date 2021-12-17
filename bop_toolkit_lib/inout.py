@@ -328,7 +328,7 @@ def check_bop_results(path, version='bop19'):
 
   return check_passed, check_msg
 
-def check_coco_results(path, version='bop22'):
+def check_coco_results(path, version='bop22', ann_type='segm'):
   """Checks if the format of extended COCO results is correct.
 
   :param result_filenames: Path to a file with coco estimates.
@@ -359,12 +359,12 @@ def check_coco_results(path, version='bop22'):
         assert isinstance(result['score'], float)
         if 'bbox' in result:
           assert isinstance(result['bbox'], list)
-        if 'segmentation' in result:
+        if 'segmentation' in result and ann_type == 'segm':
           assert isinstance(result['segmentation'], dict), "Segmentation not in RLE format!"
           assert "counts" in result['segmentation'], "Incorrect RLE format!"
           assert "size" in result['segmentation'], "Incorrect RLE format!"
         if 'time' in result:
-          assert isinstance(result['time'], float)
+          assert isinstance(result['time'], (float, int))
     except AssertionError as msg:
       check_msg = 'Error when checking keys and types: {}'.format(msg)
       check_passed = False

@@ -91,7 +91,7 @@ for result_filename in p['result_filenames']:
     p['datasets_path'], dataset, model_type)
   
   # Checking coco result file
-  check_passed,_ = inout.check_coco_results(os.path.join(p['results_path'], result_filename))
+  check_passed,_ = inout.check_coco_results(os.path.join(p['results_path'], result_filename), ann_type=p['ann_type'])
   if not check_passed:
     misc.log('Please correct the coco result format of {}'.format(result_filename))
     exit()
@@ -142,7 +142,7 @@ for result_filename in p['result_filenames']:
       dataset_coco_ann, image_id_offset = pycoco_utils.merge_coco_annotations(dataset_coco_ann, scene_coco_ann)
       dataset_coco_results = pycoco_utils.merge_coco_results(dataset_coco_results, scene_coco_results, image_id_offset)
   
-  #initialize COCO ground truth api
+    #initialize COCO ground truth api
   cocoGt=COCO(dataset_coco_ann)
   cocoDt=cocoGt.loadRes(dataset_coco_results)
 

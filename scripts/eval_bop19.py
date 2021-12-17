@@ -148,7 +148,7 @@ for result_filename in p['result_filenames']:
     # Calculate error of the pose estimates.
     calc_errors_cmd = [
       'python',
-      os.path.join('scripts', 'eval_calc_errors.py'),
+      os.path.join(os.path.dirname(os.path.realpath(__file__)), 'eval_calc_errors.py'),
       '--n_top={}'.format(error['n_top']),
       '--error_type={}'.format(error['type']),
       '--result_filenames={}'.format(result_filename),
@@ -197,7 +197,7 @@ for result_filename in p['result_filenames']:
 
         calc_scores_cmd = [
           'python',
-          os.path.join('scripts', 'eval_calc_scores.py'),
+          os.path.join(os.path.dirname(os.path.realpath(__file__)), 'eval_calc_scores.py'),
           '--error_dir_paths={}'.format(error_dir_path),
           '--eval_path={}'.format(p['eval_path']),
           '--targets_filename={}'.format(p['targets_filename']),
