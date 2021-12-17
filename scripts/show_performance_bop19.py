@@ -6,8 +6,8 @@
 import os
 import time
 import argparse
-import subprocess
 import numpy as np
+import matplotlib.pyplot as plt
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
@@ -33,6 +33,8 @@ p = {
         'tless': 15,
         'tudl': 15,
         'tyol': 15,
+        'ycbv': 15,
+        'hope': 15,
       },
       'vsd_taus': list(np.arange(0.05, 0.51, 0.05)),
       'correct_th': [[th] for th in np.arange(0.05, 0.51, 0.05)]
@@ -183,9 +185,9 @@ for result_filename in p['result_filenames']:
   # output final scores and plot recall curves
   err_types = [e['type'] for e in p['errors']]
   for err_type in err_types:
-    misc.log('Average Recall {}: {}'.format(err_type, 
+    misc.log('Average Recall {}: {}'.format(err_type,
       aur[err_type]))
-    
+
   if set(['vsd', 'mssd', 'mspd']).issubset(err_types):
     test_set = os.path.basename(result_filename)
     mean_error = np.mean([aur[err_type] for err_type in err_types])

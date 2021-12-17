@@ -42,6 +42,7 @@ p = {
     'tudl': 15,
     'tyol': 15,
     'ycbv': 15,
+    'hope': 15,
   },
   'vsd_taus': list(np.arange(0.05, 0.51, 0.05)),
   'vsd_normalized_by_diameter': True,
@@ -53,7 +54,7 @@ p = {
   'skip_missing': True,
 
   # Type of the renderer (used for the VSD pose error function).
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Names of files with results for which to calculate the errors (assumed to be
   # stored in folder p['results_path']). See docs/bop_challenge_2019.md for a

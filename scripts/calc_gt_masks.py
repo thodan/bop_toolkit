@@ -30,7 +30,7 @@ p = {
   'delta': 15,  # 5 for ITODD, 15 for the other datasets.
 
   # Type of the renderer.
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,

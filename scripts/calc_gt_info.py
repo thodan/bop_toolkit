@@ -10,7 +10,6 @@ selected dataset.
 """
 
 import os
-import glob
 import numpy as np
 
 from bop_toolkit_lib import config
@@ -40,7 +39,7 @@ p = {
   'delta': 15,
 
   # Type of the renderer.
-  'renderer_type': 'python',  # Options: 'cpp', 'python'.
+  'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
 
   # Folder containing the BOP datasets.
   'datasets_path': config.datasets_path,
