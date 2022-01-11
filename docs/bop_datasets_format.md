@@ -7,6 +7,25 @@ This file describes the common format of the BOP datasets [1].
 
 The datasets have the following structure:
 
+```
+DATASET_NAME
+├─ camera[_TYPE].json
+├─ dataset_info.json
+├─ test_targets_bop19.json
+├─ models[_MODELTYPE][_eval]
+│  ├─ models_info.json
+│  ├─ obj_OBJ_ID.ply
+├─ train|val|test[_TYPE]
+│  ├─ SCENE_ID|OBJ_ID
+│  │  ├─ scene_camera.json
+│  │  ├─ scene_gt.json
+│  │  ├─ scene_gt_info.json
+│  │  ├─ depth
+│  │  ├─ mask
+│  │  ├─ mask_visib
+│  │  ├─ rgb|gray
+```
+
 
 * *models[\_MODELTYPE]* - 3D object models.
 * *models[\_MODELTYPE]\_eval* - "Uniformly" resampled and decimated 3D object
