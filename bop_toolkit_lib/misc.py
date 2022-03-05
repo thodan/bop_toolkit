@@ -71,7 +71,7 @@ def get_symmetry_transformations(model_info, max_sym_disc_step):
       # Discrete step in radians.
       discrete_step = 2.0 * np.pi / discrete_steps_count
 
-      for i in range(1, discrete_steps_count):
+      for i in range(0, discrete_steps_count):
         R = transform.rotation_matrix(i * discrete_step, axis)[:3, :3]
         t = -R.dot(offset) + offset
         trans_cont.append({'R': R, 't': t})
