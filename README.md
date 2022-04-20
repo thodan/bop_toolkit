@@ -87,3 +87,21 @@ python scripts/calc_gt_coco.py
 ```
 
 Set the dataset and split parameters in the top section of the script.
+
+## Manual annotation tool
+
+To annotate a new dataset in BOP format use [this tool](./scripts/annotation_tool.py).
+
+### Interface:
+
+I, jk hl  are used to control object translation and rotation
+
+Translation/rotation mode:
+- Shift not clicked: translation mode
+- Shift clicked: rotation model
+
+Distance/angle big or small:
+- Ctrl not clicked: small distance(1mm) / angle(2deg)
+- Ctrl clicked: big distance(5cm) / angle(90deg)
+
+R or "Refine" button will call ICP algorithm to do local refinement of the annotation

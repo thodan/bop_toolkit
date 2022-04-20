@@ -7,6 +7,8 @@ Using RGB, Depth and Models the tool will generate the "scene_gt.json" annotatio
 
 Other annotations can be generated usign other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
 
+original repo: https://github.com/FLW-TUDO/3d_annotation_tool
+
 """
 
 import glob
