@@ -18,7 +18,6 @@ import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
 import os
 import json
-import argparse
 import cv2
 import warnings
 
@@ -748,18 +747,6 @@ class AppWindow:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Manual annotation tool for BOP format")
-    # parser.add_argument("--dataset-path", type=str, help="dataset path", default='/media/gouda/all/datasets/HOPE')
-    # parser.add_argument("--dataset-split", type=str,
-    #                    help="dataset split to load (train[_TRAINTYPE], val[_VALTYPE], test[_TESTTYPE])",
-    #                    default='hope_val')
-    parser.add_argument("--dataset-path", type=str, help="dataset path",
-                        default='/home/gouda/segmentation/datasets/ML2R_dataset/ml2r')
-    parser.add_argument("--dataset-split", type=str,
-                        help="dataset split to load (train[_TRAINTYPE], val[_VALTYPE], test[_TESTTYPE])",
-                        default='test_anno')
-    parser.add_argument("--start-scene_num", type=int, help="Scene to start annotation from", default=1)
-    parser.add_argument("--start-image_num", type=int, help="Scene to start annotation from", default=0)
 
     if p['dataset_split_type']:
         split_and_type = p['dataset_split'] + '_' + p['dataset_split_type']
