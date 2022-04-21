@@ -92,10 +92,22 @@ Set the dataset and split parameters in the top section of the script.
 
 To annotate a new dataset in BOP format use [this tool](./scripts/annotation_tool.py).
 
+First install Open3d dependency
+
+```
+pip install open3d==0.15.2
+```
+
+Edit the file paths in parameters section at the beginning of the file then run:
+
+```
+python scripts/annotation_tool.py
+```
+
 ### Interface:
 
 Control the object pose with the following keys
-`i`: up, `,`: down, `j`: front, `k`:back, `h`:left, 'l':right
+`i`: up, `,`: down, `j`: front, `k`:back, `h`:left, `l`:right
 
 Translation/rotation mode:
 - Shift not clicked: translation mode

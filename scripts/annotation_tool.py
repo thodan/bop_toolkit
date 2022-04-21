@@ -596,17 +596,19 @@ class AppWindow:
         geometry = None
 
         scene_path = os.path.join(scenes_path, f'{scene_num:06}')
-        rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
-        rgb_img = cv2.imread(rgb_path)
-        depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
-        depth_img = cv2.imread(depth_path, -1)
-        depth_img = np.float32(depth_img / 1000)
 
         camera_params_path = os.path.join(scene_path, 'scene_camera.json')
         with open(camera_params_path) as f:
             data = json.load(f)
             cam_K = data[str(image_num)]['cam_K']
             cam_K = np.array(cam_K).reshape((3, 3))
+            depth_scale = data[str(image_num)]['depth_scale']
+
+        rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
+        rgb_img = cv2.imread(rgb_path)
+        depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
+        depth_img = cv2.imread(depth_path, -1)
+        depth_img = np.float32(depth_img * depth_scale / 1000)
 
         try:
             geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)
