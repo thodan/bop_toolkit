@@ -94,7 +94,8 @@ To annotate a new dataset in BOP format use [this tool](./scripts/annotation_too
 
 ### Interface:
 
-I, jk hl  are used to control object translation and rotation
+Control the object pose with the following keys
+`i`: up, `,`: down, `j`: front, `k`:back, `h`:left, 'l':right
 
 Translation/rotation mode:
 - Shift not clicked: translation mode
