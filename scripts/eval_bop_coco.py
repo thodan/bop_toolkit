@@ -13,11 +13,6 @@ from bop_toolkit_lib import misc
 # PARAMETERS (some can be overwritten by the command line arguments below).
 ################################################################################
 p = {
-  # Minimum visible surface fraction of a valid GT pose.
-  # -1 == k most visible GT poses will be considered, where k is given by
-  # the "inst_count" item loaded from "targets_filename".
-  'visib_gt_min': -1,
-
   # Names of files with detection results for which to calculate the Average Precisions
   # (assumed to be stored in folder p['results_path']). 
   'result_filenames': [
