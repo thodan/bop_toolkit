@@ -157,7 +157,7 @@ for result_filename in p['result_filenames']:
   times = {}
   times_available = True
   for result in coco_results:
-    result_key = '{:06d}_{:06d}'.format(result['scene_id'], result['im_id'])
+    result_key = '{:06d}_{:06d}'.format(result['scene_id'], result['image_id'])
     if result['time'] < 0:
       # All estimation times must be provided.
       times_available = False
@@ -166,7 +166,7 @@ for result_filename in p['result_filenames']:
       if abs(times[result_key] - result['time']) > 0.001:
         raise ValueError(
           'The running time for scene {} and image {} is not the same for '
-          'all estimates.'.format(result['scene_id'], result['im_id']))
+          'all estimates.'.format(result['scene_id'], result['image_id']))
     else:
       times[result_key] = result['time']
 
