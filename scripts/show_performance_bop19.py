@@ -1,7 +1,7 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Shows BOP19 metrics and plots recall curves after running eval_bop19.py"""
+"""Shows BOP19 metrics and plots recall curves after running eval_bop19_pose.py"""
 
 import os
 import time

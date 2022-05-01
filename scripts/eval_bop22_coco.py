@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from bop_toolkit_lib import pycoco_utils
@@ -137,7 +138,7 @@ for result_filename in p['result_filenames']:
       dataset_coco_ann, image_id_offset = pycoco_utils.merge_coco_annotations(dataset_coco_ann, scene_coco_ann)
       dataset_coco_results = pycoco_utils.merge_coco_results(dataset_coco_results, scene_coco_results, image_id_offset)
   
-    #initialize COCO ground truth api
+  # initialize COCO ground truth api
   cocoGt=COCO(dataset_coco_ann)
   cocoDt=cocoGt.loadRes(dataset_coco_results)
 
@@ -150,12 +151,34 @@ for result_filename in p['result_filenames']:
   
   res_type = ['AP', 'AP50', 'AP75', 'AP_small', 'AP_medium', 'AP_large', 
               'AR1', 'AR10', 'AR100', 'AR_small', 'AR_medium', 'AR_large']
-  coco_results = {res_type[i]:stat for i, stat in enumerate(cocoEval.stats)}
-  
+  coco_scores = {res_type[i]: stat for i, stat in enumerate(cocoEval.stats)}
+
+  # Calculate the average estimation time per image.
+  times = {}
+  times_available = True
+  for result in coco_results:
+    result_key = '{:06d}_{:06d}'.format(result['scene_id'], result['im_id'])
+    if result['time'] < 0:
+      # All estimation times must be provided.
+      times_available = False
+      break
+    elif result_key in times:
+      if abs(times[result_key] - result['time']) > 0.001:
+        raise ValueError(
+          'The running time for scene {} and image {} is not the same for '
+          'all estimates.'.format(result['scene_id'], result['im_id']))
+    else:
+      times[result_key] = result['time']
+
+  if times_available:
+    coco_scores['average_time_per_image'] = np.mean(list(times.values()))
+  else:
+    coco_scores['average_time_per_image'] = -1.0
+
   # Save the final scores.
   os.makedirs(os.path.join(p['eval_path'], result_name), exist_ok=True)
   final_scores_path = os.path.join(p['eval_path'], result_name, 'scores_bop22_coco_{}.json'.format(p['ann_type']))
   if p['ann_type'] == 'bbox' and p['bbox_type'] == 'modal':
     final_scores_path = final_scores_path.replace('.json', '_modal.json')
-  inout.save_json(final_scores_path, coco_results)
+  inout.save_json(final_scores_path, coco_scores)
   
