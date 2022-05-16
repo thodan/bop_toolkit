@@ -345,6 +345,7 @@ def check_coco_results(path, version='bop22', ann_type='segm'):
     check_passed = False
     check_msg = 'Error when loading COCO results: {}'.format(e)
     misc.log(check_msg)
+    raise
 
   if version == 'bop22':
     try:
