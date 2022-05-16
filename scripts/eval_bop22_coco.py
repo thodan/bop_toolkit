@@ -117,7 +117,7 @@ for result_filename in p['result_filenames']:
   
   misc.log('Merging coco annotations and predictions...')
   # Merge coco scene annotations and results 
-  for i, scene_id in enumerate(dp_split['scene_ids']):
+  for i, scene_id in enumerate(targets_org):
     
     scene_coco_ann_path = dp_split['scene_gt_coco_tpath'].format(scene_id=scene_id)
     if p['ann_type'] == 'bbox' and p['bbox_type'] == 'modal':
