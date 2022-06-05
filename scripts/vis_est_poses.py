@@ -46,7 +46,7 @@ p = {
   # Names of files with pose estimates to visualize (assumed to be stored in
   # folder config.eval_path). See docs/bop_challenge_2019.md for a description
   # of the format. Example results can be found at:
-  # http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/
+  # https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019/
   'result_filenames': [
     '/path/to/csv/with/results',
   ],

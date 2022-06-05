@@ -13,7 +13,7 @@ Scores before the re-evaluation can be found [here](https://docs.google.com/spre
 
 ## Test data
 
-* [gt](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/gt/) - GT poses.
-* [gt-equivalent](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results/bop_challenge_2019/gt-equivalent/) - Each GT pose was replaced by a random pose from the "equivalence class" given by the [object symmetries](https://github.com/thodan/bop_toolkit/blob/master/scripts/vis_object_symmetries.py).
+* [gt](https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019/gt/) - GT poses.
+* [gt-equivalent](https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019/gt-equivalent/) - Each GT pose was replaced by a random pose from the "equivalence class" given by the [object symmetries](https://github.com/thodan/bop_toolkit/blob/master/scripts/vis_object_symmetries.py).
 
 Scores achieved with *gt* and *gt-equivalent* test data can be found [here](https://docs.google.com/spreadsheets/d/1dK4OYUpAqKYUpc-by-XqnX3F5NqcbqekDlGnDi5h0G4/edit?usp=sharing). Test data *gt* achieves 100% on all scores, *gt-equivalent* achieves 100% on AR_MSSD and AR_MSPD, and 98.9+% on AR_VSD (the threshold setting for VSD is a bit stricter and the surface of the object model in two "symmetrical" poses is not always perfectly aligned).

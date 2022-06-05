@@ -71,7 +71,7 @@ python scripts/eval_bop19.py --renderer_type=vispy --result_filenames=NAME_OF_CS
 ```
 `--renderer_type`: "vispy", "python", or "cpp" (We recommend using "vispy" since it is easy to install and works headlessly. For "cpp", you need to install the C++ Renderer [bop_renderer](https://github.com/thodan/bop_renderer).).
 
-`--result_filenames`: Comma-separated filenames with pose estimates in .csv ([examples](http://ptak.felk.cvut.cz/6DB/public/bop_sample_results)).
+`--result_filenames`: Comma-separated filenames with pose estimates in .csv ([examples](https://bop.felk.cvut.cz/media/data/bop_sample_results)).
 
 ### 5. Evaluate the detections / instance segmentations
 ```
