@@ -13,21 +13,30 @@ from bop_toolkit_lib import misc
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import visibility
 
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--dataset', help="Name of dataset")
+parser.add_argument('-s', '--split', default='train', help="Dataset split. Options: 'train', 'val', 'test'. default=train")
+parser.add_argument('-t', '--type', default=None, help="Dataset split type. See dataset_params.py for options. default=None")
+parser.add_argument('-v', '--visibility', default=15, help="Tolerance used in the visibility test [mm]. default=15")
+parser.add_argument('-c', '--config_file', default=None, help="Path to config file")
+args = parser.parse_args()
 
 # PARAMETERS.
 ################################################################################
 p = {
   # See dataset_params.py for options.
-  'dataset': 'lm',
+  'dataset': args.dataset,
 
   # Dataset split. Options: 'train', 'val', 'test'.
-  'dataset_split': 'test',
+  'dataset_split': args.split,
 
   # Dataset split type. None = default. See dataset_params.py for options.
-  'dataset_split_type': None,
+  'dataset_split_type': args.type,
 
   # Tolerance used in the visibility test [mm].
-  'delta': 15,  # 5 for ITODD, 15 for the other datasets.
+  'delta': args.visibility,  # 5 for ITODD, 15 for the other datasets.
 
   # Type of the renderer.
   'renderer_type': 'vispy',  # Options: 'vispy', 'cpp', 'python'.
@@ -39,14 +48,18 @@ p = {
 
 
 # Load dataset parameters.
-dp_split = dataset_params.get_split_params(
-  p['datasets_path'], p['dataset'], p['dataset_split'], p['dataset_split_type'])
+try:
+  dp_split = dataset_params.get_split_params(
+    p['datasets_path'], p['dataset'], p['dataset_split'], p['dataset_split_type'], args.config_file)
+except KeyError:
+  print(f"No dataset of type {args.dataset} found. Check spelling or try again with a config file.")
+  exit(1)
 
 model_type = None
 if p['dataset'] == 'tless':
   model_type = 'cad'
 dp_model = dataset_params.get_model_params(
-  p['datasets_path'], p['dataset'], model_type)
+  p['datasets_path'], p['dataset'], p['model_type'], args.config_file)
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:

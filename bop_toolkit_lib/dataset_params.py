@@ -2,16 +2,16 @@
 # Center for Machine Perception, Czech Technical University in Prague
 
 """Parameters of the BOP datasets."""
-
 import math
 import glob
 import os
 from os.path import join
 
 from bop_toolkit_lib import inout
+from bop_toolkit_lib.config import ParamLoader
 
 
-def get_camera_params(datasets_path, dataset_name, cam_type=None):
+def get_camera_params(datasets_path, dataset_name, cam_type=None, config_file=None):
   """Returns camera parameters for the specified dataset.
 
   Note that parameters returned by this functions are meant only for simulation
@@ -56,55 +56,84 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
     'cam_params_path': cam_params_path,
   }
 
-  # Add a dictionary containing the intrinsic camera matrix ('K'), image size
-  # ('im_size'), and scale of the depth images ('depth_scale', optional).
-  p.update(inout.load_cam_params(cam_params_path))
+  if config_file is None:
+    # Add a dictionary containing the intrinsic camera matrix ('K'), image size
+    # ('im_size'), and scale of the depth images ('depth_scale', optional).
+    p.update(inout.load_cam_params(cam_params_path))
+
+  else:
+    # Load camera json template
+    p.update(inout.load_cam_params(join(datasets_path, 'camera_template.json')))
+
+    # Load from config file and write to json
+    params = ParamLoader(config_file)
+    p['im_size'] = params.IMG_DIM.TRAIN if params.SELECT.lower()=='train' else params.IMG_DIM.TEST
+    p['K'][0][0] = p['K'][1][1] = params.CAMERA.FOCAL_LEN_MM * 100
+    p['K'][0][2], p['K'][1][2] = p['im_size'][1]/2, p['im_size'][0]/2
+
+    psave = {
+      "cx": p["K"][0][2],
+      "cy": p["K"][1][2],
+      "depth_scale": 0.1,
+      "fx": p["K"][0][0],
+      "fy": p["K"][1][1],
+      "height": p["im_size"][1],
+      "width": p["im_size"][0]
+    }
+    inout.save_json(cam_params_path, psave)
 
   return p
 
 
-def get_model_params(datasets_path, dataset_name, model_type=None):
+def get_model_params(datasets_path, dataset_name, model_type=None, config_file=None):
   """Returns parameters of object models for the specified dataset.
 
   :param datasets_path: Path to a folder with datasets.
   :param dataset_name: Name of the dataset for which to return the parameters.
   :param model_type: Type of object models.
+  :param config_file: Path to .yml containing configurable dataset params
   :return: Dictionary with object model parameters for the specified dataset.
   """
-  # Object ID's.
-  obj_ids = {
-    'lm': list(range(1, 16)),
-    'lmo': [1, 5, 6, 8, 9, 10, 11, 12],
-    'tless': list(range(1, 31)),
-    'tudl': list(range(1, 4)),
-    'tyol': list(range(1, 22)),
-    'ruapc': list(range(1, 15)),
-    'icmi': list(range(1, 7)),
-    'icbin': list(range(1, 3)),
-    'itodd': list(range(1, 29)),
-    'hbs': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
-    'hb': list(range(1, 34)),  # Full HB dataset.
-    'ycbv': list(range(1, 22)),
-    'hope': list(range(1, 29)),
-  }[dataset_name]
+  if config_file is None:
+    # Object ID's.
+    obj_ids = {
+      'lm': list(range(1, 16)),
+      'lmo': [1, 5, 6, 8, 9, 10, 11, 12],
+      'tless': list(range(1, 31)),
+      'tudl': list(range(1, 4)),
+      'tyol': list(range(1, 22)),
+      'ruapc': list(range(1, 15)),
+      'icmi': list(range(1, 7)),
+      'icbin': list(range(1, 3)),
+      'itodd': list(range(1, 29)),
+      'hbs': [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
+      'hb': list(range(1, 34)),  # Full HB dataset.
+      'ycbv': list(range(1, 22)),
+      'hope': list(range(1, 29)),
+    }[dataset_name]
 
-  # ID's of objects with ambiguous views evaluated using the ADI pose error
-  # function (the others are evaluated using ADD). See Hodan et al. (ECCVW'16).
-  symmetric_obj_ids = {
-    'lm': [3, 7, 10, 11],
-    'lmo': [10, 11],
-    'tless': list(range(1, 31)),
-    'tudl': [],
-    'tyol': [3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21],
-    'ruapc': [8, 9, 12, 13],
-    'icmi': [1, 2, 6],
-    'icbin': [1],
-    'itodd': [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
-    'hbs': [10, 12, 18, 29],
-    'hb': [6, 10, 11, 12, 13, 14, 18, 24, 29],
-    'ycbv': [1, 13, 14, 16, 18, 19, 20, 21],
-    'hope': None,  # Not defined yet.
-  }[dataset_name]
+    # ID's of objects with ambiguous views evaluated using the ADI pose error
+    # function (the others are evaluated using ADD). See Hodan et al. (ECCVW'16).
+    symmetric_obj_ids = {
+      'lm': [3, 7, 10, 11],
+      'lmo': [10, 11],
+      'tless': list(range(1, 31)),
+      'tudl': [],
+      'tyol': [3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 21],
+      'ruapc': [8, 9, 12, 13],
+      'icmi': [1, 2, 6],
+      'icbin': [1],
+      'itodd': [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
+      'hbs': [10, 12, 18, 29],
+      'hb': [6, 10, 11, 12, 13, 14, 18, 24, 29],
+      'ycbv': [1, 13, 14, 16, 18, 19, 20, 21],
+      'hope': None,  # Not defined yet.
+    }[dataset_name]
+  else:
+    params = ParamLoader(config_file)
+    dataset_name = params.DATASET
+    obj_ids = params.PARTS.IDS
+    symmetric_obj_ids = params.PARTS.SYMMETRIC
 
   # T-LESS includes two types of object models, CAD and reconstructed.
   # Use the CAD models as default.
@@ -131,7 +160,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
     'symmetric_obj_ids': symmetric_obj_ids,
 
     # Path template to an object model file.
-    'model_tpath': join(models_path, 'obj_{obj_id:06d}.ply'),
+    'model_tpath': join(models_path, 'obj_{obj_id:06d}.ply' if type(obj_ids[0]) is int else '{obj_id}.ply'),
 
     # Path to a file with meta information about the object models.
     'models_info_path': join(models_path, 'models_info.json')
@@ -140,7 +169,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
   return p
 
 
-def get_split_params(datasets_path, dataset_name, split, split_type=None):
+def get_split_params(datasets_path, dataset_name, split, split_type=None, config_file=None):
   """Returns parameters (camera params, paths etc.) for the specified dataset.
 
   :param datasets_path: Path to a folder with datasets.
@@ -372,6 +401,19 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
       p['depth_range'] = None  # Not calculated yet.
       p['azimuth_range'] = None  # Not calculated yet.
       p['elev_range'] = None  # Not calculated yet.
+
+  # from config file
+  elif config_file is not None:
+    params = ParamLoader(config_file)
+    dataset_name = params.DATASET
+
+    p.update({
+      'scene_ids': [1],
+      'im_size': {
+        'train': params.IMG_DIM.TRAIN,
+        'test': params.IMG_DIM.TEST
+      }[split]
+    })
 
   else:
     raise ValueError('Unknown BOP dataset ({}).'.format(dataset_name))

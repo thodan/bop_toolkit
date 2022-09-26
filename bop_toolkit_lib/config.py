@@ -4,6 +4,7 @@
 """Configuration of the BOP Toolkit."""
 
 import os
+import yaml
 
 
 ######## Basic ########
@@ -30,3 +31,20 @@ bop_renderer_path = r'/path/to/bop_renderer/build'
 
 # Executable of the MeshLab server.
 meshlab_server_path = r'/path/to/meshlabserver.exe'
+
+# Class for loading yaml as an object
+class ParamLoader(object):
+  def __init__(self, config):
+    # Load from file path
+    if type(config) is str:
+      with open(config, 'r') as config_file:
+        config = yaml.safe_load(config_file)
+
+    for name, value in config.items():
+      setattr(self, name, self._wrap(value))
+
+  def _wrap(self, value):
+    if isinstance(value, (tuple, list, set, frozenset)): 
+      return type(value)([self._wrap(v) for v in value])
+    else:
+      return ParamLoader(value) if isinstance(value, dict) else value

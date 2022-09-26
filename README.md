@@ -20,6 +20,29 @@ pip install -r requirements.txt -e .
 
 In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
 
+----
+Blenderproc must be installed and modified as follows (instructions written and tested on Ubuntu 22.04):
+
+Install blenderproc and let the quickstart script install blender
+```
+pip install blenderproc
+blenderproc quickstart
+```
+Replace the auto-installed toolkit with a simlink to the modified toolkit. Set blender and python version as needed.
+```
+rm -r ~/blender/blender-3.2.1-linux-x64/custom-python-packages/lib/python3.10/site-packages/bop_toolkit_lib
+ln -s path/to/bop_toolkit_lib ~/blender/blender-3.2.1-linux-x64/custom-python-packages/lib/python3.10/site-packages
+```
+Replace BopLoader.py in your local blenderproc installation with the version included in this repo. The file path will look something like this:
+
+`~/.local/lib/python3.10/site-packages/blenderproc/python/loader/BopLoader.py`
+
+Additionally, the cc_textures download script attempts to download textures from a link that no longer works. I can't seem to find the issue where a kind soul provided a fix, but I have included the new script in this repo to replace the one at this location:
+
+`~/.local/lib/python3.10/site-packages/blenderproc/scripts/download_cc_textures.py`
+
+Note that updating your blenderproc installation will revert these changes, so keep these on hand just in case.
+
 ### Vispy Renderer (default)
 
 The Python based headless renderer with egl backend is implemented using [Vispy](https://github.com/vispy/vispy).
