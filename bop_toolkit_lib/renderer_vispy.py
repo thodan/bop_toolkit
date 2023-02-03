@@ -3,17 +3,16 @@
 # Adapted based on the glumpy version: "./renderer_py.py"
 """A Python Vispy based renderer."""
 
+import inspect
 import os
+from typing import Hashable
 
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 import numpy as np
-import vispy
-from vispy import app, gloo
 import OpenGL.GL as gl
-
-from bop_toolkit_lib import inout
-from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
+import vispy
+from bop_toolkit_lib import inout, misc, renderer
+from vispy import app, gloo
 
 # app backends: glfw, pyglet, egl
 # gl backends: gl2, pyopengl2, gl+
@@ -231,20 +230,33 @@ def _calc_calib_proj(K, x0, y0, w, h, nc, fc, window_coords="y_down"):
     )
   return proj.T
 
+class SingletonArgs(type):
+  """ Singleton that keep single instance for single set of arguments. E.g.:
+  assert SingletonArgs('spam') is not SingletonArgs('eggs')
+  assert SingletonArgs('spam') is SingletonArgs('spam')
+  
+  Source: https://gist.github.com/wowkin2/3af15bfbf197a14a2b0b2488a1e8c787
+  """
+  _instances = {}
+  _init = {}
 
-def singleton(cls):
-  instances = {}
+  def __init__(cls, name, bases, dct):
+      cls._init[cls] = dct.get('__init__', None)
 
-  def get_instance(width, height, mode="rgb+depth", shading="phong", bg_color=(0.0, 0.0, 0.0, 0.0)):
-    if cls not in instances:
-      instances[cls] = cls(width, height, mode, shading, bg_color)
-    return instances[cls]
+  def __call__(cls, *args, **kwargs):
+    def hashable(x):
+      return x if isinstance(x, Hashable) else x.__str__()
+    init = cls._init[cls]
+    if init is not None:
+      callargs_hashable = {hashable(k):hashable(v) for k, v in inspect.getcallargs(init, None, *args, **kwargs).items()}
+      key = (cls, frozenset(callargs_hashable.items()))
+    else:
+      key = cls
+    if key not in cls._instances:
+        cls._instances[key] = super(SingletonArgs, cls).__call__(*args, **kwargs)
+    return cls._instances[key]
 
-  return get_instance
-
-
-@singleton  # Don't throw GL context into trash when having more than one Renderer instance
-class RendererVispy(renderer.Renderer, app.Canvas):
+class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
   """A Python based renderer."""
 
   def __init__(self, width, height, mode="rgb+depth", shading="phong", bg_color=(0.0, 0.0, 0.0, 0.0)):
