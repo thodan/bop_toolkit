@@ -5,9 +5,9 @@ imageio==2.5.0
 pypng==0.0.19
 Cython==0.29.24
 PyOpenGL==3.1.0
-triangle==20190115.2
+triangle>=20190115.2
 glumpy==1.1.0
-opencv-python==4.3.0.36
+opencv-python>=4.3.0.36
 Pillow>=8.2.0
 git+https://github.com/MartinSmeyer/cocoapi.git@v1.0#subdirectory=PythonAPI
 vispy>=0.6.5
