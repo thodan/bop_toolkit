@@ -80,7 +80,7 @@ def depth_for_vis(depth, valid_start=0.2, valid_end=1.0):
   :return: Transformed depth image.
   """
   mask = depth > 0
-  depth_n = depth.astype(np.float32)
+  depth_n = depth.astype(np.float64)
   depth_n[mask] -= depth_n[mask].min()
   depth_n[mask] /= depth_n[mask].max() / (valid_end - valid_start)
   depth_n[mask] += valid_start
