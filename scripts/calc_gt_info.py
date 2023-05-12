@@ -180,7 +180,7 @@ for scene_id in scene_ids:
         depth_im_vis = visualization.depth_for_vis(depth, 0.2, 1.0)
         depth_im_vis = np.dstack([depth_im_vis] * 3)
 
-        visib_gt_vis = visib_gt.astype(np.float)
+        visib_gt_vis = visib_gt.astype(np.float64)
         zero_ch = np.zeros(visib_gt_vis.shape)
         visib_gt_vis = np.dstack([zero_ch, visib_gt_vis, zero_ch])
 

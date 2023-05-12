@@ -162,8 +162,8 @@ if __name__ == '__main__':
   # AP test.
   tp = np.array([False, True, True, False, True, False])
   fp = np.logical_not(tp)
-  tp_c = np.cumsum(tp).astype(np.float)
-  fp_c = np.cumsum(fp).astype(np.float)
+  tp_c = np.cumsum(tp).astype(np.float64)
+  fp_c = np.cumsum(fp).astype(np.float64)
   rec = tp_c / tp.size
   pre = tp_c / (fp_c + tp_c)
   misc.log('Average Precision: ' + str(calc_ap(rec, pre)))
