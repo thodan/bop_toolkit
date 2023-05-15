@@ -1,8 +1,40 @@
-from pathlib import Path
 import re
 import numpy as np
 import json
+import pathlib
 import bop_toolkit_lib.inout as inout
+
+
+def instance_id_from_mask_filename(fn):
+    return int(re.findall("\d+", fn)[-1])
+
+
+def load_masks(
+    scene_dir,
+    image_id,
+    mask_type='mask',
+    n_instances=None,
+    instance_ids=None
+):
+
+    if n_instances is not None and instance_ids is None:
+        instance_ids = range(n_instances)
+
+    if instance_ids is not None:
+        mask_paths = (
+            scene_dir / mask_type / f'{image_id:06d}_{instance_id}.png'
+            for instance_id in instance_ids)
+    else:
+        mask_paths = (
+            scene_dir / mask_type).glob(f'{image_id:06d}_*.png')
+        mask_paths = sorted(
+            mask_paths,
+            key=lambda p: instance_id_from_mask_filename(p.name)
+        )
+    masks = np.stack([
+        inout.load_im(p) for p in mask_paths
+    ], axis=-1)
+    return masks
 
 
 def read_scene_infos(
@@ -11,7 +43,7 @@ def read_scene_infos(
     read_n_objects=True,
 ):
     # Outputs number of scenes, image ids for each scene.
-    scene_dir = Path(scene_dir)
+    scene_dir = pathlib.Path(scene_dir)
 
     infos = dict()
     infos['has_rgb'] = (scene_dir / 'rgb').exists()
@@ -41,7 +73,6 @@ def load_scene_data(
     load_scene_camera=True,
     load_scene_gt=True,
     load_scene_gt_info=True,
-
 ):
     scene_data = dict()
     if load_scene_camera:
@@ -64,9 +95,10 @@ def load_image_data(
     load_depth=True,
     load_mask_visib=True,
     load_mask=False,
-    load_scene_gt=False,
-    load_scene_gt_info=False,
+    load_gt=False,
+    load_gt_info=False,
     rescale_depth=True,
+    instance_ids=None,
 ):
     """Loads all data for one image including images and annotations
 
@@ -83,7 +115,7 @@ def load_image_data(
 
     image_data = dict()
 
-    scene_dir = Path(scene_dir)
+    scene_dir = pathlib.Path(scene_dir)
     if isinstance(image_id, str):
         image_id = int(image_id)
 
@@ -109,40 +141,44 @@ def load_image_data(
         if rescale_depth:
             im_depth *= camera['depth_scale']
         image_data['im_depth'] = im_depth
-    
-    if load_scene_gt:
-        scene_gt = inout.load_scene_gt(scene_dir / 'scene_gt.json')
-        scene_gt = scene_gt[image_id]
-        image_data['scene_gt'] = scene_gt
 
-    if load_scene_gt_info:
+    if load_gt:
+        scene_gt = inout.load_json(scene_dir / 'scene_gt.json')
+        gt = scene_gt[image_id]
+        if instance_ids is not None:
+            gt = [gt_n for n, gt_n in enumerate(gt) if n in instance_ids]
+        gt = [inout._gt_as_json(gt_n) for gt_n in gt]
+        image_data['gt'] = gt
+
+    if load_gt_info:
         scene_gt_info = inout.load_json(
             scene_dir / 'scene_gt_info.json', keys_to_int=True)
-        scene_gt_info = scene_gt_info[str(image_id)]
-        image_data['scene_gt_info'] = scene_gt_info
+        gt_info = scene_gt_info[image_id]
+        if instance_ids is not None:
+            gt_info = [
+                gt_info_n for n, gt_info_n in enumerate(gt_info)
+                if n in instance_ids]
+        gt_info = [inout._gt_as_json(gt_info) for gt_info_n in gt_info]
+        image_data['gt_info'] = inout._gt_as_json(gt_info)
 
     if load_mask_visib:
-        mask_visib_paths = (
-            scene_dir / 'mask_visib').glob(f'{image_id:06d}_*.png')
-        mask_visib_paths = sorted(
-            mask_visib_paths,
-            key=lambda p: int(re.findall("\d+", p.name)[-1])
+        mask_visib = load_masks(
+            scene_dir,
+            image_id,
+            mask_type='mask_visib',
+            n_instances=len(gt) if gt is not None else None,
+            instance_ids=instance_ids
         )
-        mask_visib = np.stack([
-            inout.load_im(p) for p in mask_visib_paths
-        ], axis=-1)
         image_data['mask_visib'] = mask_visib
 
     if load_mask:
-        mask_paths = (
-            scene_dir / 'mask').glob(f'{image_id:06d}_*.png')
-        mask_paths = sorted(
-            mask_paths,
-            key=lambda p: int(re.findall("\d+", p.name)[-1])
+        mask = load_masks(
+            scene_dir,
+            image_id,
+            mask_type='mask',
+            n_instances=len(gt) if gt is not None else None,
+            instance_ids=instance_ids
         )
-        mask = np.stack([
-            inout.load_im(p) for p in mask_paths
-        ], axis=-1)
         image_data['mask'] = mask
 
     return image_data
