@@ -6,6 +6,12 @@ import bop_toolkit_lib.inout as inout
 
 
 def instance_id_from_mask_filename(fn):
+    """Extracts instance id from the filename of a mask
+    The mask with filename '000345_000001.png' corresponds to instance id 1.
+
+    :param fn: mask filename
+    :return: instance id for this mask
+    """
     return int(re.findall("\d+", fn)[-1])
 
 
@@ -16,6 +22,20 @@ def load_masks(
     n_instances=None,
     instance_ids=None
 ):
+    """Loads one or multiple object masks stored as individual .png files.
+
+    :param scene_dir: Path to the scene directory.
+    :param image_id: Image id for which masks should be loaded.
+    :param mask_type: mask or mask_visib.
+    :param n_instances: Number of object instances in the scene. This can be
+    used to avoid querying disks to find the number of object instances.
+    This is not used when instance_ids are provided.
+    :param instance_ids: List of instances ids to load the object for.
+    :return: (N, H, W) numpy array with binary masks. If instance_ids are
+    provided, N is the number of instances that were queried and the
+    masks are in the same order as instance_ids. Otherwise, all instances
+    are loaded.
+    """
 
     if n_instances is not None and instance_ids is None:
         instance_ids = range(n_instances)
@@ -33,29 +53,59 @@ def load_masks(
         )
     masks = np.stack([
         inout.load_im(p) for p in mask_paths
-    ], axis=-1)
+    ])
     return masks
 
 
 def read_scene_infos(
     scene_dir,
-    read_image_ids=True,
-    read_n_objects=True,
+    read_image_ids=False,
+    read_n_objects=False,
 ):
-    # Outputs number of scenes, image ids for each scene.
+    """Parse scene files to load information about the scene.
+    Information contains binary values capturing available annotations:
+        - rgb
+        - depth
+        - gray
+        - mask
+        - mask_visib
+        - gt
+        - gt_info,
+
+    and optionally:
+        - image_ids (list of image_ids for this scene)
+        - n_objects (number of object instances in the scene).
+    
+    :param scene_dir: Path to the scene directory.
+    :param read_image_ids: Read list of image ids for this scene.
+    :param read_n_objects: Read number of objects in this scene.
+    :return: a dict with the following keys:
+        - has_rgb
+        - has_depth
+        - has_gray
+        - has_mask
+        - has_mask_visib
+        - has_gt
+        - has_gt_info
+        - image_ids
+        - n_objects.
+    """
+
     scene_dir = pathlib.Path(scene_dir)
 
-    infos = dict()
-    infos['has_rgb'] = (scene_dir / 'rgb').exists()
-    infos['has_depth'] = (scene_dir / 'depth').exists()
-    infos['has_gray'] = (scene_dir / 'gray').exists()
-    infos['has_mask'] = (scene_dir / 'masks').exists()
-    infos['has_mask_visib'] = (scene_dir / 'mask_visib').exists()
+    infos = dict(
+        has_rgb=(scene_dir / 'rgb').exists(),
+        has_depth=(scene_dir / 'depth').exists(),
+        has_gray=(scene_dir / 'gray').exists(),
+        has_mask=(scene_dir / 'mask').exists(),
+        has_mask_visib=(scene_dir / 'mask_visib').exists(),
+        has_gt=(scene_dir / 'scene_gt.json').exists(),
+        has_gt_info=(scene_dir / 'scene_gt_info.json').exists(),
+        image_ids=None,
+        n_objects=None,
+    )
 
-    infos['has_gt'] = (scene_dir / 'scene_gt.json').exists()
-    infos['has_gt_info'] = (scene_dir / 'scene_gt_info.json').exists()
     assert (scene_dir / 'scene_camera.json').exists()
-
     if read_image_ids:
         scene_cameras = json.loads((scene_dir / 'scene_camera.json').read_text())
         image_ids = [int(k) for k in scene_cameras.keys()]
@@ -74,7 +124,23 @@ def load_scene_data(
     load_scene_gt=True,
     load_scene_gt_info=True,
 ):
-    scene_data = dict()
+    """Loads files with scene-level annotations.
+
+    :param scene_dir: Path to the scene directory.
+    :param load_scene_camera: load scene_camera.json.
+    :param load_scene_gt: load scene_gt.json.
+    :param load_scene_gt_info: load scene_gt_info.json.
+    :return: a dict with keys:
+        - scene_camera [Optional]
+        - scene_gt [Optional]
+        - scene_gt_info [Optional].
+    """
+    scene_data = dict(
+        scene_camera=None,
+        scene_gt=None,
+        scene_gt_info=None,
+    )
+
     if load_scene_camera:
         scene_camera = inout.load_scene_camera(scene_dir / 'scene_camera.json')
         scene_data['scene_camera'] = scene_camera
@@ -84,7 +150,7 @@ def load_scene_data(
     if load_scene_gt_info:
         scene_gt_info = inout.load_scene_gt(scene_dir / 'scene_gt_info.json')
         scene_data['scene_gt_info'] = scene_gt_info
-    return
+    return scene_data
 
 
 def load_image_data(
@@ -100,20 +166,50 @@ def load_image_data(
     rescale_depth=True,
     instance_ids=None,
 ):
-    """Loads all data for one image including images and annotations
+    """Utility to load all information about an image.
+    Please note that using load_gt or load_gt_info will
+    load all scene_gt.json or scene_gt_info.json repsectively, then
+    select a subset corresponding to the image specified with image_id.
+    Please see the v2 for more efficient individual image readings.
 
-
-    :param scene_dir: _description_
-    :param image_id: _description_
-    :param instance_ids: _description_, defaults to None
-    :param load_masks_visib: _description_, defaults to True
-    :param load_masks: _description_, defaults to True
-    :param load_depth: _description_, defaults to True
-    :param load_rgb: _description_, defaults to True
-    :return: _description_
+    :param scene_dir: Path to the scene directory.
+    :param image_id: Id of an image in this scene.
+    :param load_rgb: Load .png or .jpg rgb image.
+    :param load_gray: Load gray .tiff image.
+    :param load_depth: Load .png depth image and rescale
+    it using depth_scale found in camera.json if rescale_depth=True.
+    :param load_mask_visib: Load modal masks (all instances
+    or only those specified by instance_ids).
+    :param load_mask: Load amodal masks (all instances
+    or only those specified by instance_ids).
+    :param load_gt: Load ground truth object poses found
+    in scene_gt.json for this image.
+    :param load_gt_info: Load ground truth additional information
+    found in scene_gt_info.json.
+    :param rescale_depth: Whether to rescale depth to
+    millimeters, defaults to True.
+    :param instance_ids: List of instance ids,
+    used to restrict loading to a subset of object masks.
+    :return: A dictionary with the following content:
+        - camera
+        - im_rgb
+        - im_gray
+        - im_depth
+        - mask
+        - mask_visib
+        - gt
+        - gt_info.
     """
 
-    image_data = dict()
+    image_data = dict(
+        camera=None,
+        im_rgb=None,
+        im_gray=None,
+        mask=None,
+        mask_visib=None,
+        gt=None,
+        gt_info=None,
+    )
 
     scene_dir = pathlib.Path(scene_dir)
     if isinstance(image_id, str):
