@@ -1,4 +1,5 @@
 import json
+import pathlib
 
 import numpy as np
 
@@ -102,12 +103,12 @@ def io_load_masks(
     :return: a [N,H,W] binary array containing object masks.
     """
     masks_rle = json.load(mask_file)
-    if instance_ids is not None:
+    if instance_ids is None:
         instance_ids = masks_rle.keys()
         instance_ids = sorted(instance_ids)
     masks = np.stack([
-        pycoco_utils.rle_to_binary_mask(mask_rle)
-        for mask_rle in masks_rle])
+        pycoco_utils.rle_to_binary_mask(masks_rle[str(instance_id)])
+        for instance_id in instance_ids])
     return masks
 
 
@@ -126,7 +127,7 @@ def io_load_gt(
     gt = json.load(gt_file)
     if instance_ids is not None:
         gt = [gt_n for n, gt_n in enumerate(gt) if n in instance_ids]
-    gt = [inout._gt_as_json(gt_n) for gt_n in gt]
+    gt = [inout._gt_as_numpy(gt_n) for gt_n in gt]
     return gt
 
 
@@ -143,14 +144,11 @@ def load_image_infos(
         return dataset_dir / f'{image_key}.{ext}'
 
     infos = dict(
-        has_rgb=(
-            _file_path('rgb.png').exists() or
-            _file_path('rgb.jpg').exists()
-        ),
+        has_rgb=False,
         has_depth=_file_path('depth.png').exists(),
         has_gray=_file_path('gray.tiff').exists(),
-        has_mask=_file_path('mask.png').exists(),
-        has_mask_visib=_file_path('mask_visib.png').exists(),
+        has_mask=_file_path('mask.json').exists(),
+        has_mask_visib=_file_path('mask_visib.json').exists(),
         has_gt=_file_path('gt.json').exists(),
         has_gt_info=_file_path('gt_info.json').exists()
     )
@@ -213,6 +211,8 @@ def load_image_data(
         - gt
         - gt_info.
     """
+
+    dataset_dir = pathlib.Path(dataset_dir)
 
     def _file_path(ext):
         return dataset_dir / f'{image_key}.{ext}'

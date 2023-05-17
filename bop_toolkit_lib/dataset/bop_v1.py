@@ -1,7 +1,9 @@
-import re
-import numpy as np
 import json
 import pathlib
+import re
+
+import numpy as np
+
 import bop_toolkit_lib.inout as inout
 
 
@@ -42,7 +44,7 @@ def load_masks(
 
     if instance_ids is not None:
         mask_paths = (
-            scene_dir / mask_type / f'{image_id:06d}_{instance_id}.png'
+            scene_dir / mask_type / f'{image_id:06d}_{instance_id:06d}.png'
             for instance_id in instance_ids)
     else:
         mask_paths = (
@@ -217,6 +219,7 @@ def load_image_data(
 
     scene_cameras = inout.load_scene_camera(scene_dir / 'scene_camera.json')
     camera = scene_cameras[image_id]
+    n_instances = None
     image_data['camera'] = camera
 
     if load_rgb:
@@ -239,11 +242,13 @@ def load_image_data(
         image_data['im_depth'] = im_depth
 
     if load_gt:
-        scene_gt = inout.load_json(scene_dir / 'scene_gt.json')
+        scene_gt = inout.load_json(
+            scene_dir / 'scene_gt.json', keys_to_int=True)
         gt = scene_gt[image_id]
         if instance_ids is not None:
             gt = [gt_n for n, gt_n in enumerate(gt) if n in instance_ids]
-        gt = [inout._gt_as_json(gt_n) for gt_n in gt]
+        gt = [inout._gt_as_numpy(gt_n) for gt_n in gt]
+        n_instances = len(gt)
         image_data['gt'] = gt
 
     if load_gt_info:
@@ -254,15 +259,16 @@ def load_image_data(
             gt_info = [
                 gt_info_n for n, gt_info_n in enumerate(gt_info)
                 if n in instance_ids]
-        gt_info = [inout._gt_as_json(gt_info) for gt_info_n in gt_info]
-        image_data['gt_info'] = inout._gt_as_json(gt_info)
+        gt_info = [inout._gt_as_numpy(gt_info_n) for gt_info_n in gt_info]
+        n_instances = len(gt_info)
+        image_data['gt_info'] = gt_info
 
     if load_mask_visib:
         mask_visib = load_masks(
             scene_dir,
             image_id,
             mask_type='mask_visib',
-            n_instances=len(gt) if gt is not None else None,
+            n_instances=n_instances,
             instance_ids=instance_ids
         )
         image_data['mask_visib'] = mask_visib
@@ -272,7 +278,7 @@ def load_image_data(
             scene_dir,
             image_id,
             mask_type='mask',
-            n_instances=len(gt) if gt is not None else None,
+            n_instances=n_instances,
             instance_ids=instance_ids
         )
         image_data['mask'] = mask
