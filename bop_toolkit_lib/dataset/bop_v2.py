@@ -143,7 +143,7 @@ def load_image_infos(
         return dataset_dir / f'{image_key}.{ext}'
 
     infos = dict(
-        has_rgb=False(
+        has_rgb=(
             _file_path('rgb.png').exists() or
             _file_path('rgb.jpg').exists()
         ),
