@@ -1,8 +1,8 @@
-import pathlib
-import numpy as np
 import json
-from bop_toolkit_lib import inout
-from bop_toolkit_lib import pycoco_utils
+
+import numpy as np
+
+from bop_toolkit_lib import inout, pycoco_utils
 
 
 def _save_scene_dict(
@@ -52,7 +52,7 @@ def save_scene_gt(
     image_gt_tpath,
 ):
     """Saves scene ground truth
-    (typically found in scene_gt.json or 
+    (typically found in scene_gt.json or
     scene_gt_info.json in the BOP-v1 format) to individual files.
 
     :param scene_camera: scene_gt
@@ -96,7 +96,7 @@ def io_load_masks(
     Instance_ids can be specified to apply RLE
     decoding to a subset of object instances contained
     in the file.
-    
+
     :param mask_file: I/O object that can be read with json.load.
     :param masks_path: Path to json file.
     :return: a [N,H,W] binary array containing object masks.
@@ -143,7 +143,7 @@ def load_image_infos(
         return dataset_dir / f'{image_key}.{ext}'
 
     infos = dict(
-        has_rgb=(
+        has_rgb=False(
             _file_path('rgb.png').exists() or
             _file_path('rgb.jpg').exists()
         ),
@@ -154,6 +154,16 @@ def load_image_infos(
         has_gt=_file_path('gt.json').exists(),
         has_gt_info=_file_path('gt_info.json').exists()
     )
+
+    if _file_path('rgb.png').exists():
+        infos['has_rgb'] = True
+        infos['rgb_suffix'] = '.png'
+
+    if _file_path('rgb.jpg').exists():
+        assert 'rgb_suffix' not in infos
+        infos['has_rgb'] = True
+        infos['rgb_suffix'] = '.jpg'
+
     return infos
 
 
@@ -189,7 +199,7 @@ def load_image_data(
     {image_key}.gt.json.
     :param load_gt_info: Load ground truth additional information
     found in {image_key}.gt_info.json.
-    :param rescale_depth:  Whether to rescale the depth 
+    :param rescale_depth:  Whether to rescale the depth
     image to millimeters, defaults to True.
     :param instance_ids: List of instance ids,
     used to restrict loading to a subset of object masks.
@@ -228,10 +238,10 @@ def load_image_data(
         image_data['im_rgb'] = inout.load_im(rgb_path).astype(np.uint8)
 
     if load_gray:
-        gray_path = _file_path('gray.tiff') 
+        gray_path = _file_path('gray.tiff')
         im_gray = inout.load_im(gray_path).astype(np.uint8)
         image_data['im_gray'] = im_gray
-    
+
     if load_depth:
         depth_path = _file_path('depth.png')
         im_depth = inout.load_im(depth_path).astype(np.float32)
