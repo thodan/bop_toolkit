@@ -1,9 +1,11 @@
 import argparse
 import json
+import multiprocessing
 import pathlib
 import re
 import tarfile
 
+import numpy as np
 import webdataset as wds
 
 from bop_toolkit_lib.dataset import bop_v2
@@ -140,15 +142,40 @@ def main():
 
     v2_file_paths = v2_dir.glob('*')
     keys = set([p.name.split('.')[0] for p in v2_file_paths])
-    keys = list(keys)[:1000]
+    keys = list(keys)
 
-    convert_v2_to_webdataset(
-        v2_dir,
-        wds_dir,
-        keys,
-        0,
-        args.maxcount
-    )
+    if args.shuffle:
+        np.random.RandomState(args.seed).shuffle(keys)
+
+    if args.nprocs > 0:
+        keys_splits = np.array_split(keys, args.nprocs)
+        _args = []
+        start_shard = 0
+        for keys_split in keys_splits:
+            _args.append(
+                (
+                    v2_dir,
+                    wds_dir,
+                    keys,
+                    start_shard,
+                    args.maxcount
+                )
+            )
+            n_shards = np.ceil(len(keys_split) / args.maxcount)
+            start_shard += n_shards
+        with multiprocessing.Pool(processes=args.nprocs) as pool:
+            pool.starmap(
+                convert_v2_to_webdataset,
+                iterable=_args
+            )
+    else:
+        convert_v2_to_webdataset(
+            v2_dir,
+            wds_dir,
+            keys,
+            0,
+            args.maxcount
+        )
     key_to_shard = make_key_to_shard_map(
         wds_dir
     )
