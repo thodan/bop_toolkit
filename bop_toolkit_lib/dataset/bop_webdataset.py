@@ -1,10 +1,81 @@
 import json
+import io
 import tarfile
 
 import numpy as np
 
 from bop_toolkit_lib import inout
 from bop_toolkit_lib.dataset import bop_v2
+
+
+def decode_sample(
+    sample,
+    decode_camera,
+    decode_rgb,
+    decode_gray,
+    decode_depth,
+    decode_gt,
+    decode_gt_info,
+    decode_mask,
+    decode_mask_visib,
+    rescale_depth=True,
+    rgb_suffix='.jpg',
+    instance_ids=None,
+):
+    image_data = {
+        '__key__': sample['__key__'],
+        '__url__': sample['__url__'],
+        'camera': None,
+        'im_rgb': None,
+        'im_gray': None,
+        'mask': None,
+        'mask_visib': None,
+        'gt': None,
+        'gt_info': None,
+    }
+
+    if decode_camera:
+        image_data['camera'] = json.loads(sample['camera.json'])
+
+    if decode_rgb:
+        image_data['im_rgb'] = inout.load_im(
+            sample['rgb' + rgb_suffix]
+        ).astype(np.uint8)
+
+    if decode_gray:
+        image_data['im_gray'] = inout.load_im(
+            sample['gray.tiff']
+        ).astype(np.uint8)
+
+    if decode_depth:
+        im_depth = inout.load_im(
+            sample['depth.png']
+        ).astype(np.float32)
+        if rescale_depth:
+            im_depth *= image_data['camera']['depth_scale']
+        image_data['im_depth'] = im_depth
+
+    if decode_gt:
+        image_data['gt'] = bop_v2.io_load_gt(
+            io.BytesIO(sample['gt.json']),
+            instance_ids=instance_ids)
+
+    if decode_gt_info:
+        image_data['gt_info'] = bop_v2.io_load_gt(
+            io.BytesIO(sample['gt_info.json']),
+            instance_ids=instance_ids)
+
+    if decode_mask_visib:
+        image_data['mask_visib'] = bop_v2.io_load_masks(
+            io.BytesIO(sample['mask_visib.json']),
+            instance_ids=instance_ids)
+
+    if decode_mask:
+        image_data['mask'] = bop_v2.io_load_masks(
+            io.BytesIO(sample['mask.json']),
+            instance_ids=instance_ids)
+
+    return image_data
 
 
 def load_image_data(

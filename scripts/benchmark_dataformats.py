@@ -1,4 +1,6 @@
 import pathlib
+import textwrap
+import argparse
 import numpy as np
 import json
 import time
@@ -109,7 +111,8 @@ def benchmark_v1(v1_scene_dir, n_images=100):
     scene_infos = bop_v1.read_scene_infos(
         v1_scene_dir, read_image_ids=True)
     image_ids = scene_infos['image_ids']
-    np.random.RandomState(0).shuffle(image_ids)[:n_images]
+    np.random.RandomState(0).shuffle(image_ids)
+    image_ids = image_ids[:n_images]
 
     timings = []
     start = time.time()
@@ -131,31 +134,46 @@ def benchmark_v1(v1_scene_dir, n_images=100):
 
 
 if __name__ == '__main__':
-    ycbv_dir = pathlib.Path('/media/ylabbe/usb/datasets/bop_datasets/ycbv/')
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument(
+        '--root',
+        help="""Root directory containing a dataset \
+in the three following formats: v1, v2, webdataset.
+For example if the argument is --root ./ycbv \
+then the following structure is assumed:
+├─ ycbv
+    ├─ train_pbr
+    ├─ train_pbr_v2format
+    ├─ train_pbr_webdataset
+"""
+    )
+    args = parser.parse_args()
+    root_dir = pathlib.Path(args.root)
 
     timings = benchmark_wds_sequential(
-        ycbv_dir / 'train_pbr_wdsformat' / f'shard-{0:06d}.tar',
+        root_dir / 'train_pbr_wdsformat' / f'shard-{0:06d}.tar',
         n_images=1000
     )
     print("# WebDataset, Sequential access")
     print_summary(timings[5:])
 
     timings = benchmark_wds_random(
-        ycbv_dir / 'train_pbr_wdsformat',
+        root_dir / 'train_pbr_wdsformat',
         n_images=100,
     )
     print("# WebDataset, Random access")
     print_summary(timings[5:])
 
     timings = benchmark_v2(
-        ycbv_dir / 'train_pbr_v2format',
+        root_dir / 'train_pbr_v2format',
         n_images=1000,
     )
     print("# V2 format, Random access")
     print_summary(timings[5:])
 
     timings = benchmark_v1(
-        ycbv_dir / 'train_pbr' / f'{0:06d}',
+        root_dir / 'train_pbr' / f'{0:06d}',
         n_images=100,
     )
     print("# V1 format, Random access")
