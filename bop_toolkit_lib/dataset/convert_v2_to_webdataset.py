@@ -156,7 +156,7 @@ def main():
                 (
                     v2_dir,
                     wds_dir,
-                    keys,
+                    keys_split,
                     start_shard,
                     args.maxcount
                 )
