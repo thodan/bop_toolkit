@@ -1,3 +1,23 @@
+"""
+Tools to manipulate the bop-imagewise format
+
+bop-imagewise is a format where the image annotations are stored
+in individual files. This format is only used as an intermediate step
+to convert a bop-scenewise dataset to a bop-webdataset. 
+Format is the following:
+
+├─ dataset
+│  ├─ KEY.{rgb|gray}.{png|jpg}
+│  ├─ KEY.depth.png
+│  ├─ KEY.camera.json
+│  ├─ KEY.gt.json
+│  ├─ KEY.gt_info.json
+│  ├─ KEY.mask.json
+│  ├─ KEY.mask_visib.json
+    ... ,
+where KEY is a unique identifier of an image in the dataset. Typically it is {scene_id:06d}_{image_id:06d}.
+"""
+
 import json
 import pathlib
 
@@ -34,7 +54,7 @@ def save_scene_camera(
 ):
     """Saves scene_camera
     (typically found in scene_camera.json
-    in the BOP-v1 format) to individual files.
+    in the BOP-scenewise format) to individual files.
 
     :param scene_camera: scene_camera
     dict mapping image_ids to camera information.
@@ -54,7 +74,7 @@ def save_scene_gt(
 ):
     """Saves scene ground truth
     (typically found in scene_gt.json or
-    scene_gt_info.json in the BOP-v1 format) to individual files.
+    scene_gt_info.json in the BOP-scenewise format) to individual files.
 
     :param scene_camera: scene_gt
     dict mapping image_ids to gt information.

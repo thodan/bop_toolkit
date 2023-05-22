@@ -1,5 +1,4 @@
 import pathlib
-import textwrap
 import argparse
 import numpy as np
 import json
@@ -7,9 +6,9 @@ import time
 import webdataset as wds
 
 from bop_toolkit_lib.dataset import (
-    bop_webdataset,
-    bop_v2,
-    bop_v1
+    bop_imagewise,
+    bop_scenewise,
+    bop_webdataset
 )
 
 
@@ -91,7 +90,7 @@ def benchmark_v2(v2_dir, n_images=1000):
     timings = []
     start = time.time()
     for key in keys[:n_images]:
-        bop_v2.load_image_data(
+        bop_imagewise.load_image_data(
             v2_dir,
             key,
             load_rgb=True,
@@ -108,7 +107,7 @@ def benchmark_v2(v2_dir, n_images=1000):
 
 
 def benchmark_v1(v1_scene_dir, n_images=100):
-    scene_infos = bop_v1.read_scene_infos(
+    scene_infos = bop_scenewise.read_scene_infos(
         v1_scene_dir, read_image_ids=True)
     image_ids = scene_infos['image_ids']
     np.random.RandomState(0).shuffle(image_ids)
@@ -117,7 +116,7 @@ def benchmark_v1(v1_scene_dir, n_images=100):
     timings = []
     start = time.time()
     for image_id in image_ids:
-        bop_v1.load_image_data(
+        bop_scenewise.load_image_data(
             v1_scene_dir,
             image_id,
             load_rgb=True,

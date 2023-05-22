@@ -1,3 +1,19 @@
+"""
+Tools to manipulate the bop-scenewise format
+
+bop-scenewise is the standard format described in docs/datasets_format
+
+├─ dataset
+│  ├─ SCENE_ID
+│  │  ├─ scene_camera.json
+│  │  ├─ scene_gt.json
+│  │  ├─ scene_gt_info.json
+│  │  ├─ depth
+│  │  ├─ mask
+│  │  ├─ mask_visib
+│  │  ├─ rgb|gray
+"""
+
 import json
 import pathlib
 import re

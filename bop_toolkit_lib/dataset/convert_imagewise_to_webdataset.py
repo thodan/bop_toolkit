@@ -8,16 +8,16 @@ import tarfile
 import numpy as np
 import webdataset as wds
 
-from bop_toolkit_lib.dataset import bop_v2
+from bop_toolkit_lib.dataset import bop_imagewise
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="v2 -> webdataset converter utility",
+        prog="bop-imagewise -> bop-webdataset converter utility",
     )
     parser.add_argument(
         "--input",
-        help="""A directory containing a dataset in v2 format,
+        help="""A directory containing a dataset in imagewise format,
         e.g. ./ycbv/train_pbr_v2format.
         """,
         type=str,
@@ -73,8 +73,8 @@ def make_key_to_shard_map(
     return key_to_shard
 
 
-def convert_v2_to_webdataset(
-    v2_dir,
+def convert_imagewise_to_webdataset(
+    input_dir,
     wds_dir,
     image_keys,
     start_shard,
@@ -87,13 +87,13 @@ def convert_v2_to_webdataset(
         maxcount=maxcount,
         encoder=False
     )
-    infos = bop_v2.load_image_infos(
-        v2_dir, image_keys[0])
+    infos = bop_imagewise.load_image_infos(
+        input_dir, image_keys[0])
 
     for key in image_keys:
 
         def _file_path(ext):
-            return v2_dir / f'{key}.{ext}'
+            return input_dir / f'{key}.{ext}'
 
         obj = {
             '__key__': key,
@@ -137,11 +137,11 @@ def convert_v2_to_webdataset(
 def main():
     args = parse_args()
 
-    v2_dir = pathlib.Path(args.input)
+    input_dir = pathlib.Path(args.input)
     wds_dir = pathlib.Path(args.output)
 
-    v2_file_paths = v2_dir.glob('*')
-    keys = set([p.name.split('.')[0] for p in v2_file_paths])
+    input_file_paths = input_dir.glob('*')
+    keys = set([p.name.split('.')[0] for p in input_file_paths])
     keys = list(keys)
 
     if args.shuffle:
@@ -154,7 +154,7 @@ def main():
         for keys_split in keys_splits:
             _args.append(
                 (
-                    v2_dir,
+                    input_dir,
                     wds_dir,
                     keys_split,
                     start_shard,
@@ -165,12 +165,12 @@ def main():
             start_shard += n_shards
         with multiprocessing.Pool(processes=args.nprocs) as pool:
             pool.starmap(
-                convert_v2_to_webdataset,
+                convert_imagewise_to_webdataset,
                 iterable=_args
             )
     else:
-        convert_v2_to_webdataset(
-            v2_dir,
+        convert_imagewise_to_webdataset(
+            input_dir,
             wds_dir,
             keys,
             0,

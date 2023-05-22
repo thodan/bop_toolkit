@@ -6,48 +6,47 @@ import shutil
 
 import tqdm
 
-from bop_toolkit_lib.dataset import bop_v1, bop_v2
+from bop_toolkit_lib.dataset import bop_imagewise, bop_scenewise
 
 
-def convert_v1_scene_to_v2(
-    v1_scene_dir,
-    v2_dir
+def convert_scene_to_imagewise(
+    input_scene_dir,
+    output_dir,
+    image_tkey,
 ):
-    """Converts a scene in v1 format to v2 format.
+    """Converts a scene in bop-scenewise format to bop-imagewise.
 
-    :param v1_scene_dir:
-    Directory containing observations and annotations in v1 format.
-    :param v2_dir: Directory where the data will be written in v2 format.
+    :param input_scene_dir:
+    Directory containing observations and annotations in bop-scenewise format.
+    :param v2_dir: Directory where the data will be written
+    in bop-imagewise format.
+    :param image_tkey: Template path containing the string '{image_id}'.
     """
-    scene_id = int(v1_scene_dir.name)
-
-    scene_data = bop_v1.load_scene_data(
-        v1_scene_dir,
+    scene_data = bop_scenewise.load_scene_data(
+        input_scene_dir,
         load_scene_camera=True,
         load_scene_gt=True,
         load_scene_gt_info=True,
     )
 
-    scene_infos = bop_v1.read_scene_infos(
-        v1_scene_dir,
+    scene_infos = bop_scenewise.read_scene_infos(
+        input_scene_dir,
     )
 
-    v2_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=True)
 
-    image_tkey = f"{scene_id:06d}_" + "{image_id:06d}"
-
-    bop_v2.save_scene_camera(
+    bop_imagewise.save_scene_camera(
         scene_data["scene_camera"],
-        v2_dir / (image_tkey + ".camera.json")
+        output_dir / (image_tkey + ".camera.json")
     )
 
-    bop_v2.save_scene_gt(
-        scene_data["scene_gt"], v2_dir / (image_tkey + ".gt.json")
+    bop_imagewise.save_scene_gt(
+        scene_data["scene_gt"], output_dir / (image_tkey + ".gt.json")
     )
 
-    bop_v2.save_scene_gt(
+    bop_imagewise.save_scene_gt(
         scene_data["scene_gt_info"],
-        v2_dir / (image_tkey + ".gt_info.json")
+        output_dir / (image_tkey + ".gt_info.json")
     )
 
     image_ids = [int(k) for k in scene_data["scene_camera"].keys()]
@@ -55,11 +54,11 @@ def convert_v1_scene_to_v2(
         image_key = image_tkey.format(image_id=image_id)
         for mask_type in ("mask", "mask_visib"):
             if scene_infos["has_" + mask_type]:
-                masks = bop_v1.load_masks(
-                    v1_scene_dir,
+                masks = bop_scenewise.load_masks(
+                    input_scene_dir,
                     image_id, mask_type=mask_type)
-                bop_v2.save_masks(
-                    masks, v2_dir / (image_key + f".{mask_type}.json")
+                bop_imagewise.save_masks(
+                    masks, output_dir / (image_key + f".{mask_type}.json")
                 )
         for im_modality in (
             "rgb",
@@ -68,21 +67,21 @@ def convert_v1_scene_to_v2(
         ):
             if scene_infos["has_" + im_modality]:
                 im_path = list(
-                    (v1_scene_dir / im_modality).glob(f"{image_id:06d}.*"))[0]
+                    (input_scene_dir / im_modality).glob(f"{image_id:06d}.*"))[0]
                 suffix = im_path.suffix
                 shutil.copy(
                     im_path,
-                    v2_dir / (image_key + "." + im_modality + suffix)
+                    output_dir / (image_key + "." + im_modality + suffix)
                 )
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        prog="BOP-V1 -> BOP-V2 converter utility",
+        prog="BOP-scenewise -> BOP-imagewise converter utility",
     )
     parser.add_argument(
         "--input",
-        help="""A directory containing the scenes of a dataset in v1
+        help="""A directory containing the scenes of a dataset in
         format, e.g. ./ycbv/train_pbr.
         """,
         type=str,
@@ -123,29 +122,35 @@ def main(args):
 
     if args.scene_ids is not None:
         scene_ids = [int(scene_id) for scene_id in args.scene_ids.split(",")]
-        v1_scene_directories = (
+        scene_directories = (
             input_dir / f"{scene_id:06d}" for scene_id in scene_ids)
     else:
-        v1_scene_directories = input_dir.iterdir()
+        scene_directories = input_dir.iterdir()
 
     if args.nprocs > 0:
-        v1_scene_directories = list(v1_scene_directories)
+        scene_directories = list(scene_directories)
+        image_tkeys = [
+            f"{scene_id:06d}_" + "{image_id:06d}"
+            for scene_id in [int(d.name) for d in scene_directories]
+        ]
+
         _args = zip(
-            v1_scene_directories,
-            itertools.repeat(output_dir, len(v1_scene_directories))
+            scene_directories,
+            itertools.repeat(output_dir, len(scene_directories)),
+            image_tkeys
         )
         with multiprocessing.Pool(processes=args.nprocs) as pool:
-            with tqdm.tqdm(total=len(v1_scene_directories)) as pbar:
+            with tqdm.tqdm(total=len(scene_directories)) as pbar:
                 iterator = pool.starmap(
-                    convert_v1_scene_to_v2,
+                    convert_scene_to_imagewise,
                     iterable=_args
                 )
                 for _ in iterator:
                     pbar.update()
     else:
-        for v1_scene_directory in tqdm.tqdm(v1_scene_directories):
-            convert_v1_scene_to_v2(
-                v1_scene_directory,
+        for scene_directory in tqdm.tqdm(scene_directories):
+            convert_scene_to_imagewise(
+                scene_directory,
                 output_dir,
             )
 

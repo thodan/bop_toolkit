@@ -1,3 +1,42 @@
+"""
+Tools to manipulate bop-webdataset format
+
+bop-webdataset is composed of several shards (a .tar file), each containing
+amaximum of 1000 images. Because images and annotations are stored in a .tar file,
+they can be read sequentially to achieve faster reading speeds compared to the other
+file formats.
+
+├─ dataset
+│  ├─ key_to_shard.json
+│  ├─ shard-000000.tar
+│  ├─ shard-000001.tar
+│  ├─ ...
+
+Each shard contains a chunk of the bop-imagewise format. The images are typically
+stored after shuffling, to achieve random sampling of the dataset even if the data
+is read sequentially. E.g.
+
+├─ shard-000000.tar
+│  ├─ 00004_00015.rgb.jpg
+│  ├─ 00004_00015.camera.json
+│  ├─ 00004_00015.gt.json
+│  ├─ 00004_00015.gt_info.json
+│  ├─ 00004_00015.mask.json
+│  ├─ 00004_00015.mask_visib.json
+│  ├─ 00021_00777.rgb.jpg
+│  ├─ 00021_00777.camera.json
+│  ├─ 00021_00777.gt.json
+│  ├─ 00021_00777.gt_info.json
+│  ├─ 00021_00777.mask.json
+│  ├─ 00021_00777.mask_visib.json
+
+
+The file key_to_shard.json maps an image key to the index of the shard
+where it is stored. This can be used to read an individual image directly in a
+.tar file, but beware that this may be slow because random access in a .tar file
+requires to seek the correpsonding file in the entire byte sequence.
+"""
+
 import json
 import io
 import tarfile
@@ -5,7 +44,7 @@ import tarfile
 import numpy as np
 
 from bop_toolkit_lib import inout
-from bop_toolkit_lib.dataset import bop_v2
+from bop_toolkit_lib.dataset import bop_imagewise
 
 
 def decode_sample(
@@ -56,22 +95,22 @@ def decode_sample(
         image_data['im_depth'] = im_depth
 
     if decode_gt:
-        image_data['gt'] = bop_v2.io_load_gt(
+        image_data['gt'] = bop_imagewise.io_load_gt(
             io.BytesIO(sample['gt.json']),
             instance_ids=instance_ids)
 
     if decode_gt_info:
-        image_data['gt_info'] = bop_v2.io_load_gt(
+        image_data['gt_info'] = bop_imagewise.io_load_gt(
             io.BytesIO(sample['gt_info.json']),
             instance_ids=instance_ids)
 
     if decode_mask_visib:
-        image_data['mask_visib'] = bop_v2.io_load_masks(
+        image_data['mask_visib'] = bop_imagewise.io_load_masks(
             io.BytesIO(sample['mask_visib.json']),
             instance_ids=instance_ids)
 
     if decode_mask:
-        image_data['mask'] = bop_v2.io_load_masks(
+        image_data['mask'] = bop_imagewise.io_load_masks(
             io.BytesIO(sample['mask.json']),
             instance_ids=instance_ids)
 
@@ -130,22 +169,22 @@ def load_image_data(
         image_data['im_depth'] = im_depth
 
     if load_gt:
-        image_data['gt'] = bop_v2.io_load_gt(
+        image_data['gt'] = bop_imagewise.io_load_gt(
             _load('gt.json', read=False),
             instance_ids=instance_ids)
 
     if load_gt_info:
-        image_data['gt_info'] = bop_v2.io_load_gt(
+        image_data['gt_info'] = bop_imagewise.io_load_gt(
             _load('gt_info.json', read=False),
             instance_ids=instance_ids)
 
     if load_mask_visib:
-        image_data['mask_visib'] = bop_v2.io_load_masks(
+        image_data['mask_visib'] = bop_imagewise.io_load_masks(
             _load('mask_visib.json', read=False),
             instance_ids=instance_ids)
 
     if load_mask:
-        image_data['mask'] = bop_v2.io_load_masks(
+        image_data['mask'] = bop_imagewise.io_load_masks(
             _load('mask.json', read=False),
             instance_ids=instance_ids)
 
