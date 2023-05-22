@@ -3,7 +3,7 @@ Tools to manipulate the bop-imagewise format
 
 bop-imagewise is a format where the image annotations are stored
 in individual files. This format is only used as an intermediate step
-to convert a bop-scenewise dataset to a bop-webdataset. 
+to convert a bop-scenewise dataset to a bop-webdataset.
 Format is the following:
 
 ├─ dataset
@@ -15,7 +15,8 @@ Format is the following:
 │  ├─ KEY.mask.json
 │  ├─ KEY.mask_visib.json
     ... ,
-where KEY is a unique identifier of an image in the dataset. Typically it is {scene_id:06d}_{image_id:06d}.
+where KEY is a unique identifier of an image in the dataset.
+Typically it is {scene_id:06d}_{image_id:06d}.
 """
 
 import json

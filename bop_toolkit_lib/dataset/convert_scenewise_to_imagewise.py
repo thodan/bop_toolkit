@@ -67,7 +67,8 @@ def convert_scene_to_imagewise(
         ):
             if scene_infos["has_" + im_modality]:
                 im_path = list(
-                    (input_scene_dir / im_modality).glob(f"{image_id:06d}.*"))[0]
+                    (input_scene_dir / im_modality
+                     ).glob(f"{image_id:06d}.*"))[0]
                 suffix = im_path.suffix
                 shutil.copy(
                     im_path,

@@ -103,7 +103,7 @@ def convert_imagewise_to_webdataset(
             rgb_name = 'rgb' + infos['rgb_suffix']
             obj[rgb_name] = open(
                 _file_path(rgb_name), 'rb').read()
-        
+
         if infos['has_depth']:
             obj['depth.png'] = open(
                 _file_path('depth.png'), 'rb').read()

@@ -93,7 +93,7 @@ def read_scene_infos(
     and optionally:
         - image_ids (list of image_ids for this scene)
         - n_objects (number of object instances in the scene).
-    
+
     :param scene_dir: Path to the scene directory.
     :param read_image_ids: Read list of image ids for this scene.
     :param read_n_objects: Read number of objects in this scene.
@@ -125,7 +125,8 @@ def read_scene_infos(
 
     assert (scene_dir / 'scene_camera.json').exists()
     if read_image_ids:
-        scene_cameras = json.loads((scene_dir / 'scene_camera.json').read_text())
+        scene_cameras = json.loads(
+            (scene_dir / 'scene_camera.json').read_text())
         image_ids = [int(k) for k in scene_cameras.keys()]
         infos['image_ids'] = image_ids
 
@@ -249,7 +250,7 @@ def load_image_data(
         gray_path = scene_dir / 'gray' / f'{image_id:06d}.tiff'
         im_gray = inout.load_im(gray_path).astype(np.uint8)
         image_data['im_gray'] = im_gray
-    
+
     if load_depth:
         depth_path = scene_dir / 'depth' / f'{image_id:06d}.png'
         im_depth = inout.load_im(depth_path).astype(np.float32)

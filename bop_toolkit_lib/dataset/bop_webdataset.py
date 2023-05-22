@@ -1,9 +1,10 @@
 """
 Tools to manipulate bop-webdataset format
 
-bop-webdataset is composed of several shards (a .tar file), each containing
-amaximum of 1000 images. Because images and annotations are stored in a .tar file,
-they can be read sequentially to achieve faster reading speeds compared to the other
+bop-webdataset is composed of several shards (a .tar file), 
+each containing amaximum of 1000 images. Because images and 
+annotations are stored in a .tar file,they can be read sequentially 
+to achieve faster reading speeds compared to the other
 file formats.
 
 ├─ dataset
@@ -12,9 +13,9 @@ file formats.
 │  ├─ shard-000001.tar
 │  ├─ ...
 
-Each shard contains a chunk of the bop-imagewise format. The images are typically
-stored after shuffling, to achieve random sampling of the dataset even if the data
-is read sequentially. E.g.
+Each shard contains a chunk of the bop-imagewise format.
+The images are typically stored after shuffling, to achieve random 
+sampling of the dataset even if the data is read sequentially. E.g.
 
 ├─ shard-000000.tar
 │  ├─ 00004_00015.rgb.jpg
@@ -32,8 +33,9 @@ is read sequentially. E.g.
 
 
 The file key_to_shard.json maps an image key to the index of the shard
-where it is stored. This can be used to read an individual image directly in a
-.tar file, but beware that this may be slow because random access in a .tar file
+where it is stored. This can be used to read an individual image
+directly in a .tar file, but beware that this may be slow because 
+random access in a .tar file
 requires to seek the correpsonding file in the entire byte sequence.
 """
 
