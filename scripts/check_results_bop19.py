@@ -17,7 +17,7 @@ p = {
   # Names of files with results for which to calculate the errors (assumed to be
   # stored in folder config.eval_path). See docs/bop_challenge_2019.md for a
   # description of the format. Example results can be found at:
-  # https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019/
+  # https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019_sample_results.zip
   'result_filenames': [
     '/path/to/csv/with/results',
   ],
