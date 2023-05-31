@@ -124,11 +124,12 @@ def io_load_masks(
     :return: a [N,H,W] binary array containing object masks.
     """
     masks_rle = json.load(mask_file)
+    masks_rle = {int(k): v for k, v in masks_rle.items()}
     if instance_ids is None:
         instance_ids = masks_rle.keys()
         instance_ids = sorted(instance_ids)
     masks = np.stack([
-        pycoco_utils.rle_to_binary_mask(masks_rle[str(instance_id)])
+        pycoco_utils.rle_to_binary_mask(masks_rle[instance_id])
         for instance_id in instance_ids])
     return masks
 
