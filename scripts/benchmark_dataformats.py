@@ -81,9 +81,9 @@ def benchmark_wds_random(wds_dir, n_images=100):
     return timings
 
 
-def benchmark_v2(v2_dir, n_images=1000):
-    v2_file_paths = v2_dir.glob('*')
-    keys = set([p.name.split('.')[0] for p in v2_file_paths])
+def benchmark_imwise(imwise_dir, n_images=1000):
+    imwise_file_paths = imwise_dir.glob('*')
+    keys = set([p.name.split('.')[0] for p in imwise_file_paths])
     keys = list(keys)
     np.random.RandomState(0).shuffle(keys)
 
@@ -91,7 +91,7 @@ def benchmark_v2(v2_dir, n_images=1000):
     start = time.time()
     for key in keys[:n_images]:
         bop_imagewise.load_image_data(
-            v2_dir,
+            imwise_dir,
             key,
             load_rgb=True,
             load_gray=False,
@@ -106,9 +106,9 @@ def benchmark_v2(v2_dir, n_images=1000):
     return timings
 
 
-def benchmark_v1(v1_scene_dir, n_images=100):
+def benchmark_scenewise(scene_dir, n_images=100):
     scene_infos = bop_scenewise.read_scene_infos(
-        v1_scene_dir, read_image_ids=True)
+        scene_dir, read_image_ids=True)
     image_ids = scene_infos['image_ids']
     np.random.RandomState(0).shuffle(image_ids)
     image_ids = image_ids[:n_images]
@@ -117,7 +117,7 @@ def benchmark_v1(v1_scene_dir, n_images=100):
     start = time.time()
     for image_id in image_ids:
         bop_scenewise.load_image_data(
-            v1_scene_dir,
+            scene_dir,
             image_id,
             load_rgb=True,
             load_gray=False,
@@ -138,42 +138,42 @@ if __name__ == '__main__':
     parser.add_argument(
         '--root',
         help="""Root directory containing a dataset \
-in the three following formats: v1, v2, webdataset.
+in the three following formats: scenewise, imagewise, webdataset.
 For example if the argument is --root ./ycbv \
 then the following structure is assumed:
 ├─ ycbv
     ├─ train_pbr
-    ├─ train_pbr_v2format
-    ├─ train_pbr_webdataset
+    ├─ train_pbr_imwise
+    ├─ train_pbr_web
 """
     )
     args = parser.parse_args()
     root_dir = pathlib.Path(args.root)
 
     timings = benchmark_wds_sequential(
-        root_dir / 'train_pbr_wdsformat' / f'shard-{0:06d}.tar',
+        root_dir / 'train_pbr_web' / f'shard-{0:06d}.tar',
         n_images=1000
     )
     print("# WebDataset, Sequential access")
     print_summary(timings[5:])
 
     timings = benchmark_wds_random(
-        root_dir / 'train_pbr_wdsformat',
+        root_dir / 'train_pbr_web',
         n_images=100,
     )
     print("# WebDataset, Random access")
     print_summary(timings[5:])
 
-    timings = benchmark_v2(
-        root_dir / 'train_pbr_v2format',
+    timings = benchmark_imwise(
+        root_dir / 'train_pbr_imwise',
         n_images=1000,
     )
-    print("# V2 format, Random access")
+    print("# Imagewise format, Random access")
     print_summary(timings[5:])
 
-    timings = benchmark_v1(
+    timings = benchmark_scenewise(
         root_dir / 'train_pbr' / f'{0:06d}',
         n_images=100,
     )
-    print("# V1 format, Random access")
+    print("# Scenewise format, Random access")
     print_summary(timings[5:])

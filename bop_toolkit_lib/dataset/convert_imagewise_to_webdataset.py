@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument(
         "--input",
         help="""A directory containing a dataset in imagewise format,
-        e.g. ./ycbv/train_pbr_v2format.
+        e.g. ./ycbv/train_pbr_imwise.
         """,
         type=str,
         required=True,
@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         help="""Output directory that will contain
-        multiple shards, e.g. ./ycbv/train_pbr_wdsformat
+        multiple shards, e.g. ./ycbv/train_pbr_web
         """,
         type=str,
         required=True,

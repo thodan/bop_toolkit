@@ -18,7 +18,7 @@ def convert_scene_to_imagewise(
 
     :param input_scene_dir:
     Directory containing observations and annotations in bop-scenewise format.
-    :param v2_dir: Directory where the data will be written
+    :param output_dir: Directory where the data will be written
     in bop-imagewise format.
     :param image_tkey: Template path containing the string '{image_id}'.
     """
@@ -91,7 +91,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         help="""Output directory that will contain the dataset
-        in v2 format, e.g. ./ycbv/train_pbr_v2format.
+        in imagewise format, e.g. ./ycbv/train_pbr_imwise.
         """,
         type=str,
         required=True,
