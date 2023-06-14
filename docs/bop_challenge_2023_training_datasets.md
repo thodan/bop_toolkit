@@ -4,7 +4,7 @@ The datasets include over 2M images showing more than 50K diverse objects. The i
 
 Note that symmetry transformations are not available for these objects, but could be identified using [these HALCON scripts](https://github.com/thodan/bop_toolkit/issues/50#issuecomment-903632625) (we used the scripts to identify symmetries of objects in the [BOP datasets](https://bop.felk.cvut.cz/datasets) as described in Section 2.3 of the [BOP Challenge 2020 paper](https://arxiv.org/pdf/2009.07378.pdf); if you use the scripts to identify symmetries of the Google Scanned Objects and ShapeNetCore objects, sharing the symmetries would be appreciated).
 
-The datasets are saved in the [BOP-webdataset format](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_webdataset.py).
+The datasets are saved in the [BOP-webdataset](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_webdataset.py) format.
 
 
 ## MegaPose-GSO dataset
