@@ -2,7 +2,7 @@
 
 This file describes the [BOP-scenewise](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_scenewise.py) dataset format. This format can be converted to the [BOP-imagewise](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_imagewise.py) format using script [convert_scenewise_to_imagewise.py](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/convert_scenewise_to_imagewise.py) and to the [BOP-webdataset](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_webdataset.py) format using script [convert_imagewise_to_webdataset.py](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/convert_imagewise_to_webdataset.py).
 
-Datasets provided on the [BOP website](https://bop.felk.cvut.cz/datasets) are in the BOP-scenewise format with exception of the MegaPose training datasets provided for BOP Challenge 2023, which are in the BOP-webdataset format.
+Datasets provided on the [BOP website](https://bop.felk.cvut.cz/datasets) are in the BOP-scenewise format with exception of the [MegaPose training datasets](https://github.com/thodan/bop_toolkit/blob/master/docs/bop_challenge_2023_training_datasets.md) provided for BOP Challenge 2023, which are in the BOP-webdataset format.
 
 
 ## Directory structure
