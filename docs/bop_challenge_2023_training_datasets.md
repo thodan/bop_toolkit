@@ -1,4 +1,4 @@
-# Training datasets for Tasks 4–6 of the [BOP Challenge 2023](https://bop.felk.cvut.cz/challenges/bop-challenge-2023/)
+# Training datasets for Tasks 4–6 of [BOP Challenge 2023](https://bop.felk.cvut.cz/challenges/bop-challenge-2023/)
 
 The datasets include over 2M images showing more than 50K diverse objects. The images were originally synthesized for [MegaPose](https://megapose6d.github.io/) using [BlenderProc](https://github.com/DLR-RM/BlenderProc/blob/main/README_BlenderProc4BOP.md). The objects are from the [Google Scanned Objects](https://research.google/resources/datasets/scanned-objects-google-research/) and [ShapeNetCore](https://shapenet.org/) datasets and their 3D models can be downloaded from the respective websites.
 
