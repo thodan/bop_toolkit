@@ -137,6 +137,29 @@ def load_cam_params(path):
   return cam
 
 
+def _camera_as_numpy(camera):
+  if 'cam_K' in camera.keys():
+    camera['cam_K'] = \
+      np.array(camera['cam_K'], np.float64).reshape((3, 3))
+  if 'cam_R_w2c' in camera.keys():
+    camera['cam_R_w2c'] = \
+      np.array(camera['cam_R_w2c'], np.float64).reshape((3, 3))
+  if 'cam_t_w2c' in camera.keys():
+    camera['cam_t_w2c'] = \
+      np.array(camera['cam_t_w2c'], np.float64).reshape((3, 1))
+  return camera
+
+
+def _camera_as_json(camera):
+  if 'cam_K' in camera.keys():
+    camera['cam_K'] = camera['cam_K'].flatten().tolist()
+  if 'cam_R_w2c' in camera.keys():
+    camera['cam_R_w2c'] = camera['cam_R_w2c'].flatten().tolist()
+  if 'cam_t_w2c' in camera.keys():
+    camera['cam_t_w2c'] = camera['cam_t_w2c'].flatten().tolist()
+  return camera
+
+
 def load_scene_camera(path):
   """Loads content of a JSON file with information about the scene camera.
 
@@ -148,15 +171,7 @@ def load_scene_camera(path):
   scene_camera = load_json(path, keys_to_int=True)
 
   for im_id in scene_camera.keys():
-    if 'cam_K' in scene_camera[im_id].keys():
-      scene_camera[im_id]['cam_K'] = \
-        np.array(scene_camera[im_id]['cam_K'], np.float64).reshape((3, 3))
-    if 'cam_R_w2c' in scene_camera[im_id].keys():
-      scene_camera[im_id]['cam_R_w2c'] = \
-        np.array(scene_camera[im_id]['cam_R_w2c'], np.float64).reshape((3, 3))
-    if 'cam_t_w2c' in scene_camera[im_id].keys():
-      scene_camera[im_id]['cam_t_w2c'] = \
-        np.array(scene_camera[im_id]['cam_t_w2c'], np.float64).reshape((3, 1))
+    scene_camera[im_id] = _camera_as_numpy(scene_camera[im_id])
   return scene_camera
 
 
@@ -169,14 +184,27 @@ def save_scene_camera(path, scene_camera):
   :param scene_camera: Dictionary to save to the JSON file.
   """
   for im_id in sorted(scene_camera.keys()):
-    im_camera = scene_camera[im_id]
-    if 'cam_K' in im_camera.keys():
-      im_camera['cam_K'] = im_camera['cam_K'].flatten().tolist()
-    if 'cam_R_w2c' in im_camera.keys():
-      im_camera['cam_R_w2c'] = im_camera['cam_R_w2c'].flatten().tolist()
-    if 'cam_t_w2c' in im_camera.keys():
-      im_camera['cam_t_w2c'] = im_camera['cam_t_w2c'].flatten().tolist()
+    scene_camera[im_id] = _camera_as_json(scene_camera[im_id])
   save_json(path, scene_camera)
+
+
+def _gt_as_numpy(gt):
+  if 'cam_R_m2c' in gt.keys():
+    gt['cam_R_m2c'] = \
+      np.array(gt['cam_R_m2c'], np.float64).reshape((3, 3))
+  if 'cam_t_m2c' in gt.keys():
+    gt['cam_t_m2c'] = \
+      np.array(gt['cam_t_m2c'], np.float64).reshape((3, 1))
+  return gt
+
+def _gt_as_json(gt):
+  if 'cam_R_m2c' in gt.keys():
+    gt['cam_R_m2c'] = gt['cam_R_m2c'].flatten().tolist()
+  if 'cam_t_m2c' in gt.keys():
+    gt['cam_t_m2c'] = gt['cam_t_m2c'].flatten().tolist()
+  if 'obj_bb' in gt.keys():
+    gt['obj_bb'] = [int(x) for x in gt['obj_bb']]
+  return gt
 
 
 def load_scene_gt(path):
