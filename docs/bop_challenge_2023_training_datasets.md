@@ -7,10 +7,13 @@ Note that symmetry transformations are not available for these objects, but coul
 The datasets are saved in the [BOP-webdataset](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_webdataset.py) format.
 
 
+A scale of 0.1 needs to be applied to the original mesh from each dataset. There is a json file I added with each dataset that contains the mapping between obj_ids and the identifiers in the original datasets
+
+
 ## MegaPose-GSO dataset
 
-- 3D object models can be downloaded from the [Google Scanned Objects](https://research.google/resources/datasets/scanned-objects-google-research/) website
-- [Mapping from `obj_id` to the original object identifiers](https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-gso/gso_models.json)
+- 3D object models can be downloaded from the [Google Scanned Objects](https://research.google/resources/datasets/scanned-objects-google-research/) website (scale the models by 0.1 to be compatible with the provided GT poses)
+- [Mapping from `obj_id` used in BOP to the original object identifiers](https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-gso/gso_models.json)
 - [Mapping from an image key to the index of the shard where it is stored](https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-gso/train_pbr_web/key_to_shard.json)
 - The dataset is split into 1040 shards, with each shard containing 1000 images together with object annotations and camera parameters. Use the following URL template to download a shard (`<SHARD-ID>` is from `000000` to `001039`).
 ```
@@ -20,8 +23,8 @@ https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-gso/tra
 
 ## MegaPose-ShapeNetCore dataset
 
-- 3D object models can be downloaded from the [ShapeNet](https://shapenet.org/) website
-- [Mapping from `obj_id` to the original object identifiers](https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-shapenet/shapenet_models.json)
+- 3D object models can be downloaded from the [ShapeNet](https://shapenet.org/) website (scale the models by 0.1 to be compatible with the provided GT poses)
+- [Mapping from `obj_id` used in BOP to the original object identifiers](https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-shapenet/shapenet_models.json)
 - [Mapping from an image key to the index of the shard where it is stored](https://bop.felk.cvut.cz/media/data/bop_datasets/bop23_datasets/megapose-shapenet/train_pbr_web/key_to_shard.json)
 - The dataset is split into 1040 shards, with each shard containing 1000 images together with object annotations and camera parameters. Use the following URL template to download a shard (`<SHARD-ID>` is from `000000` to `001039`).
 ```
