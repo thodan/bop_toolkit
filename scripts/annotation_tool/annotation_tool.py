@@ -84,6 +84,7 @@ class Settings:
         self.bg_color = gui.Color(1, 1, 1)
         self.show_axes = False
         self.highlight_obj = True
+        self.cam_follow_obj = False
 
         self.apply_material = True  # clear to False after processing
 
@@ -122,6 +123,7 @@ class AppWindow:
 
         self._show_axes.checked = self.settings.show_axes
         self._highlight_obj.checked = self.settings.highlight_obj
+        self._camera_follow_object.checked = self.settings.cam_follow_obj
         self._point_size.double_value = self.settings.scene_material.point_size
 
     def _on_layout(self, layout_context):
@@ -188,7 +190,10 @@ class AppWindow:
         annotation_objects.set_is_open(True)
         self._meshes_available = gui.ListView()
         # mesh_available.set_items(["bottle", "can"])
+        self._camera_follow_object = gui.Checkbox("Change camera to object")
+        self._camera_follow_object.set_on_checked(self._set_change_cam_to_object)
         self._meshes_used = gui.ListView()
+        self._meshes_used.set_on_selection_changed(self._change_cam_to_object)
         # mesh_used.set_items(["can_0", "can_1", "can_1", "can_1"])
         add_mesh_button = gui.Button("Add Mesh")
         remove_mesh_button = gui.Button("Remove Mesh")
@@ -196,6 +201,7 @@ class AppWindow:
         remove_mesh_button.set_on_clicked(self._remove_mesh)
         annotation_objects.add_child(self._meshes_available)
         annotation_objects.add_child(add_mesh_button)
+        annotation_objects.add_child(self._camera_follow_object)
         annotation_objects.add_child(self._meshes_used)
         annotation_objects.add_child(remove_mesh_button)
         self._settings_panel.add_child(annotation_objects)
@@ -526,6 +532,20 @@ class AppWindow:
 
     def _on_about_ok(self):
         self.window.close_dialog()
+
+    def _change_cam_to_object(self, new_sel_val, is_dbl_click):
+        if self.settings.cam_follow_obj:
+            meshes = self._annotation_scene.get_objects()
+            selected_obj = meshes[self._meshes_used.selected_index]
+            bounds = selected_obj.obj_geometry.get_axis_aligned_bounding_box()
+            self._scene.setup_camera(60, bounds, bounds.get_center())
+            center = selected_obj.obj_geometry.get_center()
+            eye = center + np.array([0, 0, -0.5])
+            up = np.array([0, -1, 0])
+            self._scene.look_at(center, eye, up)
+
+    def _set_change_cam_to_object(self, checked):
+        self.settings.cam_follow_obj = checked
 
     def _obj_instance_count(self, mesh_to_add, meshes):
         types = [i[:-2] for i in meshes]  # remove last 3 character as they present instance number (OBJ_INSTANCE)
