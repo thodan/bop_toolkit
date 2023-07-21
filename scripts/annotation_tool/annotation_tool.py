@@ -702,17 +702,8 @@ class AppWindow:
         self._meshes_available.set_items(model_names)
 
     def load_model_names(self):
-        path = self.scenes.objects_path + '/models_names.json'
-        if os.path.exists(path):
-            with open(path) as f:
-                data = json.load(f)
-                model_names = [data[x]['name'] for x in data]
-        else:  # model names file doesn't exist
-            warnings.warn(
-                "models_names.json doesn't exist. Objects will be loaded with their literal id (obj_000001, obj_000002, ...)")
-            no_of_models = len([os.path.basename(x)[:-4] for x in glob.glob(self.scenes.objects_path + '/*.ply')])
-            model_names = ['obj_' + f'{i + 1:06}' for i in range(no_of_models)]
-
+        no_of_models = len([os.path.basename(x)[:-4] for x in glob.glob(self.scenes.objects_path + '/*.ply')])
+        model_names = ['obj_' + f'{i + 1:06}' for i in range(no_of_models)]
         return model_names
 
     def _check_changes(self):
