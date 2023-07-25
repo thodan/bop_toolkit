@@ -567,16 +567,16 @@ class AppWindow:
             self.scenes.objects_path + '/obj_' + f'{self._meshes_available.selected_index + 1:06}' + '.ply')
         object_geometry.points = o3d.utility.Vector3dVector(
             np.array(object_geometry.points) / 1000)  # convert mm to meter
-        init_trans = np.identity(4)
-        center = self._annotation_scene.annotation_scene.get_center()
-        center[2] -= 0.2
-        init_trans[0:3, 3] = center
-        object_geometry.transform(init_trans)
+        cam_trans = self._scene.scene.camera.get_model_matrix()
+        infront_of_cam_trans = np.eye(4)
+        infront_of_cam_trans[2,3] += -0.5  # drop object 0.5 meter in front of the camera
+        obj_trans = cam_trans@infront_of_cam_trans
+        object_geometry.transform(obj_trans)
         new_mesh_instance = self._obj_instance_count(self._meshes_available.selected_value, meshes)
         new_mesh_name = str(self._meshes_available.selected_value) + '_' + str(new_mesh_instance)
         self._scene.scene.add_geometry(new_mesh_name, object_geometry, self.settings.annotation_obj_material,
                                        add_downsampled_copy_for_fast_rendering=True)
-        self._annotation_scene.add_obj(object_geometry, new_mesh_name, new_mesh_instance, transform=init_trans)
+        self._annotation_scene.add_obj(object_geometry, new_mesh_name, new_mesh_instance, transform=obj_trans)
         meshes = self._annotation_scene.get_objects()  # update list after adding current object
         meshes = [i.obj_name for i in meshes]
         self._meshes_used.set_items(meshes)
