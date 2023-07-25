@@ -42,6 +42,7 @@ def main():
         p['dataset_split'] + '_' + p['dataset_split_type'] if p['dataset_split_type'] else p['dataset_split'])
     scenes_paths = glob.glob(dataset_split_path + '/*')
 
+    assembled_cloud = o3d.geometry.PointCloud()
     for scene_path in scenes_paths:  # samples are not ordered
         scene_camera_json = os.path.join(scene_path, 'scene_camera.json')
         rgb_folder = os.path.join(scene_path, 'rgb')
@@ -75,19 +76,20 @@ def main():
             depth = o3d.io.read_image(depth_img)
             # Extract RGDB image from RGB and Depth, intensity is set to false - get colour data (3 Channels)
             rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=1000,
-                                                                      convert_rgb_to_intensity=False)  # TODO depth_scale should be 1 in the next collection
+                                                                      convert_rgb_to_intensity=False)  # rgbd in meters
             # Intrinsic parameters is constant for every frame and scene
             camera_intrinsic_zivid = o3d.camera.PinholeCameraIntrinsic(width=1944, height=1200,
                                                                        fx=1778.81005859375, fy=1778.87036132812,
                                                                        cx=967.931579589844, cy=572.408813476562)
             pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, camera_intrinsic_zivid)
-            pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)
+            pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
-            transformed_pcd = pcd.transform(world2cam)
-            transformed_pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=10, max_nn=30))
+            transformed_cloud = pcd.transform(world2cam)
+            transformed_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=10, max_nn=30))
             #o3d.visualization.draw_geometries([transformed_pcd])
-            clouds.append(transformed_pcd)
-        o3d.visualization.draw_geometries(clouds)
+            clouds.append(transformed_cloud)
+            assembled_cloud += transformed_cloud
+        #o3d.visualization.draw_geometries(clouds)
 
         if p['refine']:
             # Convert point clouds from legacy to tensors
@@ -95,27 +97,25 @@ def main():
             for cloud in clouds:  # TODO remove this loop do everything in the outer loop
                 cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud)
                 cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
-                clouds_t = cloud_t.cuda(0)
-            clouds_t.append(cloud_t)
+                cloud_t = cloud_t.cuda(0)
+                clouds_t.append(cloud_t)
 
             # align all clouds to first cloud using ICP - update the transformation of VICON
             import open3d.t.pipelines.registration as treg
-            max_correspondence_distances = 100.0 # TODO try in mm (100 takes too long)
+            max_correspondence_distances = 70.0
+            # TODO test multi-scale voxel size
+            voxel_size = 25  # in mm
             criteria = treg.ICPConvergenceCriteria(relative_fitness=1.000000e-06,relative_rmse=1.000000e-06,max_iteration=300)
 
             refined_clouds = [clouds_t[0]]
-            target_cloud = cloud_t[0]
-            target_cloud_downsampled = target_cloud.voxel_down_sample(voxel_size=0.001)  # Downsample target
-            assembled_cloud = clouds[0]
-            tf_icp = {}
-            frame_count = -1
+            target_cloud = clouds_t[0]
+            assembled_cloud = clouds_t[0]
             for idx, source_cloud in enumerate(clouds_t[1:]):
                 cloud_idx = idx + 1  # as we don't iterate from the first sample
-                source_cloud_downsampled = source_cloud.voxel_down_sample(voxel_size=0.001)  # Downsample source
-                reg_transform = treg.icp(source_cloud_downsampled, target_cloud_downsampled,
+                reg_transform = treg.icp(source_cloud, target_cloud,
                                          max_correspondence_distances,
                                          estimation_method=treg.TransformationEstimationForColoredICP(),
-                                         criteria=criteria, voxel_size=0.01)
+                                         criteria=criteria, voxel_size=voxel_size)
                 transformed_source = source_cloud.transform(reg_transform.transformation)
                 refined_clouds.append(transformed_source)
 
@@ -125,10 +125,10 @@ def main():
                 world2cam[:3, :3] = np.array(scene_camera_data[str(index)]['cam_R_w2c']).reshape(3, 3)
                 world2cam[:3, 3] = np.array(scene_camera_data[str(index)]['cam_t_w2c'])
                 refined_transform = np.matmul(world2cam, icp_transform)
-                assembled_cloud += transformed_source
+                assembled_cloud.append(transformed_source)
 
-                scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3]  # TODO should that be flattened?
-                scene_camera_data[str(cloud_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten()
+                scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()  # TODO should that be flattened?
+                scene_camera_data[str(cloud_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten().tolist()
 
 
             def visualize_cloud_list(clouds):
@@ -141,15 +141,18 @@ def main():
 
                 o3d.visualization.draw_geometries(vis_clouds_legacy)
 
-            visualize_cloud_list(refined_clouds)
+            #visualize_cloud_list(refined_clouds)
 
         # Save assembled cloud
         # TODO remove redundant points in the assembled clouds
-        assembled_cloud.point["colors"] = assembled_cloud.point["colors"].to(o3d.core.Dtype.Float32) * 255.0
-        o3d.t.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
+        # TODO check if assembled point cloud is already there and make a warning
+        if not p['refine']:
+            o3d.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
+        else:  # refine True
+            assembled_cloud.point["colors"] = assembled_cloud.point["colors"].to(o3d.core.Dtype.Float32) * 255.0
+            o3d.t.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
 
-        if p['refine']:
-            os.rename(scene_camera_json, scene_camera_data[:-4]+'_UNREFINED.json')
+            os.rename(scene_camera_json, scene_camera_json[:-5]+'_UNREFINED.json')
             with open(scene_camera_json, 'w') as f:
                 json.dump(scene_camera_data, f)
 
