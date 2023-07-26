@@ -52,7 +52,7 @@ p = {
 }
 ################################################################################
 
-dist = 0.002
+dist = 2  # mm
 deg = 1
 
 
@@ -305,7 +305,8 @@ class AppWindow:
 
     def _update_scene_numbers(self):
         self._scene_number.text = "Scene: " + f'{self._annotation_scene.scene_num:06}'
-        self._image_number.text = "Image: " + f'{self._annotation_scene.image_num:06}'
+        if p['tool_model'] == 'individual':
+            self._image_number.text = "Image: " + f'{self._annotation_scene.image_num:06}'
 
     def _transform(self, event):
         if event.is_repeat:
@@ -322,10 +323,10 @@ class AppWindow:
         global dist, deg
         if event.key == gui.KeyName.LEFT_CONTROL:
             if event.type == gui.KeyEvent.DOWN:
-                dist = 0.05
+                dist = 50  # mm
                 deg = 90
             elif event.type == gui.KeyEvent.UP:
-                dist = 0.005
+                dist = 5  # mm
                 deg = 1
             return gui.Widget.EventCallbackResult.HANDLED
 
@@ -420,8 +421,8 @@ class AppWindow:
         source = active_obj.obj_geometry
 
         trans_init = np.identity(4)
-        threshold = 0.004
-        radius = 0.002
+        threshold = 4  # mm
+        radius = 2  # mm
         target.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
         source.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
         reg = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,
@@ -456,11 +457,11 @@ class AppWindow:
             view_angle_data = list()
             for obj in self._annotation_scene.get_objects():
                 transform_cam_to_object = obj.transform
-                translation = list(transform_cam_to_object[0:3, 3] * 1000)  # convert meter to mm
+                translation = list(transform_cam_to_object[0:3, 3])  # distance in mm
                 model_names = self.load_model_names()
                 obj_id = model_names.index(obj.obj_name[:-2]) + 1  # assuming max number of object of same object 10
                 obj_data = {
-                    "cam_R_m2c": transform_cam_to_object[0:3, 0:3].tolist(),  # rotation matrix
+                    "cam_R_m2c": transform_cam_to_object[0:3, 0:3].flatten().tolist(),  # rotation matrix
                     "cam_t_m2c": translation,  # translation
                     "obj_id": obj_id
                 }
@@ -580,10 +581,10 @@ class AppWindow:
         object_geometry = o3d.io.read_point_cloud(
             self.scenes.objects_path + '/obj_' + f'{self._meshes_available.selected_index + 1:06}' + '.ply')
         object_geometry.points = o3d.utility.Vector3dVector(
-            np.array(object_geometry.points) / 1000)  # convert mm to meter
+            np.array(object_geometry.points))  # object point cloud in mm
         cam_trans = self._scene.scene.camera.get_model_matrix()
         infront_of_cam_trans = np.eye(4)
-        infront_of_cam_trans[2,3] += -0.5  # drop object 0.5 meter in front of the camera
+        infront_of_cam_trans[2,3] += -500  # drop object 50 mm in front of the camera
         obj_trans = cam_trans@infront_of_cam_trans
         object_geometry.transform(obj_trans)
         new_mesh_instance = self._obj_instance_count(self._meshes_available.selected_value, meshes)
@@ -620,6 +621,7 @@ class AppWindow:
         rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb_img_o3d, depth_img_o3d,
                                                                   depth_scale=1, convert_rgb_to_intensity=False)
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
+        pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
         return pcd
 
@@ -644,13 +646,15 @@ class AppWindow:
                 rgb_img = cv2.imread(rgb_path)
                 depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
                 depth_img = cv2.imread(depth_path, -1)
-                depth_img = np.float32(depth_img * depth_scale / 1000)
+                depth_img = np.float32(depth_img * depth_scale / 1000)  # convet depth to meter - convert it later to mm after making point cloud in open3d
 
-                geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)
+                geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)  # point cloud in mm
             elif p['tool_model'] == 'sequence':
                 point_cloud_path = os.path.join(scene_path, 'assembled_cloud.pcd')
                 point_cloud_path = '/home/gouda/tmp/assembled_cloud.pcd'
                 geometry = o3d.io.read_point_cloud(point_cloud_path)
+                geometry.points = o3d.utility.Vector3dVector(np.asarray(geometry.points))  # point cloud is in mm
+                image_num = 'w'
             else:
                 print(p['tool_model'], " is not valid. Exiting ...")
                 exit()
@@ -682,8 +686,11 @@ class AppWindow:
 
             model_names = self.load_model_names()
 
-            scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}",
-                                         'scene_gt.json')
+            if p['tool_model'] == 'individual':
+                scene_gt_file = 'scene_gt.json'
+            elif p['tool_model'] == 'sequence':
+                scene_gt_file = 'scene_gt_world.json'
+            scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_file)
             # if os.path.exists(json_path):
             with open(scene_gt_path) as scene_gt_file:
                 data = json.load(scene_gt_file)
@@ -694,11 +701,11 @@ class AppWindow:
                     obj_geometry = o3d.io.read_point_cloud(
                         os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply'))
                     obj_geometry.points = o3d.utility.Vector3dVector(
-                        np.array(obj_geometry.points) / 1000)  # convert mm to meter
+                        np.array(obj_geometry.points))  # object point cloud in mm
                     model_name = model_names[int(obj['obj_id']) - 1]
                     obj_instance = self._obj_instance_count(model_name, active_meshes)
                     obj_name = model_name + '_' + str(obj_instance)
-                    translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64) / 1000  # convert to meter
+                    translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64)  # distance in mm
                     orientation = np.array(np.array(obj['cam_R_m2c']), dtype=np.float64)
                     transform = np.concatenate((orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1)
                     transform_cam_to_obj = np.concatenate(
