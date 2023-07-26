@@ -4,7 +4,7 @@ This is required for annotating datasets that are captured in a sequence of fram
 All frames in a sample are assembled into on big point cloud in the first frame.
 
 To be able to run this script scene_camera.json must include "cam_R_w2c" and "cam_t_w2c".
-The script will save the assembled point cloud as assembled_cloud.pcd in the world_frame in each sample folder.
+The script will save the assembled point cloud as assembled_cloud_WORLD.pcd in the world_frame in each sample folder.
 
 All units in this script are mm as in the BOP standard. The assembled point cloud is also saved in mm.
 """

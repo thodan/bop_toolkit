@@ -441,10 +441,12 @@ class AppWindow:
     def _on_generate(self):
         if p['tool_model'] == 'individual':
             image_num = self._annotation_scene.image_num
+            scene_gt_path = 'scene_gt.json'
         elif p['tool_model'] == 'sequence':
-            image_num = 0
+            image_num = 'w'
+            scene_gt_path = 'scene_gt_WORLD.json'
 
-        json_6d_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", "scene_gt.json")
+        json_6d_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_path)
 
         if os.path.exists(json_6d_path):
             with open(json_6d_path, "r") as gt_scene:
@@ -650,8 +652,7 @@ class AppWindow:
 
                 geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)  # point cloud in mm
             elif p['tool_model'] == 'sequence':
-                point_cloud_path = os.path.join(scene_path, 'assembled_cloud.pcd')
-                point_cloud_path = '/home/gouda/tmp/assembled_cloud.pcd'
+                point_cloud_path = os.path.join(scene_path, 'assembled_cloud_WORLD.pcd')
                 geometry = o3d.io.read_point_cloud(point_cloud_path)
                 geometry.points = o3d.utility.Vector3dVector(np.asarray(geometry.points))  # point cloud is in mm
                 image_num = 'w'
@@ -689,7 +690,7 @@ class AppWindow:
             if p['tool_model'] == 'individual':
                 scene_gt_file = 'scene_gt.json'
             elif p['tool_model'] == 'sequence':
-                scene_gt_file = 'scene_gt_world.json'
+                scene_gt_file = 'scene_gt_WORLD.json'
             scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_file)
             # if os.path.exists(json_path):
             with open(scene_gt_path) as scene_gt_file:
