@@ -5,9 +5,16 @@
 
 Using RGB, Depth and Models the tool will generate the "scene_gt.json" annotation file
 
-Other annotations can be generated usign other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
+Other annotations can be generated using other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
 
-original repo: https://github.com/FLW-TUDO/3d_annotation_tool
+The tool has two modes:
+1- 'individual' mode: annotate all samples and frame individually
+2- 'sequence' mode: annotate a whole sample by annotating first frame.
+                    This is the case for most bop datasets (LM, T-Less).
+                    assemble_cloud.py script must be called first to assemble point cloud for the whole scene.
+                    call project_6D_annotations.py after annotating to projects the annotations to other frames.
+
+original repo: https://github.com/FLW-TUDO/3d_annotation_tool was made for annotating the DoPose dataset.
 
 """
 
@@ -24,6 +31,9 @@ import warnings
 # PARAMETERS.
 ################################################################################
 p = {
+    # Mode of the annotation tool. Options: 'individual' or 'sequence':
+    'tool_model': 'individual',
+
     # Folder containing the BOP datasets.
     'dataset_path': '/path/to/dataset',
 
@@ -213,14 +223,15 @@ class AppWindow:
         self._images_buttons_label = gui.Label("Images:")
         self._samples_buttons_label = gui.Label("Scene: ")
 
-        self._pre_image_button = gui.Button("Previous")
-        self._pre_image_button.horizontal_padding_em = 0.8
-        self._pre_image_button.vertical_padding_em = 0
-        self._pre_image_button.set_on_clicked(self._on_previous_image)
-        self._next_image_button = gui.Button("Next")
-        self._next_image_button.horizontal_padding_em = 0.8
-        self._next_image_button.vertical_padding_em = 0
-        self._next_image_button.set_on_clicked(self._on_next_image)
+        if p['tool_model'] == 'individual':
+            self._pre_image_button = gui.Button("Previous")
+            self._pre_image_button.horizontal_padding_em = 0.8
+            self._pre_image_button.vertical_padding_em = 0
+            self._pre_image_button.set_on_clicked(self._on_previous_image)
+            self._next_image_button = gui.Button("Next")
+            self._next_image_button.horizontal_padding_em = 0.8
+            self._next_image_button.vertical_padding_em = 0
+            self._next_image_button.set_on_clicked(self._on_next_image)
         self._pre_sample_button = gui.Button("Previous")
         self._pre_sample_button.horizontal_padding_em = 0.8
         self._pre_sample_button.vertical_padding_em = 0
@@ -229,14 +240,15 @@ class AppWindow:
         self._next_sample_button.horizontal_padding_em = 0.8
         self._next_sample_button.vertical_padding_em = 0
         self._next_sample_button.set_on_clicked(self._on_next_scene)
-        # 2 rows for sample and scene control
-        h = gui.Horiz(0.4 * em)  # row 1
-        h.add_stretch()
-        h.add_child(self._images_buttons_label)
-        h.add_child(self._pre_image_button)
-        h.add_child(self._next_image_button)
-        h.add_stretch()
-        self._scene_control.add_child(h)
+        if p['tool_model'] == 'individual':
+            # 2 rows for sample and scene control
+            h = gui.Horiz(0.4 * em)  # row 1
+            h.add_stretch()
+            h.add_child(self._images_buttons_label)
+            h.add_child(self._pre_image_button)
+            h.add_child(self._next_image_button)
+            h.add_stretch()
+            self._scene_control.add_child(h)
         h = gui.Horiz(0.4 * em)  # row 2
         h.add_stretch()
         h.add_child(self._samples_buttons_label)
@@ -426,8 +438,10 @@ class AppWindow:
         active_obj.transform = np.matmul(reg.transformation, active_obj.transform)
 
     def _on_generate(self):
-        image_num = self._annotation_scene.image_num
-        model_names = self.load_model_names()
+        if p['tool_model'] == 'individual':
+            image_num = self._annotation_scene.image_num
+        elif p['tool_model'] == 'sequence':
+            image_num = 0
 
         json_6d_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", "scene_gt.json")
 
@@ -617,21 +631,29 @@ class AppWindow:
 
         scene_path = os.path.join(scenes_path, f'{scene_num:06}')
 
-        camera_params_path = os.path.join(scene_path, 'scene_camera.json')
-        with open(camera_params_path) as f:
-            data = json.load(f)
-            cam_K = data[str(image_num)]['cam_K']
-            cam_K = np.array(cam_K).reshape((3, 3))
-            depth_scale = data[str(image_num)]['depth_scale']
-
-        rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
-        rgb_img = cv2.imread(rgb_path)
-        depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
-        depth_img = cv2.imread(depth_path, -1)
-        depth_img = np.float32(depth_img * depth_scale / 1000)
-
         try:
-            geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)
+            if p['tool_model'] == 'individual':
+                camera_params_path = os.path.join(scene_path, 'scene_camera.json')
+                with open(camera_params_path) as f:
+                    data = json.load(f)
+                    cam_K = data[str(image_num)]['cam_K']
+                    cam_K = np.array(cam_K).reshape((3, 3))
+                    depth_scale = data[str(image_num)]['depth_scale']
+
+                rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
+                rgb_img = cv2.imread(rgb_path)
+                depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
+                depth_img = cv2.imread(depth_path, -1)
+                depth_img = np.float32(depth_img * depth_scale / 1000)
+
+                geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)
+            elif p['tool_model'] == 'sequence':
+                point_cloud_path = os.path.join(scene_path, 'assembled_cloud.pcd')
+                point_cloud_path = '/home/gouda/tmp/assembled_cloud.pcd'
+                geometry = o3d.io.read_point_cloud(point_cloud_path)
+            else:
+                print(p['tool_model'], " is not valid. Exiting ...")
+                exit()
         except Exception:
             print("Failed to load scene.")
 
