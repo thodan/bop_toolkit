@@ -33,7 +33,8 @@ p = {
     # WARNING: when this option is used the original scene_camera.json will be renamed scene_camera_UNREFINED.json
     #          and the new refined transformation will be added as scene_camera.json
     # This option require CUDA. unfortunately the ICP is very slow without CUDA and it is not recomended.
-    'refine': False
+    'refine': False,
+    'show_refined_cloud': True
 }
 ################################################################################
 
@@ -65,14 +66,6 @@ def main():
             world2cam[:3, :3] = np.array(scene_camera_data[str(index)]['cam_R_w2c']).reshape(3,3)
             world2cam[:3, 3] = np.array(scene_camera_data[str(index)]['cam_t_w2c'])
 
-            # TODO delete this part before commiting to BOP
-            # Multiplication of tf.yaml from calibration and converted scene_transformation
-            camV2camZ_transform = np.array([[-7.30270743e-02, 1.53018674e-03, 9.97328758e-01, 4.83475304e+01],
-                                            [-9.97233272e-01, 1.38121666e-02, -7.30412677e-02, 6.47780075e+01],
-                                            [-1.38870385e-02, -9.99903440e-01, 5.17291017e-04, -9.69494534e+00],
-                                            [0., 0., 0., 1.]])
-            world2cam = world2cam @ camV2camZ_transform
-
             # Process one point cloud per iteration
             rgb = o3d.io.read_image(rgb_img)
             depth = o3d.io.read_image(depth_img)
@@ -93,33 +86,34 @@ def main():
             assembled_cloud += transformed_cloud
         #o3d.visualization.draw_geometries(clouds)
 
-        if p['refine']:
+        if p['refine']:  # NOTE: ICP in Open3d have to be done with all units in meter. Convert all to meter and convert back to mm.
             # Convert point clouds from legacy to tensors
             clouds_t = []
             for cloud in clouds:  # TODO remove this loop do everything in the outer loop
-                cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud)
+                cloud_copy = copy.deepcopy(cloud)
+                cloud_copy.points = o3d.utility.Vector3dVector(np.asarray(cloud_copy.points) / 1000)  # convert cloud in meter for icp
+                cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
                 cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
                 cloud_t = cloud_t.cuda(0)
                 clouds_t.append(cloud_t)
 
             # align all clouds to first cloud using ICP - update the transformation of VICON
             import open3d.t.pipelines.registration as treg
-            max_correspondence_distances = 70.0
+            max_correspondence_distances = 0.02  # in meter
             # TODO test multi-scale voxel size
-            voxel_size = 25  # in mm
+            voxel_size = 0.001  # in meter
             criteria = treg.ICPConvergenceCriteria(relative_fitness=1.000000e-06,relative_rmse=1.000000e-06,max_iteration=300)
 
-            refined_clouds = [clouds_t[0]]
+            refined_clouds = [clouds[0]]
             target_cloud = clouds_t[0]
-            assembled_cloud = clouds_t[0]
+            assembled_cloud = clouds[0]
             for idx, source_cloud in enumerate(clouds_t[1:]):
                 cloud_idx = idx + 1  # as we don't iterate from the first sample
+                print("assembling cloud ", str(cloud_idx), " with source (first) cloud")
                 reg_transform = treg.icp(source_cloud, target_cloud,
                                          max_correspondence_distances,
                                          estimation_method=treg.TransformationEstimationForColoredICP(),
                                          criteria=criteria, voxel_size=voxel_size)
-                transformed_source = source_cloud.transform(reg_transform.transformation)
-                refined_clouds.append(transformed_source)
 
                 icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
                 # Generate Homogeneous Matrix
@@ -127,33 +121,23 @@ def main():
                 world2cam[:3, :3] = np.array(scene_camera_data[str(index)]['cam_R_w2c']).reshape(3, 3)
                 world2cam[:3, 3] = np.array(scene_camera_data[str(index)]['cam_t_w2c'])
                 refined_transform = np.matmul(world2cam, icp_transform)
-                assembled_cloud.append(transformed_source)
+
+                icp_transform[:3, 3] *= 1000  # convert the transformation from meter to mm
+                transformed_source = clouds[cloud_idx].transform(icp_transform)
+                refined_clouds.append(transformed_source)
+                assembled_cloud += transformed_source
 
                 scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()  # TODO should that be flattened?
                 scene_camera_data[str(cloud_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten().tolist()
 
-
-            def visualize_cloud_list(clouds):
-                vis_clouds = copy.deepcopy(clouds)
-                vis_clouds_legacy = []
-                for x in vis_clouds:
-                    x.point["colors"] = x.point["colors"].to(o3d.core.Dtype.Float32) * 255.0
-                    x = x.to_legacy()
-                    vis_clouds_legacy.append(x)
-
-                o3d.visualization.draw_geometries(vis_clouds_legacy)
-
-            #visualize_cloud_list(refined_clouds)
+            if p['show_refined_cloud']:
+                o3d.visualization.draw_geometries(refined_clouds)
 
         # Save assembled cloud
         # TODO remove redundant points in the assembled clouds
         # TODO check if assembled point cloud is already there and make a warning
-        if not p['refine']:
-            o3d.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
-        else:  # refine True
-            assembled_cloud.point["colors"] = assembled_cloud.point["colors"].to(o3d.core.Dtype.Float32) * 255.0
-            o3d.t.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
-
+        o3d.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
+        if p['refine']:
             os.rename(scene_camera_json, scene_camera_json[:-5]+'_UNREFINED.json')
             with open(scene_camera_json, 'w') as f:
                 json.dump(scene_camera_data, f)
