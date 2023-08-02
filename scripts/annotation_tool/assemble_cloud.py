@@ -21,7 +21,7 @@ import glob
 ################################################################################
 p = {
     # Folder containing the BOP datasets.
-    'dataset_path': '/run/user/1000/gvfs/smb-share:server=129.217.152.32,share=data/Anas_Gouda/DoPose_v2/dataset',
+    'dataset_path': '/path/to/dataset',
 
     # Dataset split. Options: 'train', 'test'.
     'dataset_split': 'train',
