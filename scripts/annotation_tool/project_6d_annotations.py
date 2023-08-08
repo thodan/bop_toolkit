@@ -63,15 +63,15 @@ def main():
                 H_camZ_obj = H_camZ_V @ H_V_obj
 
                 frame_anno_list.append({
-                    'cam_t_w2c': H_camZ_obj[:3,3].flatten().tolist(),
-                    'cam_R_w2c': H_camZ_obj[:3,:3].tolist(),
+                    'cam_t_m2c': H_camZ_obj[:3,3].flatten().tolist(),
+                    'cam_R_m2c': H_camZ_obj[:3,:3].tolist(),
                     'obj_id': obj_world_anno['obj_id']
                 })
 
             scene_gt_data[frame_idx] = frame_anno_list
 
-    with open(scene_gt_json, 'w') as f:
-        json.dump(scene_gt_data, f)
+        with open(scene_gt_json, 'w') as f:
+            json.dump(scene_gt_data, f)
 
 
 if __name__ == "__main__":
