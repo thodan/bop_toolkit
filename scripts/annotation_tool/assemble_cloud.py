@@ -91,6 +91,9 @@ def main():
             def cloud_gpu(cloud):# TODO use the function to get dynamic target
                 cloud_copy = copy.deepcopy(cloud)
                 cloud_copy.points = o3d.utility.Vector3dVector(np.asarray(cloud_copy.points) / 1000)  # convert cloud in meter for icp
+
+                #o3d.visualization.draw_geometries([cloud_copy])
+
                 cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
                 cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
                 cloud_t = cloud_t.cuda(0)
@@ -99,36 +102,36 @@ def main():
             # align all clouds to first cloud using ICP - update the transformation of VICON
             import open3d.t.pipelines.registration as treg
             # multi-scale ICP
-            estimation = treg.TransformationEstimationPointToPoint()
-            criteria_list = treg.ICPConvergenceCriteria(relative_fitness=0.0001,
-                                            relative_rmse=0.0001,
-                                            max_iteration=300)
-                #treg.ICPConvergenceCriteria(0.00001, 0.00001, 30),
-                #treg.ICPConvergenceCriteria(0.000001, 0.000001, 15),
-                #treg.ICPConvergenceCriteria(0.000001, 0.000001, 15)
+            estimation = treg.TransformationEstimationForColoredICP()
+            criteria_list = treg.ICPConvergenceCriteria(relative_fitness=0.000001,
+                                                        relative_rmse=0.000001,
+                                                        max_iteration=800)
+            #treg.ICPConvergenceCriteria(0.00001, 0.00001, 30),
+            #treg.ICPConvergenceCriteria(0.000001, 0.000001, 15),
+            #treg.ICPConvergenceCriteria(0.000001, 0.000001, 15)
             #]
             max_correspondence_distances = o3d.utility.DoubleVector([0.08, 0.04, 0.02, 0.01])
-            max_correspondence_distance = 0.01
+            max_correspondence_distance = 0.02
             voxel_sizes = o3d.utility.DoubleVector([0.04, 0.02, 0.01, 0.005])
             init_source_to_target = np.identity(4)
 
             # refined_clouds = [clouds[0]]
+            transform = np.eye(4)
             refined_clouds = []
             # target_cloud = cloud_gpu(clouds[0])
             assembled_cloud = clouds[0]
-            for idx, (source_cloud,target_cloud) in enumerate(zip(clouds[1:],clouds[:-1])):
             # for idx, source_cloud in enumerate(clouds[1:]):
+            for idx, (source_cloud,target_cloud) in enumerate(zip(clouds[1:],clouds[:-1])):
+                #o3d.visualization.draw_geometries([source_cloud, target_cloud])
                 #if idx == 1:
                 #    y = 1
-                source_cloud = cloud_gpu(source_cloud)
-                target_cloud = cloud_gpu(target_cloud)
+                source_cloud_t = cloud_gpu(source_cloud)
+                target_cloud_t = cloud_gpu(target_cloud)
 
-                source_cloud = source_cloud.voxel_down_sample(voxel_size=0.001)
-                target_cloud = target_cloud.voxel_down_sample(voxel_size=0.001)
                 cloud_idx = idx + 1  # as we don't iterate from the first sample
                 print("assembling cloud ", str(cloud_idx), " with source (first) cloud")
-                reg_transform = treg.icp(source_cloud,
-                                         target_cloud,
+                reg_transform = treg.icp(source_cloud_t,
+                                         target_cloud_t,
                                          max_correspondence_distance,init_source_to_target,
                                          estimation,criteria_list
                                          ,voxel_size = 0.001)
@@ -136,6 +139,7 @@ def main():
 
                 icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
                 icp_transform[:3, 3] *= 1000  # convert the transformation from meter to mm
+                # TODO DANGER DANGER DANGER THIS MIGHT BE WRONG
                 #icp_trans = icp_transform[:3,3]
                 #icp_rot = icp_transform[:3,:3]
                 #icp_transform_inv = np.eye(4)
@@ -150,31 +154,42 @@ def main():
                 # refined transform is multiplication of the transform of the source (first) frame and the ICP refinement
                 refined_transform = source2cam @ icp_transform
 
-                transformed_source = clouds[cloud_idx].transform(icp_transform)
+                icp_new_transform = transform @ icp_transform
+                transform = icp_new_transform
+                tmp_cloud = copy.deepcopy(clouds[cloud_idx])
+                transformed_source = tmp_cloud.transform(icp_new_transform)
                 refined_clouds.append(transformed_source)
                 assembled_cloud += transformed_source
 
-                scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()  # TODO should that be flattened?
+                scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()  # TODO This refined_transform might not be correct
                 scene_camera_data[str(cloud_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten().tolist()
 
-                cloud_copy = copy.deepcopy(assembled_cloud)
-                cloud_copy.points = o3d.utility.Vector3dVector(np.asarray(cloud_copy.points) / 1000)  # convert cloud in meter for icp
-                cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
-                cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
+                #cloud_copy = copy.deepcopy(assembled_cloud)
+                #cloud_copy.points = o3d.utility.Vector3dVector(np.asarray(cloud_copy.points) / 1000)  # convert cloud in meter for icp
+                #cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
+                #cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
                 #del target_cloud
                 # target_cloud = cloud_t.cuda(0)
                 # down sample point cloud to remove redundant points
                 #target_cloud = target_cloud.voxel_down_sample(voxel_size=0.003)
 
+                tmp_cloud_2 = copy.deepcopy(source_cloud)
+                #o3d.visualization.draw_geometries([tmp_cloud_2.transform(icp_transform), target_cloud])
 
+                del source_cloud
+                del target_cloud
+
+                #o3d.visualization.draw_geometries([assembled_cloud])
                 #o3d.visualization.draw_geometries([assembled_cloud])
 
             if p['show_refined_cloud']:
-                o3d.visualization.draw_geometries(refined_clouds)
+                o3d.visualization.draw_geometries(refined_clouds + [clouds[0]])
+
 
         # Save assembled cloud
         # TODO remove redundant points in the assembled clouds
         # TODO check if assembled point cloud is already there and make a warning
+        assembled_cloud_file = '/home/gouda/tmp/assembled_cloud_world.pcd'
         o3d.io.write_point_cloud(assembled_cloud_file, assembled_cloud)
         if p['refine']:
             os.rename(scene_camera_json, scene_camera_json[:-5]+'_UNREFINED.json')
