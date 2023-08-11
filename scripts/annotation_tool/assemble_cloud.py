@@ -71,8 +71,7 @@ def main():
             depth = o3d.io.read_image(depth_img)
             # Extract RGDB image from RGB and Depth, intensity is set to false - get colour data (3 Channels)
             rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=1000,
-                                                                      convert_rgb_to_intensity=False)  # rgbd in meters
-            # Intrinsic parameters is constant for every frame and scene
+                                                                      convert_rgb_to_intensity=False)  # rgbd in meters # Intrinsic parameters is constant for every frame and scene
             camera_intrinsic_zivid = o3d.camera.PinholeCameraIntrinsic(width=1944, height=1200,
                                                                        fx=1778.81005859375, fy=1778.87036132812,
                                                                        cx=967.931579589844, cy=572.408813476562)
@@ -84,13 +83,15 @@ def main():
             #o3d.visualization.draw_geometries([transformed_pcd])
             clouds.append(transformed_cloud)
             assembled_cloud += transformed_cloud
-        #o3d.visualization.draw_geometries(clouds)
+        o3d.visualization.draw_geometries(clouds)
+
+        # Save iteration wise `fitness`, `inlier_rmse`, etc. to analyse and tune result.
 
         if p['refine']:  # NOTE: ICP in Open3d have to be done with all units in meter. Convert all to meter and convert back to mm.
             # Convert point clouds from legacy to tensors
             def cloud_gpu(cloud):# TODO use the function to get dynamic target
                 cloud_copy = copy.deepcopy(cloud)
-                cloud_copy.points = o3d.utility.Vector3dVector(np.asarray(cloud_copy.points) / 1000)  # convert cloud in meter for icp
+                #cloud_copy.points = o3d.utility.Vector3dVector(np.asarray(cloud_copy.points) / 1000)  # convert cloud in meter for icp
 
                 #o3d.visualization.draw_geometries([cloud_copy])
 
@@ -103,50 +104,44 @@ def main():
             import open3d.t.pipelines.registration as treg
             # multi-scale ICP
             estimation = treg.TransformationEstimationForColoredICP()
-            criteria_list = treg.ICPConvergenceCriteria(relative_fitness=0.000001,
-                                                        relative_rmse=0.000001,
-                                                        max_iteration=800)
-            #treg.ICPConvergenceCriteria(0.00001, 0.00001, 30),
-            #treg.ICPConvergenceCriteria(0.000001, 0.000001, 15),
-            #treg.ICPConvergenceCriteria(0.000001, 0.000001, 15)
-            #]
-            max_correspondence_distances = o3d.utility.DoubleVector([0.08, 0.04, 0.02, 0.01])
-            max_correspondence_distance = 0.02
-            voxel_sizes = o3d.utility.DoubleVector([0.04, 0.02, 0.01, 0.005])
-            init_source_to_target = np.identity(4)
-
+            #estimation = treg.TransformationEstimationPointToPoint()
+            criteria = treg.ICPConvergenceCriteria(relative_fitness=0.001,
+                                                   relative_rmse=0.0001,
+                                                   max_iteration=300)
+            max_correspondence_distance = 2 # mm
+            voxel_size = 0.001 * 1000
+            init_source_to_target = np.eye(4)
+            callback_after_iteration = lambda updated_result_dict: print(
+                "Iteration Index: {}, Fitness: {}, Inlier RMSE: {},".format(
+                    updated_result_dict["iteration_index"].item(),
+                    updated_result_dict["fitness"].item(),
+                    updated_result_dict["inlier_rmse"].item()))
             # refined_clouds = [clouds[0]]
             transform = np.eye(4)
             refined_clouds = []
             # target_cloud = cloud_gpu(clouds[0])
             assembled_cloud = clouds[0]
-            # for idx, source_cloud in enumerate(clouds[1:]):
             for idx, (source_cloud,target_cloud) in enumerate(zip(clouds[1:],clouds[:-1])):
                 #o3d.visualization.draw_geometries([source_cloud, target_cloud])
                 #if idx == 1:
                 #    y = 1
                 source_cloud_t = cloud_gpu(source_cloud)
                 target_cloud_t = cloud_gpu(target_cloud)
-
                 cloud_idx = idx + 1  # as we don't iterate from the first sample
                 print("assembling cloud ", str(cloud_idx), " with source (first) cloud")
                 reg_transform = treg.icp(source_cloud_t,
                                          target_cloud_t,
                                          max_correspondence_distance,init_source_to_target,
-                                         estimation,criteria_list
-                                         ,voxel_size = 0.001)
-                #del source_cloud
-
+                                         estimation,criteria,
+                                         voxel_size,callback_after_iteration)
                 icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
-                icp_transform[:3, 3] *= 1000  # convert the transformation from meter to mm
+                #icp_transform[:3, 3] *= 1000  # convert the transformation from meter to mm
                 # TODO DANGER DANGER DANGER THIS MIGHT BE WRONG
                 #icp_trans = icp_transform[:3,3]
                 #icp_rot = icp_transform[:3,:3]
                 #icp_transform_inv = np.eye(4)
                 #icp_transform_inv[:3,:3] = icp_rot.transpose()
                 #icp_transform_inv[:3,3] = - icp_rot.transpose() @ icp_trans
-
-
                 # Homogeneous matrix of the source point cloud
                 source2cam = np.eye(4)
                 source2cam[:3, :3] = np.array(scene_camera_data[str(cloud_idx)]['cam_R_w2c']).reshape(3, 3)
@@ -160,7 +155,6 @@ def main():
                 transformed_source = tmp_cloud.transform(icp_new_transform)
                 refined_clouds.append(transformed_source)
                 assembled_cloud += transformed_source
-
                 scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()  # TODO This refined_transform might not be correct
                 scene_camera_data[str(cloud_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten().tolist()
 
