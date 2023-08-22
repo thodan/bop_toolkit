@@ -74,18 +74,16 @@ def main():
                                                                       convert_rgb_to_intensity=False)  # rgbd in mm
             camera_intrinsic_zivid = o3d.camera.PinholeCameraIntrinsic(width=1944, height=1200,
                                                                        fx=1778.81005859375, fy=1778.87036132812,
-                                                                       cx=967.931579589844, cy=572.408813476562)
+                                                                       cx=967.931579589844, cy=572.408813476562)  # TODO read from scene_camera
             pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, camera_intrinsic_zivid)
             pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
             transformed_cloud = pcd.transform(world2cam)
-            transformed_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=10, max_nn=30))
+            transformed_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=10, max_nn=30))  # TODO recheck radius
             #o3d.visualization.draw_geometries([transformed_pcd])
             clouds.append(transformed_cloud)
             assembled_cloud += transformed_cloud
         o3d.visualization.draw_geometries(clouds)
-
-        # Save iteration wise `fitness`, `inlier_rmse`, etc. to analyse and tune result.
 
         if p['refine']:  # NOTE: ICP parameters and point clouds are in mm
             # Convert point clouds from legacy to tensors
@@ -98,13 +96,12 @@ def main():
 
             # align all clouds to first cloud using ICP - update the transformation of VICON
             import open3d.t.pipelines.registration as treg
-            # multi-scale ICP
             estimation = treg.TransformationEstimationForColoredICP()
             criteria = treg.ICPConvergenceCriteria(relative_fitness=0.00001,
                                                    relative_rmse=0.00001,
                                                    max_iteration=300)
             max_correspondence_distance = 1.5 # mm
-            voxel_size = 0.001 * 1000
+            voxel_size = 0.001 * 1000  # TODO test with 0.5 mm voxel size
             init_source_to_target = np.eye(4)
             callback_after_iteration = lambda updated_result_dict: print(
                 "Iteration Index: {}, Fitness: {}, Inlier RMSE: {},".format(
@@ -113,16 +110,17 @@ def main():
                     updated_result_dict["inlier_rmse"].item()))
 
             accumulated_target_icp_tf = np.eye(4)
-            refined_clouds = [clouds[0]]
-            assembled_cloud = clouds[0]
-            for idx, (source_cloud,target_cloud) in enumerate(zip(clouds[1:],clouds[:-1])):
+            #refined_clouds = [clouds[0]]
+            assembled_cloud = copy.deepcopy(clouds[0])
+            for target_idx in range(len(scene_camera_data) - 1):
+                source_idx = target_idx + 1
 
+                # visualize both clouds before ICP
                 #o3d.visualization.draw_geometries([source_cloud, target_cloud])
 
-                source_cloud_t = cloud_gpu(source_cloud)
-                target_cloud_t = cloud_gpu(target_cloud)
-                cloud_idx = idx + 1  # as we don't iterate from the first sample
-                print("refining cloud ", str(cloud_idx), "(source cloud) to cloud ", str(idx), " (target cloud).")
+                target_cloud_t = cloud_gpu(clouds[target_idx])
+                source_cloud_t = cloud_gpu(clouds[source_idx])
+                print("refining cloud ", str(source_idx), "(source cloud) to cloud ", str(target_idx), " (target cloud).")
                 reg_transform = treg.icp(source_cloud_t,target_cloud_t,
                                          max_correspondence_distance,init_source_to_target,
                                          estimation,criteria,
@@ -130,25 +128,23 @@ def main():
                 icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
 
                 # visualize the result of ICP
-                tmp_cloud = copy.deepcopy(source_cloud)
+                #tmp_cloud = copy.deepcopy(source_cloud)
                 #o3d.visualization.draw_geometries([tmp_cloud.transform(icp_transform), target_cloud])
 
                 # concatenate refined source cloud into assembled_cloud
                 accumulated_target_icp_tf = icp_transform @ accumulated_target_icp_tf
-                tmp_cloud_2 = copy.deepcopy(source_cloud)
+                tmp_cloud_2 = copy.deepcopy(clouds[source_idx])
                 transformed_source = tmp_cloud_2.transform(accumulated_target_icp_tf)
-                refined_clouds.append(transformed_source)
                 assembled_cloud += transformed_source
-                #o3d.visualization.draw_geometries([assembled_cloud])
 
                 # Homogeneous matrix of camera from world
                 source2cam = np.eye(4)
-                source2cam[:3, :3] = np.array(scene_camera_data[str(cloud_idx)]['cam_R_w2c']).reshape(3, 3)
-                source2cam[:3, 3] = np.array(scene_camera_data[str(cloud_idx)]['cam_t_w2c'])
+                source2cam[:3, :3] = np.array(scene_camera_data[str(source_idx)]['cam_R_w2c']).reshape(3, 3)
+                source2cam[:3, 3] = np.array(scene_camera_data[str(source_idx)]['cam_t_w2c'])
                 # refined transform is multiplication of the transform of the source (first) frame and the ICP refinement
-                refined_transform = source2cam @ icp_transform
-                scene_camera_data[str(cloud_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()
-                scene_camera_data[str(cloud_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten().tolist()
+                refined_transform = accumulated_target_icp_tf @ source2cam
+                scene_camera_data[str(source_idx)]['cam_t_w2c'] = refined_transform[:3, 3].tolist()
+                scene_camera_data[str(source_idx)]['cam_R_w2c'] = refined_transform[:3,:3].flatten().tolist()
 
                 #del source_cloud
                 #del target_cloud
