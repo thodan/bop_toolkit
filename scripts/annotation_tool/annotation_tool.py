@@ -57,7 +57,7 @@ p = {
 }
 ################################################################################
 
-dist = 2  # mm
+dist = 1  # mm
 deg = 1
 
 
@@ -331,7 +331,7 @@ class AppWindow:
                 dist = 50  # mm
                 deg = 90
             elif event.type == gui.KeyEvent.UP:
-                dist = 5  # mm
+                dist = 1  # mm
                 deg = 1
             return gui.Widget.EventCallbackResult.HANDLED
 
@@ -370,45 +370,45 @@ class AppWindow:
                 self._on_refine()
             # Translation
             if not self._left_shift_modifier:
-                if event.key == gui.KeyName.L:
-                    print("L pressed: translate in +ve X direction")
+                if event.key == gui.KeyName.K:
+                    print("K pressed: translate in +ve X direction")
                     move(dist, 0, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.H:
-                    print("H pressed: translate in -ve X direction")
-                    move(-dist, 0, 0, 0, 0, 0)
                 elif event.key == gui.KeyName.J:
-                    print("Comma pressed: translate in +ve Y direction")
+                    print("J pressed: translate in -ve X direction")
+                    move(-dist, 0, 0, 0, 0, 0)
+                elif event.key == gui.KeyName.H:
+                    print("H pressed: translate in +ve Y direction")
                     move(0, dist, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.K:
-                    print("I pressed: translate in -ve Y direction")
+                elif event.key == gui.KeyName.L:
+                    print("L pressed: translate in -ve Y direction")
                     move(0, -dist, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.COMMA:
-                    print("K pressed: translate in +ve Z direction")
-                    move(0, 0, dist, 0, 0, 0)
                 elif event.key == gui.KeyName.I:
-                    print("J pressed: translate in -ve Z direction")
+                    print("I pressed: translate in +ve Z direction")
+                    move(0, 0, dist, 0, 0, 0)
+                elif event.key == gui.KeyName.COMMA:
+                    print("Comma pressed: translate in -ve Z direction")
                     move(0, 0, -dist, 0, 0, 0)
             # Rotation - keystrokes are not in same order as translation to make movement more human intuitive
             else:
                 print("Left-Shift is clicked; rotation mode")
-                if event.key == gui.KeyName.K:
+                if event.key == gui.KeyName.L:
                     print("L pressed: rotate around +ve X direction")
+                    move(0, 0, 0, deg * np.pi / 180, 0, 0)
+                elif event.key == gui.KeyName.H:
+                    print("H pressed: rotate around -ve X direction")
+                    move(0, 0, 0, -deg * np.pi / 180, 0, 0)
+                elif event.key == gui.KeyName.I:
+                    print("I pressed: rotate around +ve Y direction")
+                    move(0, 0, 0, 0, deg * np.pi / 180, 0)
+                elif event.key == gui.KeyName.COMMA:
+                    print("Comma pressed: rotate around -ve Y direction")
+                    move(0, 0, 0, 0, -deg * np.pi / 180, 0)
+                elif event.key == gui.KeyName.K:
+                    print("K Comma pressed: rotate around +ve Z direction")
                     move(0, 0, 0, 0, 0, deg * np.pi / 180)
                 elif event.key == gui.KeyName.J:
-                    print("H pressed: rotate around -ve X direction")
+                    print("J pressed: rotate around -ve Z direction")
                     move(0, 0, 0, 0, 0, -deg * np.pi / 180)
-                elif event.key == gui.KeyName.H:
-                    print("K pressed: rotate around +ve Y direction")
-                    move(0, 0, 0, 0, deg * np.pi / 180, 0)
-                elif event.key == gui.KeyName.L:
-                    print("J pressed: rotate around -ve Y direction")
-                    move(0, 0, 0, 0, -deg * np.pi / 180, 0)
-                elif event.key == gui.KeyName.COMMA:
-                    print("Comma pressed: rotate around +ve Z direction")
-                    move(0, 0, 0, deg * np.pi / 180, 0, 0)
-                elif event.key == gui.KeyName.I:
-                    print("I pressed: rotate around -ve Z direction")
-                    move(0, 0, 0, -deg * np.pi / 180, 0, 0)
 
         return gui.Widget.EventCallbackResult.HANDLED
 
@@ -420,28 +420,64 @@ class AppWindow:
             self._on_error("No objects are highlighted in scene meshes")
             return gui.Widget.EventCallbackResult.HANDLED
 
+        # use GPU or CPU for ICP? if cuda available
+        cuda_available = torch.cuda.is_available()
+        # use Colored or PointToPoint ICP? if color exist
+        color_available = self._obj_meshes_colored
+
         target = self._annotation_scene.annotation_scene
         objects = self._annotation_scene.get_objects()
         active_obj = objects[self._meshes_used.selected_index]
         source = active_obj.obj_geometry
 
-        trans_init = np.identity(4)
-        threshold = 4  # mm
-        radius = 2  # mm
-        target.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
-        source.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30))
-        reg = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init,
-                                                          o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-                                                          o3d.pipelines.registration.ICPConvergenceCriteria(
-                                                              max_iteration=50))
+        trans_init = np.eye(4)
 
-        active_obj.obj_geometry.transform(reg.transformation)
+        if cuda_available:
+            def cloud_gpu(cloud):
+                cloud_copy = copy.deepcopy(cloud)
+                cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
+                cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
+                cloud_t = cloud_t.cuda(0)
+                return cloud_t
+
+            # set up parameters for GPU ICP
+            criteria = treg.ICPConvergenceCriteria(relative_fitness=0.00001,
+                                                   relative_rmse=0.00001,
+                                                   max_iteration=300)
+            max_correspondence_distance = 1 # mm
+            voxel_size = 1  # TODO test with 0.5 mm voxel size
+            target_cloud_t = cloud_gpu(target)
+            source_cloud_t = cloud_gpu(source)
+            if color_available:
+                estimation = treg.TransformationEstimationForColoredICP()
+            else:
+                estimation = treg.TransformationEstimationPointToPlane()
+            reg_transform = treg.icp(source_cloud_t,target_cloud_t,
+                                     max_correspondence_distance,trans_init,
+                                     estimation,criteria,
+                                     voxel_size)
+            icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
+        else:
+            # no color ICP without CUDA
+            threshold = 4  # mm
+            ICP_method = o3d.pipelines.registration.TransformationEstimationPointToPlane()
+            # set up parameters for CPU ICP
+            if color_available:
+                print("Colored ICP is not implemented without CUDA, using PointToPoint ICP")
+            reg = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init, ICP_method,
+                                                              o3d.pipelines.registration.ICPConvergenceCriteria(
+                                                                  relative_fitness=0.00001,
+                                                                  relative_rmse=0.00001,
+                                                                  max_iteration=50))
+            icp_transform = reg.transformation
+
+        active_obj.obj_geometry.transform(icp_transform)
         # active_obj.obj_geometry.paint_uniform_color([0,1,0])  # Debug
         self._scene.scene.remove_geometry(active_obj.obj_name)
         self._scene.scene.add_geometry(active_obj.obj_name, active_obj.obj_geometry,
                                        self.settings.annotation_obj_material,
                                        add_downsampled_copy_for_fast_rendering=True)
-        active_obj.transform = np.matmul(reg.transformation, active_obj.transform)
+        active_obj.transform = np.matmul(icp_transform, active_obj.transform)
 
     def _on_generate(self):
         if p['tool_model'] == 'individual':
@@ -562,8 +598,8 @@ class AppWindow:
             bounds = selected_obj.obj_geometry.get_axis_aligned_bounding_box()
             self._scene.setup_camera(60, bounds, bounds.get_center())
             center = selected_obj.obj_geometry.get_center()
-            eye = center + np.array([0, 0, -0.5])
-            up = np.array([0, -1, 0])
+            eye = center + np.array([-500, 0, 500])
+            up = np.array([0, 0, 1])
             self._scene.look_at(center, eye, up)
 
     def _set_change_cam_to_object(self, checked):
@@ -658,9 +694,9 @@ class AppWindow:
                 geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)  # point cloud in mm
             elif p['tool_model'] == 'sequence':
                 point_cloud_path = os.path.join(scene_path, 'assembled_cloud_WORLD.pcd')
+                point_cloud_path  = '/home/gouda/tmp/assembled_cloud_world.pcd'
                 geometry = o3d.io.read_point_cloud(point_cloud_path)
-                geometry.points = o3d.utility.Vector3dVector(np.asarray(geometry.points))  # point cloud is in mm
-                image_num = 'w'
+                image_num = 'w'  # represent 6D annotations in the world coordinate system
             else:
                 print(p['tool_model'], " is not valid. Exiting ...")
                 exit()
@@ -679,9 +715,9 @@ class AppWindow:
                                        add_downsampled_copy_for_fast_rendering=True)
         bounds = geometry.get_axis_aligned_bounding_box()
         self._scene.setup_camera(60, bounds, bounds.get_center())
-        center = np.array([0, 0, 0])
-        eye = center + np.array([0, 0, -0.5])
-        up = np.array([0, -1, 0])
+        center = bounds.get_center()
+        eye = center + np.array([-2000, 0, 2000])
+        up = np.array([0, 0, 1])
         self._scene.look_at(center, eye, up)
 
         self._annotation_scene = AnnotationScene(geometry, scene_num, image_num)
