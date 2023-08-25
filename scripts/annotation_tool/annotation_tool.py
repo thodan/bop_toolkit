@@ -19,14 +19,19 @@ original repo: https://github.com/FLW-TUDO/3d_annotation_tool was made for annot
 """
 
 import glob
+import copy
+
 import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
+import open3d.t.pipelines.registration as treg
 import os
 import json
 import cv2
+import trimesh
 import warnings
+import torch
 
 # PARAMETERS.
 ################################################################################
@@ -670,60 +675,82 @@ class AppWindow:
         else:
             print("[WARNING] Failed to read points")
 
-        try:
-            self._scene.scene.add_geometry("annotation_scene", geometry, self.settings.scene_material,
-                                           add_downsampled_copy_for_fast_rendering=True)
-            bounds = geometry.get_axis_aligned_bounding_box()
-            self._scene.setup_camera(60, bounds, bounds.get_center())
-            center = np.array([0, 0, 0])
-            eye = center + np.array([0, 0, -0.5])
-            up = np.array([0, -1, 0])
-            self._scene.look_at(center, eye, up)
+        self._scene.scene.add_geometry("annotation_scene", geometry, self.settings.scene_material,
+                                       add_downsampled_copy_for_fast_rendering=True)
+        bounds = geometry.get_axis_aligned_bounding_box()
+        self._scene.setup_camera(60, bounds, bounds.get_center())
+        center = np.array([0, 0, 0])
+        eye = center + np.array([0, 0, -0.5])
+        up = np.array([0, -1, 0])
+        self._scene.look_at(center, eye, up)
 
-            self._annotation_scene = AnnotationScene(geometry, scene_num, image_num)
-            self._meshes_used.set_items([])  # clear list from last loaded scene
+        self._annotation_scene = AnnotationScene(geometry, scene_num, image_num)
+        self._meshes_used.set_items([])  # clear list from last loaded scene
 
-            # load values if an annotation already exists
+        # load values if an annotation already exists
 
-            model_names = self.load_model_names()
+        model_names = self.load_model_names()
 
-            if p['tool_model'] == 'individual':
-                scene_gt_file = 'scene_gt.json'
-            elif p['tool_model'] == 'sequence':
-                scene_gt_file = 'scene_gt_WORLD.json'
-            scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_file)
-            # if os.path.exists(json_path):
-            with open(scene_gt_path) as scene_gt_file:
-                data = json.load(scene_gt_file)
-                scene_data = data[str(image_num)]
-                active_meshes = list()
-                for obj in scene_data:
-                    # add object to annotation_scene object
-                    obj_geometry = o3d.io.read_point_cloud(
-                        os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply'))
-                    obj_geometry.points = o3d.utility.Vector3dVector(
-                        np.array(obj_geometry.points))  # object point cloud in mm
-                    model_name = model_names[int(obj['obj_id']) - 1]
-                    obj_instance = self._obj_instance_count(model_name, active_meshes)
-                    obj_name = model_name + '_' + str(obj_instance)
-                    translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64)  # distance in mm
-                    orientation = np.array(np.array(obj['cam_R_m2c']), dtype=np.float64)
-                    transform = np.concatenate((orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1)
-                    transform_cam_to_obj = np.concatenate(
-                        (transform, np.array([0, 0, 0, 1]).reshape(1, 4)))  # homogeneous transform
+        if p['tool_model'] == 'individual':
+            scene_gt_file = 'scene_gt.json'
+        elif p['tool_model'] == 'sequence':
+            scene_gt_file = 'scene_gt_WORLD.json'
+        scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_file)
+        # if os.path.exists(json_path):
+        with open(scene_gt_path) as scene_gt_file:
+            data = json.load(scene_gt_file)
+            scene_data = data[str(image_num)]
+            active_meshes = list()
+            obj_meshes_colored = []
+            for obj in scene_data:  # add object to annotation_scene object
+                # load object mesh
+                obj_mesh_path = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply')
+                obj_geometry = o3d.io.read_point_cloud(obj_mesh_path)
 
-                    self._annotation_scene.add_obj(obj_geometry, obj_name, obj_instance, transform_cam_to_obj)
-                    # adding object to the scene
-                    obj_geometry.translate(transform_cam_to_obj[0:3, 3])
-                    center = obj_geometry.get_center()
-                    obj_geometry.rotate(transform_cam_to_obj[0:3, 0:3], center=center)
-                    self._scene.scene.add_geometry(obj_name, obj_geometry, self.settings.annotation_obj_material,
-                                                   add_downsampled_copy_for_fast_rendering=True)
-                    active_meshes.append(obj_name)
-            self._meshes_used.set_items(active_meshes)
+                # assert normals exist
+                #assert not obj_geometry.has_normals(), "Object mesh does not have normals. Exiting ..."
 
-        except Exception as e:
-            print(e)
+                # check color and try to reload with trimesh if there is a texture
+                if obj_geometry.has_colors():
+                    obj_mesh_colored = True
+                else:
+                    obj_mesh_colored = False
+                    # if there is a png file, reload mesh with trimesh to load texture then convert to point cloud
+                    # This is the case for dataset such as HOPE and DoPose
+                    texture_image = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.png')
+                    if os.path.exists(texture_image):
+                        trimesh_mesh = trimesh.load(obj_mesh_path)
+
+                        samples, face_index, colors = trimesh.sample.sample_surface(trimesh_mesh, 500000, sample_color=True)
+                        samples, face_index, colors = samples.view(np.ndarray), face_index.view(np.ndarray), colors.view(np.ndarray)
+
+                        obj_geometry = o3d.geometry.PointCloud()
+                        obj_geometry.points = o3d.utility.Vector3dVector(samples)
+                        obj_geometry.colors = o3d.utility.Vector3dVector(colors[:, :3] / 255)
+                        obj_mesh_colored = True
+                obj_meshes_colored.append(obj_mesh_colored)
+
+                obj_geometry.points = o3d.utility.Vector3dVector(
+                    np.array(obj_geometry.points))  # object point cloud in mm
+                model_name = model_names[int(obj['obj_id']) - 1]
+                obj_instance = self._obj_instance_count(model_name, active_meshes)
+                obj_name = model_name + '_' + str(obj_instance)
+                translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64)  # distance in mm
+                orientation = np.array(np.array(obj['cam_R_m2c']), dtype=np.float64)
+                transform = np.concatenate((orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1)
+                transform_cam_to_obj = np.concatenate(
+                    (transform, np.array([0, 0, 0, 1]).reshape(1, 4)))  # homogeneous transform
+
+                self._annotation_scene.add_obj(obj_geometry, obj_name, obj_instance, transform_cam_to_obj)
+                # adding object to the scene
+                obj_geometry.translate(transform_cam_to_obj[0:3, 3])
+                center = obj_geometry.get_center()
+                obj_geometry.rotate(transform_cam_to_obj[0:3, 0:3], center=center)
+                self._scene.scene.add_geometry(obj_name, obj_geometry, self.settings.annotation_obj_material,
+                                               add_downsampled_copy_for_fast_rendering=True)
+                active_meshes.append(obj_name)
+            self._obj_meshes_colored = all(obj_meshes_colored)  # this is used to determione which ICP to use (colored ir PointToPoint)
+        self._meshes_used.set_items(active_meshes)
 
         self._update_scene_numbers()
 
