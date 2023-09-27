@@ -10,6 +10,7 @@ from collections import defaultdict
 import copy
 from skimage import measure
 from itertools import groupby
+from bop_toolkit_lib import misc
 
 def create_image_info(image_id, file_name, image_size):
     """Creates image info section of coco annotation
@@ -200,21 +201,28 @@ def binary_mask_to_rle(binary_mask):
     return rle
 
 def rle_to_binary_mask(rle):
-    """Converts a COCOs run-length encoding (RLE) to binary mask.
+    """Converts a COCOs run-length encoding (RLE) to a binary mask.
 
     :param rle: Mask in RLE format
     :return: a 2D binary numpy array where '1's represent the object
     """
     binary_array = np.zeros(np.prod(rle.get('size')), dtype=bool)
     counts = rle.get('counts')
-    
-    start = 0
-    for i in range(len(counts)-1):
-        start += counts[i] 
-        end = start + counts[i+1] 
-        binary_array[start:end] = (i + 1) % 2
-    
-    binary_mask = binary_array.reshape(*rle.get('size'), order='F')
+    if isinstance(counts, str):
+        misc.log('===========')
+        misc.log('RLEs are compressed, using cocoAPI to uncompress them..')
+        misc.log('Make sure, requirements.txt are installed.')
+        misc.log('===========')
+        from pycocotools import mask as maskUtils
+        binary_mask = maskUtils.decode(rle)
+    else:
+        start = 0
+        for i in range(len(counts)-1):
+            start += counts[i] 
+            end = start + counts[i+1] 
+            binary_array[start:end] = (i + 1) % 2
+        
+        binary_mask = binary_array.reshape(*rle.get('size'), order='F')
 
     return binary_mask
 
