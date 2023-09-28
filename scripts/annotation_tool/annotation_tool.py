@@ -694,7 +694,7 @@ class AppWindow:
                 geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)  # point cloud in mm
             elif p['tool_model'] == 'sequence':
                 point_cloud_path = os.path.join(scene_path, 'assembled_cloud_WORLD.pcd')
-                point_cloud_path  = '/home/gouda/tmp/assembled_cloud_world.pcd'
+                #point_cloud_path  = '/home/gouda/tmp/assembled_cloud_world.pcd'
                 geometry = o3d.io.read_point_cloud(point_cloud_path)
                 image_num = 'w'  # represent 6D annotations in the world coordinate system
             else:
@@ -741,29 +741,27 @@ class AppWindow:
             for obj in scene_data:  # add object to annotation_scene object
                 # load object mesh
                 obj_mesh_path = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply')
-                obj_geometry = o3d.io.read_point_cloud(obj_mesh_path)
-
                 # assert normals exist
                 #assert not obj_geometry.has_normals(), "Object mesh does not have normals. Exiting ..."
 
-                # check color and try to reload with trimesh if there is a texture
-                if obj_geometry.has_colors():
+                # load object using trimesh
+                trimesh_mesh = trimesh.load(obj_mesh_path, process=False)
+
+                #obj_mesh_colored = trimesh_mesh.has_colors()
+                obj_mesh_colored = bool(trimesh_mesh.visual.kind)
+
+                #if trimesh_mesh.vertices > 1000:  # sample to point cloud
+                samples, face_index, colors = trimesh.sample.sample_surface(trimesh_mesh, 500000, sample_color=True)
+                samples, face_index, colors = samples.view(np.ndarray), face_index.view(np.ndarray), colors.view(np.ndarray)
+
+                obj_geometry = o3d.geometry.PointCloud()
+                obj_geometry.points = o3d.utility.Vector3dVector(samples)
+
+                if obj_mesh_colored:
+                    obj_geometry.colors = o3d.utility.Vector3dVector(colors[:, :3] / 255)
                     obj_mesh_colored = True
-                else:
+                elif not obj_mesh_colored:
                     obj_mesh_colored = False
-                    # if there is a png file, reload mesh with trimesh to load texture then convert to point cloud
-                    # This is the case for dataset such as HOPE and DoPose
-                    texture_image = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.png')
-                    if os.path.exists(texture_image):
-                        trimesh_mesh = trimesh.load(obj_mesh_path)
-
-                        samples, face_index, colors = trimesh.sample.sample_surface(trimesh_mesh, 500000, sample_color=True)
-                        samples, face_index, colors = samples.view(np.ndarray), face_index.view(np.ndarray), colors.view(np.ndarray)
-
-                        obj_geometry = o3d.geometry.PointCloud()
-                        obj_geometry.points = o3d.utility.Vector3dVector(samples)
-                        obj_geometry.colors = o3d.utility.Vector3dVector(colors[:, :3] / 255)
-                        obj_mesh_colored = True
                 obj_meshes_colored.append(obj_mesh_colored)
 
                 obj_geometry.points = o3d.utility.Vector3dVector(
