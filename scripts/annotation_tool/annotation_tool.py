@@ -54,6 +54,9 @@ p = {
     # image number inside scene to open tool on
     'start_image_num': 0
 
+    # TODO add ICP parameters here
+    # TODO add moving object parameters here (dist, deg)
+    # add assembled_cloud_downsamlple parameter here
 }
 ################################################################################
 
@@ -433,10 +436,11 @@ class AppWindow:
         trans_init = np.eye(4)
 
         if cuda_available:
-            def cloud_gpu(cloud):
+            def cloud_gpu(cloud, color_available):
                 cloud_copy = copy.deepcopy(cloud)
                 cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
-                cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
+                if color_available:
+                    cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
                 cloud_t = cloud_t.cuda(0)
                 return cloud_t
 
@@ -446,8 +450,8 @@ class AppWindow:
                                                    max_iteration=300)
             max_correspondence_distance = 1 # mm
             voxel_size = 1  # TODO test with 0.5 mm voxel size
-            target_cloud_t = cloud_gpu(target)
-            source_cloud_t = cloud_gpu(source)
+            target_cloud_t = cloud_gpu(target, color_available)
+            source_cloud_t = cloud_gpu(source, color_available)
             if color_available:
                 estimation = treg.TransformationEstimationForColoredICP()
             else:
@@ -620,11 +624,9 @@ class AppWindow:
     def _add_mesh(self):
         meshes = self._annotation_scene.get_objects()
         meshes = [i.obj_name for i in meshes]
-
-        object_geometry = o3d.io.read_point_cloud(
-            self.scenes.objects_path + '/obj_' + f'{self._meshes_available.selected_index + 1:06}' + '.ply')
-        object_geometry.points = o3d.utility.Vector3dVector(
-            np.array(object_geometry.points))  # object point cloud in mm
+        obj_mesh_path = self.scenes.objects_path + '/obj_' + f'{self._meshes_available.selected_index + 1:06}' + '.ply'
+        object_geometry, obj_mesh_colored = self._load_object(obj_mesh_path)
+        self._obj_meshes_colored = all([self._obj_meshes_colored, obj_mesh_colored])
         cam_trans = self._scene.scene.camera.get_model_matrix()
         infront_of_cam_trans = np.eye(4)
         infront_of_cam_trans[2,3] += -500  # drop object 50 mm in front of the camera
@@ -667,6 +669,27 @@ class AppWindow:
         pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
         return pcd
+
+    def _load_object(self, obj_mesh_path):
+        # load object using trimesh
+        trimesh_mesh = trimesh.load(obj_mesh_path, process=False)
+
+        #obj_mesh_colored = trimesh_mesh.has_colors()
+        obj_mesh_colored = bool(trimesh_mesh.visual.kind)
+
+        #if trimesh_mesh.vertices > 1000:  # sample to point cloud
+        samples, face_index, colors = trimesh.sample.sample_surface(trimesh_mesh, 500000, sample_color=True)
+        samples, face_index, colors = samples.view(np.ndarray), face_index.view(np.ndarray), colors.view(np.ndarray)
+
+        obj_geometry = o3d.geometry.PointCloud()
+        obj_geometry.points = o3d.utility.Vector3dVector(samples)
+
+        if obj_mesh_colored:
+            obj_geometry.colors = o3d.utility.Vector3dVector(colors[:, :3] / 255)
+            obj_mesh_colored = True
+        elif not obj_mesh_colored:
+            obj_mesh_colored = False
+        return  obj_geometry, obj_mesh_colored
 
     def scene_load(self, scenes_path, scene_num, image_num):
         self._annotation_changed = False
@@ -744,28 +767,11 @@ class AppWindow:
                 # assert normals exist
                 #assert not obj_geometry.has_normals(), "Object mesh does not have normals. Exiting ..."
 
-                # load object using trimesh
-                trimesh_mesh = trimesh.load(obj_mesh_path, process=False)
+                obj_geometry, obj_mesh_colored = self._load_object(obj_mesh_path)
 
-                #obj_mesh_colored = trimesh_mesh.has_colors()
-                obj_mesh_colored = bool(trimesh_mesh.visual.kind)
-
-                #if trimesh_mesh.vertices > 1000:  # sample to point cloud
-                samples, face_index, colors = trimesh.sample.sample_surface(trimesh_mesh, 500000, sample_color=True)
-                samples, face_index, colors = samples.view(np.ndarray), face_index.view(np.ndarray), colors.view(np.ndarray)
-
-                obj_geometry = o3d.geometry.PointCloud()
-                obj_geometry.points = o3d.utility.Vector3dVector(samples)
-
-                if obj_mesh_colored:
-                    obj_geometry.colors = o3d.utility.Vector3dVector(colors[:, :3] / 255)
-                    obj_mesh_colored = True
-                elif not obj_mesh_colored:
-                    obj_mesh_colored = False
                 obj_meshes_colored.append(obj_mesh_colored)
 
-                obj_geometry.points = o3d.utility.Vector3dVector(
-                    np.array(obj_geometry.points))  # object point cloud in mm
+                #obj_geometry.points = o3d.utility.Vector3dVector(np.array(obj_geometry.points))  # object point cloud in mm
                 model_name = model_names[int(obj['obj_id']) - 1]
                 obj_instance = self._obj_instance_count(model_name, active_meshes)
                 obj_name = model_name + '_' + str(obj_instance)
