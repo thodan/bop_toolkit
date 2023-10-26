@@ -194,10 +194,18 @@ def binary_mask_to_rle(binary_mask):
     """
     rle = {'counts': [], 'size': list(binary_mask.shape)}
     counts = rle.get('counts')
-    for i, (value, elements) in enumerate(groupby(binary_mask.ravel(order='F'))):
-        if i == 0 and value == 1:
-            counts.append(0)
-        counts.append(len(list(elements)))
+    mask = binary_mask.ravel(order='F')
+    if len(mask) > 0 and mask[0] == 1:
+        counts.append(0)
+
+    if len(mask) > 0:
+        # Determine mask for pixels where values switch
+        mask_changes = mask[:-1] != mask[1:]
+        # Determine indices of changing pixels
+        changes_indx = np.where(np.concatenate(([True], mask_changes, [True]), 0))[0]
+        # Compute diff of consecutive changing indices => length of segments
+        rle2 = np.diff(changes_indx)
+        counts.extend(rle2.tolist())
     return rle
 
 def rle_to_binary_mask(rle):
