@@ -99,11 +99,11 @@ for scene_id in dp_split['scene_ids']:
             mask_visib_p = dp_split['mask_visib_tpath'].format(scene_id=scene_id, im_id=im_id, gt_id=idx)
             mask_full_p = dp_split['mask_tpath'].format(scene_id=scene_id, im_id=im_id, gt_id=idx)
             
-            binary_inst_mask_visib = inout.load_depth(mask_visib_p).astype(np.bool)
+            binary_inst_mask_visib = inout.load_depth(mask_visib_p).astype(np.bool_)
             if binary_inst_mask_visib.sum() < 1:
                 continue
             if bbox_type == 'amodal':
-                binary_inst_mask_full = inout.load_depth(mask_full_p).astype(np.bool)
+                binary_inst_mask_full = inout.load_depth(mask_full_p).astype(np.bool_)
                 if binary_inst_mask_full.sum() < 1:
                     continue
                 bounding_box = pycoco_utils.bbox_from_binary_mask(binary_inst_mask_full)
