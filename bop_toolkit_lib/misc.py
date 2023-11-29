@@ -418,3 +418,13 @@ def run_meshlab_script(
     log(" ".join(meshlabserver_cmd))
     if subprocess.call(meshlabserver_cmd) != 0:
         exit(-1)
+
+
+def run_command(cmd):
+    """Runs a command.
+
+    :param cmd: Command to run.
+    """
+    log("Running: " + " ".join(cmd))
+    if subprocess.call(cmd) != 0:
+        raise RuntimeError(f"{cmd} failed!")

@@ -6,6 +6,7 @@
 import os
 import time
 import argparse
+import multiprocessing
 import subprocess
 import numpy as np
 
@@ -73,6 +74,7 @@ p = {
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
     "targets_filename": "test_targets_bop19.json",
+    "num_workers": 10,  # Number of parallel workers for the calculation of errors.
 }
 ################################################################################
 
@@ -89,6 +91,7 @@ parser.add_argument(
 parser.add_argument("--results_path", default=p["results_path"])
 parser.add_argument("--eval_path", default=p["eval_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--num_workers", default=p["num_workers"])
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
@@ -96,7 +99,9 @@ p["result_filenames"] = args.result_filenames.split(",")
 p["results_path"] = str(args.results_path)
 p["eval_path"] = str(args.eval_path)
 p["targets_filename"] = str(args.targets_filename)
+p["num_workers"] = int(args.num_workers)
 
+eval_time_start = time.time()
 # Evaluation.
 # ------------------------------------------------------------------------------
 for result_filename in p["result_filenames"]:
@@ -192,8 +197,8 @@ for result_filename in p["result_filenames"]:
 
         # Recall scores for all settings of the threshold of correctness (and also
         # of the misalignment tolerance tau in the case of VSD).
-        recalls = []
 
+        calc_scores_cmds = []
         # Calculate performance scores.
         for error_sign, error_dir_path in error_dir_paths.items():
             for correct_th in error["correct_th"]:
@@ -214,11 +219,23 @@ for result_filename in p["result_filenames"]:
                         error["type"], ",".join(map(str, correct_th))
                     )
                 ]
+                calc_scores_cmds.append(calc_scores_cmd)
 
-                misc.log("Running: " + " ".join(calc_scores_cmd))
-                if subprocess.call(calc_scores_cmd) != 0:
-                    raise RuntimeError("Calculation of scores failed.")
+        multiprocessing_start_time = time.time()
+        with multiprocessing.Pool(p["num_workers"]) as pool:
+            pool.map_async(misc.run_command, calc_scores_cmds)
+            pool.close()
+            pool.join()
+        total_multiprocessing_time = time.time() - multiprocessing_start_time
+        misc.log(
+            "Multiprocessing took {}s with {} workers.".format(
+                total_multiprocessing_time, p["num_workers"]
+            )
+        )
 
+        recalls = []
+        for error_sign, error_dir_path in error_dir_paths.items():
+            for correct_th in error["correct_th"]:
                 # Path to file with calculated scores.
                 score_sign = misc.get_score_signature(correct_th, p["visib_gt_min"])
 
@@ -264,4 +281,6 @@ for result_filename in p["result_filenames"]:
     for score_name, score_value in final_scores.items():
         misc.log("- {}: {}".format(score_name, score_value))
 
+total_eval_time = time.time() - eval_time_start
+misc.log("Evaluation took {}s.".format(total_eval_time))
 misc.log("Done.")
