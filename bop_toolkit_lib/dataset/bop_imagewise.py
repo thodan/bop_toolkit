@@ -61,11 +61,7 @@ def save_scene_camera(
     dict mapping image_ids to camera information.
     :param image_camera_tpath: template path with unspecified image_id.
     """
-    _save_scene_dict(
-        scene_camera,
-        image_camera_tpath,
-        inout._camera_as_json
-    )
+    _save_scene_dict(scene_camera, image_camera_tpath, inout._camera_as_json)
     return
 
 
@@ -82,9 +78,7 @@ def save_scene_gt(
     :param image_camera_tpath: template path with unspecified image_id.
     """
     _save_scene_dict(
-        scene_gt,
-        image_gt_tpath,
-        lambda lst: [inout._gt_as_json(d) for d in lst]
+        scene_gt, image_gt_tpath, lambda lst: [inout._gt_as_json(d) for d in lst]
     )
     return
 
@@ -110,10 +104,7 @@ def save_masks(
     return
 
 
-def io_load_masks(
-    mask_file,
-    instance_ids=None
-):
+def io_load_masks(mask_file, instance_ids=None):
     """Load object masks from an I/O object.
     Instance_ids can be specified to apply RLE
     decoding to a subset of object instances contained
@@ -128,9 +119,12 @@ def io_load_masks(
     if instance_ids is None:
         instance_ids = masks_rle.keys()
         instance_ids = sorted(instance_ids)
-    masks = np.stack([
-        pycoco_utils.rle_to_binary_mask(masks_rle[instance_id])
-        for instance_id in instance_ids])
+    masks = np.stack(
+        [
+            pycoco_utils.rle_to_binary_mask(masks_rle[instance_id])
+            for instance_id in instance_ids
+        ]
+    )
     return masks
 
 
@@ -162,27 +156,28 @@ def load_image_infos(
     :param dataset_dir: path to a dataset directory.
     :param image_key: string that uniqly identifies the image in the dataset.
     """
+
     def _file_path(ext):
-        return dataset_dir / f'{image_key}.{ext}'
+        return dataset_dir / f"{image_key}.{ext}"
 
     infos = dict(
         has_rgb=False,
-        has_depth=_file_path('depth.png').exists(),
-        has_gray=_file_path('gray.tiff').exists(),
-        has_mask=_file_path('mask.json').exists(),
-        has_mask_visib=_file_path('mask_visib.json').exists(),
-        has_gt=_file_path('gt.json').exists(),
-        has_gt_info=_file_path('gt_info.json').exists()
+        has_depth=_file_path("depth.png").exists(),
+        has_gray=_file_path("gray.tiff").exists(),
+        has_mask=_file_path("mask.json").exists(),
+        has_mask_visib=_file_path("mask_visib.json").exists(),
+        has_gt=_file_path("gt.json").exists(),
+        has_gt_info=_file_path("gt_info.json").exists(),
     )
 
-    if _file_path('rgb.png').exists():
-        infos['has_rgb'] = True
-        infos['rgb_suffix'] = '.png'
+    if _file_path("rgb.png").exists():
+        infos["has_rgb"] = True
+        infos["rgb_suffix"] = ".png"
 
-    if _file_path('rgb.jpg').exists():
-        assert 'rgb_suffix' not in infos
-        infos['has_rgb'] = True
-        infos['rgb_suffix'] = '.jpg'
+    if _file_path("rgb.jpg").exists():
+        assert "rgb_suffix" not in infos
+        infos["has_rgb"] = True
+        infos["rgb_suffix"] = ".jpg"
 
     return infos
 
@@ -237,7 +232,7 @@ def load_image_data(
     dataset_dir = pathlib.Path(dataset_dir)
 
     def _file_path(ext):
-        return dataset_dir / f'{image_key}.{ext}'
+        return dataset_dir / f"{image_key}.{ext}"
 
     image_data = dict(
         camera=None,
@@ -249,44 +244,42 @@ def load_image_data(
         gt_info=None,
     )
 
-    camera = inout.load_json(_file_path('camera.json'))
+    camera = inout.load_json(_file_path("camera.json"))
     camera = inout._camera_as_numpy(camera)
-    image_data['camera'] = camera
+    image_data["camera"] = camera
 
     if load_rgb:
-        rgb_path = _file_path('rgb.jpg')
+        rgb_path = _file_path("rgb.jpg")
         if not rgb_path.exists():
-            rgb_path = _file_path('rgb.png')
-        image_data['im_rgb'] = inout.load_im(rgb_path).astype(np.uint8)
+            rgb_path = _file_path("rgb.png")
+        image_data["im_rgb"] = inout.load_im(rgb_path).astype(np.uint8)
 
     if load_gray:
-        gray_path = _file_path('gray.tiff')
+        gray_path = _file_path("gray.tiff")
         im_gray = inout.load_im(gray_path).astype(np.uint8)
-        image_data['im_gray'] = im_gray
+        image_data["im_gray"] = im_gray
 
     if load_depth:
-        depth_path = _file_path('depth.png')
+        depth_path = _file_path("depth.png")
         im_depth = inout.load_im(depth_path).astype(np.float32)
         if rescale_depth:
-            im_depth *= camera['depth_scale']
-        image_data['im_depth'] = im_depth
+            im_depth *= camera["depth_scale"]
+        image_data["im_depth"] = im_depth
 
     if load_gt:
-        with open(_file_path('gt.json'), 'r') as f:
-            image_data['gt'] = io_load_gt(f, instance_ids=instance_ids)
+        with open(_file_path("gt.json"), "r") as f:
+            image_data["gt"] = io_load_gt(f, instance_ids=instance_ids)
 
     if load_gt_info:
-        with open(_file_path('gt_info.json'), 'r') as f:
-            image_data['gt_info'] = io_load_gt(f, instance_ids=instance_ids)
+        with open(_file_path("gt_info.json"), "r") as f:
+            image_data["gt_info"] = io_load_gt(f, instance_ids=instance_ids)
 
     if load_mask_visib:
-        with open(_file_path('mask_visib.json'), 'r') as f:
-            image_data['mask_visib'] = io_load_masks(
-                f, instance_ids=instance_ids)
+        with open(_file_path("mask_visib.json"), "r") as f:
+            image_data["mask_visib"] = io_load_masks(f, instance_ids=instance_ids)
 
     if load_mask:
-        with open(_file_path('mask.json'), 'r') as f:
-            image_data['mask'] = io_load_masks(
-                f, instance_ids=instance_ids)
+        with open(_file_path("mask.json"), "r") as f:
+            image_data["mask"] = io_load_masks(f, instance_ids=instance_ids)
 
     return image_data
