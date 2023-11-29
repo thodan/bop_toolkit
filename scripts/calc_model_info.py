@@ -11,40 +11,43 @@ from bop_toolkit_lib import misc
 # PARAMETERS.
 ################################################################################
 p = {
-  # See dataset_params.py for options.
-  'dataset': 'lm',
-
-  # Type of input object models.
-  'model_type': None,
-
-  # Folder containing the BOP datasets.
-  'datasets_path': config.datasets_path,
+    # See dataset_params.py for options.
+    "dataset": "lm",
+    # Type of input object models.
+    "model_type": None,
+    # Folder containing the BOP datasets.
+    "datasets_path": config.datasets_path,
 }
 ################################################################################
 
 
 # Load dataset parameters.
 dp_model = dataset_params.get_model_params(
-  p['datasets_path'], p['dataset'], p['model_type'])
+    p["datasets_path"], p["dataset"], p["model_type"]
+)
 
 models_info = {}
-for obj_id in dp_model['obj_ids']:
-    misc.log('Processing model of object {}...'.format(obj_id))
+for obj_id in dp_model["obj_ids"]:
+    misc.log("Processing model of object {}...".format(obj_id))
 
-    model = inout.load_ply(dp_model['model_tpath'].format(obj_id=obj_id))
+    model = inout.load_ply(dp_model["model_tpath"].format(obj_id=obj_id))
 
     # Calculate 3D bounding box.
-    ref_pt = map(float, model['pts'].min(axis=0).flatten())
-    size = map(float, (model['pts'].max(axis=0) - ref_pt).flatten())
+    ref_pt = map(float, model["pts"].min(axis=0).flatten())
+    size = map(float, (model["pts"].max(axis=0) - ref_pt).flatten())
 
     # Calculated diameter.
-    diameter = misc.calc_pts_diameter(model['pts'])
+    diameter = misc.calc_pts_diameter(model["pts"])
 
     models_info[obj_id] = {
-        'min_x': ref_pt[0], 'min_y': ref_pt[1], 'min_z': ref_pt[2],
-        'size_x': size[0], 'size_y': size[1], 'size_z': size[2],
-        'diameter': diameter
+        "min_x": ref_pt[0],
+        "min_y": ref_pt[1],
+        "min_z": ref_pt[2],
+        "size_x": size[0],
+        "size_y": size[1],
+        "size_z": size[2],
+        "diameter": diameter,
     }
 
 # Save the calculated info about the object models.
-inout.save_json(dp_model['models_info_path'], models_info)
+inout.save_json(dp_model["models_info_path"], models_info)

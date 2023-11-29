@@ -36,8 +36,7 @@ def convert_scene_to_imagewise(
     output_dir.mkdir(exist_ok=True)
 
     bop_imagewise.save_scene_camera(
-        scene_data["scene_camera"],
-        output_dir / (image_tkey + ".camera.json")
+        scene_data["scene_camera"], output_dir / (image_tkey + ".camera.json")
     )
 
     bop_imagewise.save_scene_gt(
@@ -45,8 +44,7 @@ def convert_scene_to_imagewise(
     )
 
     bop_imagewise.save_scene_gt(
-        scene_data["scene_gt_info"],
-        output_dir / (image_tkey + ".gt_info.json")
+        scene_data["scene_gt_info"], output_dir / (image_tkey + ".gt_info.json")
     )
 
     image_ids = [int(k) for k in scene_data["scene_camera"].keys()]
@@ -55,8 +53,8 @@ def convert_scene_to_imagewise(
         for mask_type in ("mask", "mask_visib"):
             if scene_infos["has_" + mask_type]:
                 masks = bop_scenewise.load_masks(
-                    input_scene_dir,
-                    image_id, mask_type=mask_type)
+                    input_scene_dir, image_id, mask_type=mask_type
+                )
                 bop_imagewise.save_masks(
                     masks, output_dir / (image_key + f".{mask_type}.json")
                 )
@@ -67,12 +65,11 @@ def convert_scene_to_imagewise(
         ):
             if scene_infos["has_" + im_modality]:
                 im_path = list(
-                    (input_scene_dir / im_modality
-                     ).glob(f"{image_id:06d}.*"))[0]
+                    (input_scene_dir / im_modality).glob(f"{image_id:06d}.*")
+                )[0]
                 suffix = im_path.suffix
                 shutil.copy(
-                    im_path,
-                    output_dir / (image_key + "." + im_modality + suffix)
+                    im_path, output_dir / (image_key + "." + im_modality + suffix)
                 )
 
 
@@ -123,8 +120,7 @@ def main(args):
 
     if args.scene_ids is not None:
         scene_ids = [int(scene_id) for scene_id in args.scene_ids.split(",")]
-        scene_directories = (
-            input_dir / f"{scene_id:06d}" for scene_id in scene_ids)
+        scene_directories = (input_dir / f"{scene_id:06d}" for scene_id in scene_ids)
     else:
         scene_directories = input_dir.iterdir()
 
@@ -138,14 +134,11 @@ def main(args):
         _args = zip(
             scene_directories,
             itertools.repeat(output_dir, len(scene_directories)),
-            image_tkeys
+            image_tkeys,
         )
         with multiprocessing.Pool(processes=args.nprocs) as pool:
             with tqdm.tqdm(total=len(scene_directories)) as pbar:
-                iterator = pool.starmap(
-                    convert_scene_to_imagewise,
-                    iterable=_args
-                )
+                iterator = pool.starmap(convert_scene_to_imagewise, iterable=_args)
                 for _ in iterator:
                     pbar.update()
     else:

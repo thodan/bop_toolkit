@@ -12,6 +12,7 @@ from skimage import measure
 from itertools import groupby
 from bop_toolkit_lib import misc
 
+
 def create_image_info(image_id, file_name, image_size):
     """Creates image info section of coco annotation
 
@@ -24,15 +25,25 @@ def create_image_info(image_id, file_name, image_size):
         "file_name": file_name,
         "width": image_size[0],
         "height": image_size[1],
-        "date_captured": datetime.datetime.utcnow().isoformat(' '),
+        "date_captured": datetime.datetime.utcnow().isoformat(" "),
         "license": 1,
         "coco_url": "",
-        "flickr_url": ""
+        "flickr_url": "",
     }
 
     return image_info
 
-def create_annotation_info(annotation_id, image_id, object_id, binary_mask, bounding_box, mask_encoding_format='rle', tolerance=2, ignore=None):
+
+def create_annotation_info(
+    annotation_id,
+    image_id,
+    object_id,
+    binary_mask,
+    bounding_box,
+    mask_encoding_format="rle",
+    tolerance=2,
+    ignore=None,
+):
     """Creates info section of coco annotation
 
     :param annotation_id: integer to uniquly identify the annotation
@@ -49,10 +60,10 @@ def create_annotation_info(annotation_id, image_id, object_id, binary_mask, boun
     area = binary_mask.sum()
     if area < 1:
         return None
-    
-    if mask_encoding_format == 'rle':
+
+    if mask_encoding_format == "rle":
         segmentation = binary_mask_to_rle(binary_mask)
-    elif mask_encoding_format == 'polygon':
+    elif mask_encoding_format == "polygon":
         segmentation = binary_mask_to_polygon(binary_mask, tolerance)
         if not segmentation:
             return None
@@ -68,16 +79,16 @@ def create_annotation_info(annotation_id, image_id, object_id, binary_mask, boun
         "bbox": bounding_box,
         "segmentation": segmentation,
         "width": binary_mask.shape[1],
-        "height": binary_mask.shape[0]
+        "height": binary_mask.shape[0],
     }
     if ignore is not None:
         annotation_info["ignore"] = ignore
-    
+
     return annotation_info
 
 
 def merge_coco_results(existing_coco_results, new_coco_results, image_id_offset):
-    """ Merges the two given coco result dicts into one.
+    """Merges the two given coco result dicts into one.
 
     :param existing_coco_results: A dict describing the first coco results.
     :param new_coco_results: A dict describing the second coco results.
@@ -85,14 +96,14 @@ def merge_coco_results(existing_coco_results, new_coco_results, image_id_offset)
     """
 
     for res in new_coco_results:
-        res['image_id'] += image_id_offset
+        res["image_id"] += image_id_offset
     existing_coco_results += new_coco_results
-    
+
     return existing_coco_results
 
 
 def merge_coco_annotations(existing_coco_annotations, new_coco_annotations):
-    """ Merges the two given coco annotation dicts into one.
+    """Merges the two given coco annotation dicts into one.
 
     The "images" and "annotations" sections are concatenated and respective ids are adjusted.
 
@@ -107,14 +118,24 @@ def merge_coco_annotations(existing_coco_annotations, new_coco_annotations):
             existing_coco_annotations["categories"].append(cat_dict)
 
     # Concatenate images sections
-    image_id_offset = max([image["id"] for image in existing_coco_annotations["images"]]) + 1
+    image_id_offset = (
+        max([image["id"] for image in existing_coco_annotations["images"]]) + 1
+    )
     for image in new_coco_annotations["images"]:
         image["id"] += image_id_offset
     existing_coco_annotations["images"].extend(new_coco_annotations["images"])
 
     # Concatenate annotations sections
     if len(existing_coco_annotations["annotations"]) > 0:
-        annotation_id_offset = max([annotation["id"] for annotation in existing_coco_annotations["annotations"]]) + 1
+        annotation_id_offset = (
+            max(
+                [
+                    annotation["id"]
+                    for annotation in existing_coco_annotations["annotations"]
+                ]
+            )
+            + 1
+        )
     else:
         annotation_id_offset = 0
     for annotation in new_coco_annotations["annotations"]:
@@ -124,8 +145,9 @@ def merge_coco_annotations(existing_coco_annotations, new_coco_annotations):
 
     return existing_coco_annotations, image_id_offset
 
+
 def bbox_from_binary_mask(binary_mask):
-    """ Returns the smallest bounding box containing all pixels marked "1" in the given image mask.
+    """Returns the smallest bounding box containing all pixels marked "1" in the given image mask.
 
     :param binary_mask: A binary image mask with the shape [H, W].
     :return: The bounding box represented as [x, y, width, height]
@@ -141,8 +163,9 @@ def bbox_from_binary_mask(binary_mask):
     w = cmax - cmin + 1
     return [int(cmin), int(rmin), int(w), int(h)]
 
+
 def close_contour(contour):
-    """ Makes sure the given contour is closed.
+    """Makes sure the given contour is closed.
 
     :param contour: The contour to close.
     :return: The closed contour.
@@ -151,6 +174,7 @@ def close_contour(contour):
     if not np.array_equal(contour[0], contour[-1]):
         contour = np.vstack((contour, contour[0]))
     return contour
+
 
 def binary_mask_to_polygon(binary_mask, tolerance=0):
     """Converts a binary mask to COCO polygon representation
@@ -162,7 +186,9 @@ def binary_mask_to_polygon(binary_mask, tolerance=0):
     """
     polygons = []
     # pad mask to close contours of shapes which start and end at an edge
-    padded_binary_mask = np.pad(binary_mask, pad_width=1, mode='constant', constant_values=0)
+    padded_binary_mask = np.pad(
+        binary_mask, pad_width=1, mode="constant", constant_values=0
+    )
     contours = np.array(measure.find_contours(padded_binary_mask, 0.5))
     # Reverse padding
     contours = contours - 1
@@ -184,17 +210,18 @@ def binary_mask_to_polygon(binary_mask, tolerance=0):
 
     return polygons
 
+
 def binary_mask_to_rle(binary_mask):
-    """Converts a binary mask to COCOs run-length encoding (RLE) format. Instead of outputting 
+    """Converts a binary mask to COCOs run-length encoding (RLE) format. Instead of outputting
     a mask image, you give a list of start pixels and how many pixels after each of those
     starts are included in the mask.
 
     :param binary_mask: a 2D binary numpy array where '1's represent the object
     :return: Mask in RLE format
     """
-    rle = {'counts': [], 'size': list(binary_mask.shape)}
-    counts = rle.get('counts')
-    mask = binary_mask.ravel(order='F')
+    rle = {"counts": [], "size": list(binary_mask.shape)}
+    counts = rle.get("counts")
+    mask = binary_mask.ravel(order="F")
     if len(mask) > 0 and mask[0] == 1:
         counts.append(0)
 
@@ -208,31 +235,34 @@ def binary_mask_to_rle(binary_mask):
         counts.extend(rle2.tolist())
     return rle
 
+
 def rle_to_binary_mask(rle):
     """Converts a COCOs run-length encoding (RLE) to a binary mask.
 
     :param rle: Mask in RLE format
     :return: a 2D binary numpy array where '1's represent the object
     """
-    binary_array = np.zeros(np.prod(rle.get('size')), dtype=bool)
-    counts = rle.get('counts')
+    binary_array = np.zeros(np.prod(rle.get("size")), dtype=bool)
+    counts = rle.get("counts")
     if isinstance(counts, str):
-        misc.log('===========')
-        misc.log('RLEs are compressed, using cocoAPI to uncompress them..')
-        misc.log('Make sure, requirements.txt are installed.')
-        misc.log('===========')
+        misc.log("===========")
+        misc.log("RLEs are compressed, using cocoAPI to uncompress them..")
+        misc.log("Make sure, requirements.txt are installed.")
+        misc.log("===========")
         from pycocotools import mask as maskUtils
+
         binary_mask = maskUtils.decode(rle)
     else:
         start = 0
-        for i in range(len(counts)-1):
-            start += counts[i] 
-            end = start + counts[i+1] 
+        for i in range(len(counts) - 1):
+            start += counts[i]
+            end = start + counts[i + 1]
             binary_array[start:end] = (i + 1) % 2
-        
-        binary_mask = binary_array.reshape(*rle.get('size'), order='F')
+
+        binary_mask = binary_array.reshape(*rle.get("size"), order="F")
 
     return binary_mask
+
 
 def compute_ious(gt, dt, iou_type):
     """
@@ -242,11 +272,13 @@ def compute_ious(gt, dt, iou_type):
     :param iou_type: Can be 'segm' or 'bbox'
     :return: matrix of ious between all gt and dt masks
     """
-     
-    if iou_type == 'segm':
-        gt_bin = np.array([rle_to_binary_mask(g['segmentation']) for g in gt])
-        dt_bin = np.array([rle_to_binary_mask(d['segmentation']) for d in dt])
-        intersections = np.einsum('ijk,ljk->il', dt_bin, gt_bin)
-        unions =  np.sum((np.expand_dims(dt_bin,1) + np.expand_dims(gt_bin,0)) > 0, axis=(2,3))
+
+    if iou_type == "segm":
+        gt_bin = np.array([rle_to_binary_mask(g["segmentation"]) for g in gt])
+        dt_bin = np.array([rle_to_binary_mask(d["segmentation"]) for d in dt])
+        intersections = np.einsum("ijk,ljk->il", dt_bin, gt_bin)
+        unions = np.sum(
+            (np.expand_dims(dt_bin, 1) + np.expand_dims(gt_bin, 0)) > 0, axis=(2, 3)
+        )
         ious = intersections / unions
     return ious
