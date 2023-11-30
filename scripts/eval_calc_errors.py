@@ -8,6 +8,7 @@ import time
 import argparse
 import copy
 import numpy as np
+import multiprocessing
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
@@ -70,6 +71,7 @@ p = {
     "out_errors_tpath": os.path.join(
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
+    "num_workers": 10,  # Number of parallel workers for the calculation of errors.
 }
 ################################################################################
 
@@ -99,6 +101,7 @@ parser.add_argument("--eval_path", default=p["eval_path"])
 parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
+parser.add_argument("--num_workers", default=p["num_workers"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -117,6 +120,7 @@ p["eval_path"] = str(args.eval_path)
 p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
+p["num_workers"] = int(args.num_workers)
 
 misc.log("-----------")
 misc.log("Parameters:")
@@ -216,9 +220,17 @@ for result_filename in p["result_filenames"]:
             dp_split["scene_gt_tpath"].format(scene_id=scene_id)
         )
 
-        scene_errs = []
-
+        # collect all the images and their targets
+        im_metaDatas = []
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
+            im_megaData = [im_ind, (im_id, im_targets)]
+            im_metaDatas.append(im_megaData)
+
+        # Calculate errors for each image in parallel.
+        def calculate_errors_per_image(im_metaData):
+            im_ind, (im_id, im_targets) = im_metaData
+            im_errs = []
+            per_image_ests_counter = 0
             if im_ind % 10 == 0:
                 misc.log(
                     "Calculating error {} - method: {}, dataset: {}{}, scene: {}, "
@@ -278,7 +290,7 @@ for result_filename in p["result_filenames"]:
 
                 # Select the required number of top estimated poses.
                 obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
-                ests_counter += len(obj_ests_sorted)
+                per_image_ests_counter += len(obj_ests_sorted)
 
                 # Calculate error of each pose estimate w.r.t. all GT poses of the same
                 # object class.
@@ -320,21 +332,39 @@ for result_filename in p["result_filenames"]:
                             if not sphere_projections_overlap:
                                 e = [1.0] * len(p["vsd_taus"])
                             else:
-                                e = pose_error.vsd(
-                                    R_e,
-                                    t_e,
-                                    R_g,
-                                    t_g,
-                                    depth_im,
-                                    K,
-                                    p["vsd_deltas"][dataset],
-                                    p["vsd_taus"],
-                                    p["vsd_normalized_by_diameter"],
-                                    models_info[obj_id]["diameter"],
-                                    ren,
-                                    obj_id,
-                                    "step",
-                                )
+                                if p["num_workers"] == 1:
+                                    e = pose_error.vsd(
+                                        R_e,
+                                        t_e,
+                                        R_g,
+                                        t_g,
+                                        depth_im,
+                                        K,
+                                        p["vsd_deltas"][dataset],
+                                        p["vsd_taus"],
+                                        p["vsd_normalized_by_diameter"],
+                                        models_info[obj_id]["diameter"],
+                                        ren,
+                                        obj_id,
+                                        "step",
+                                    )
+                                else:  # delayed the calculation of the error for batch_renderer
+                                    e = {
+                                        "R_e": R_e,
+                                        "t_e": t_e,
+                                        "R_g": R_g,
+                                        "t_g": t_g,
+                                        "depth_im": depth_im,
+                                        "K": K,
+                                        "vsd_deltas": p["vsd_deltas"][dataset],
+                                        "vsd_taus": p["vsd_taus"],
+                                        "vsd_normalized_by_diameter": p[
+                                            "vsd_normalized_by_diameter"
+                                        ],
+                                        "diameter": models_info[obj_id]["diameter"],
+                                        "obj_id": obj_id,
+                                        "step": "step",
+                                    }
 
                         elif p["error_type"] == "mssd":
                             if not spheres_overlap:
@@ -434,17 +464,51 @@ for result_filename in p["result_filenames"]:
                             raise ValueError("Unknown pose error function.")
 
                         errs[gt_id] = e
+                        im_errs.append(
+                            {
+                                "im_id": im_id,
+                                "obj_id": obj_id,
+                                "est_id": est_id,
+                                "score": est["score"],
+                                "errors": errs,
+                            }
+                        )
+                        assert len(im_errs) == per_image_ests_counter
+            return im_errs
 
-                    # Save the calculated errors.
-                    scene_errs.append(
-                        {
-                            "im_id": im_id,
-                            "obj_id": obj_id,
-                            "est_id": est_id,
-                            "score": est["score"],
-                            "errors": errs,
-                        }
-                    )
+        multiprocessing_start_time = time.time()
+        pool = multiprocessing.Pool(p["num_workers"])
+        all_im_errs = pool.map(calculate_errors_per_image, im_metaDatas)
+        total_multiprocessing_time = time.time() - multiprocessing_start_time
+        misc.log(
+            "Multiprocessing took {}s with {} workers.".format(
+                total_multiprocessing_time, p["num_workers"]
+            )
+        )
+
+        scene_errs = []
+        for im_errs in all_im_errs:
+            if p["error_type"] == "vsd":
+                # now, calculate the errors
+                for err in im_errs:
+                    for gt_id in err["errors"].keys():
+                        if isinstance(err["errors"][gt_id], dict):
+                            err["errors"][gt_id] = pose_error.vsd(
+                                    err["errors"][gt_id]["R_e"],
+                                    err["errors"][gt_id]["t_e"],
+                                    err["errors"][gt_id]["R_g"],
+                                    err["errors"][gt_id]["t_g"],
+                                    err["errors"][gt_id]["depth_im"],
+                                    err["errors"][gt_id]["K"],
+                                    err["errors"][gt_id]["vsd_deltas"],
+                                    err["errors"][gt_id]["vsd_taus"],
+                                    err["errors"][gt_id]["vsd_normalized_by_diameter"],
+                                    err["errors"][gt_id]["diameter"],
+                                    ren,
+                                    err["errors"][gt_id]["obj_id"],
+                                    err["errors"][gt_id]["step"],
+                                )
+            scene_errs.extend(im_errs)
 
         def save_errors(_error_sign, _scene_errs):
             # Save the calculated errors to a JSON file.

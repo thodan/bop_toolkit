@@ -161,6 +161,7 @@ for result_filename in p["result_filenames"]:
             "--targets_filename={}".format(p["targets_filename"]),
             "--max_sym_disc_step={}".format(p["max_sym_disc_step"]),
             "--skip_missing=1",
+            "--num_workers={}".format(p["num_workers"]),
         ]
         if error["type"] == "vsd":
             vsd_deltas_str = ",".join(
