@@ -18,6 +18,9 @@ from bop_toolkit_lib import pose_error
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import renderer_batch
 
+# Get the base name of the file without the .py extension
+file_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = misc.get_logger(file_name)
 
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
@@ -123,16 +126,16 @@ p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
 
-misc.log("-----------")
-misc.log("Parameters:")
+logger.info("-----------")
+logger.info("Parameters:")
 for k, v in p.items():
-    misc.log("- {}: {}".format(k, v))
-misc.log("-----------")
+    logger.info("- {}: {}".format(k, v))
+logger.info("-----------")
 
 # Error calculation.
 # ------------------------------------------------------------------------------
 for result_filename in p["result_filenames"]:
-    misc.log("Processing: {}".format(result_filename))
+    logger.info("Processing: {}".format(result_filename))
 
     ests_counter = 0
     time_start = time.time()
@@ -158,7 +161,7 @@ for result_filename in p["result_filenames"]:
     # Load object models.
     models = {}
     if p["error_type"] in ["ad", "add", "adi", "mssd", "mspd", "proj"]:
-        misc.log("Loading object models...")
+        logger.info("Loading object models...")
         for obj_id in dp_model["obj_ids"]:
             models[obj_id] = inout.load_ply(
                 dp_model["model_tpath"].format(obj_id=obj_id)
@@ -181,7 +184,7 @@ for result_filename in p["result_filenames"]:
     # Initialize a renderer.
     ren = None
     if p["error_type"] in ["vsd", "cus"]:
-        misc.log("Initializing renderer...")
+        logger.info("Initializing renderer...")
         width, height = dp_split["im_size"]
         if p["num_workers"] == 1:
             ren = renderer.create_renderer(
@@ -207,7 +210,7 @@ for result_filename in p["result_filenames"]:
     )
 
     # Organize the targets by scene, image and object.
-    misc.log("Organizing estimation targets...")
+    logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
         targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
@@ -215,11 +218,11 @@ for result_filename in p["result_filenames"]:
         ] = target
 
     # Load pose estimates.
-    misc.log("Loading pose estimates...")
+    logger.info("Loading pose estimates...")
     ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename))
 
     # Organize the pose estimates by scene, image and object.
-    misc.log("Organizing pose estimates...")
+    logger.info("Organizing pose estimates...")
     ests_org = {}
     for est in ests:
         ests_org.setdefault(est["scene_id"], {}).setdefault(
@@ -247,7 +250,7 @@ for result_filename in p["result_filenames"]:
             im_errs = []
             per_image_ests_counter = 0
             if im_ind % 10 == 0:
-                misc.log(
+                logger.info(
                     "Calculating error {} - method: {}, dataset: {}{}, scene: {}, "
                     "im: {}".format(
                         p["error_type"],
@@ -516,7 +519,7 @@ for result_filename in p["result_filenames"]:
                 scene_id=scene_id,
             )
             misc.ensure_dir(os.path.dirname(errors_path))
-            misc.log("Saving errors to: {}".format(errors_path))
+            logger.info("Saving errors to: {}".format(errors_path))
             inout.save_json(errors_path, _scene_errs)
 
         # Save the calculated errors.
@@ -542,10 +545,10 @@ for result_filename in p["result_filenames"]:
             save_errors(error_sign, scene_errs)
 
     time_total = time.time() - time_start
-    misc.log(
+    logger.info(
         "Calculation of errors for {} estimates took {}s.".format(
             ests_counter, time_total
         )
     )
 
-misc.log("Done.")
+logger.info("Done.")

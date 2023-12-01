@@ -18,11 +18,6 @@ from bop_toolkit_lib import transform
 logging.basicConfig()
 
 
-def stop_disable_output(original_stdout):
-    # Restore the original stdout file descriptor
-    os.dup2(original_stdout, 1)
-
-
 def log(s):
     """A logging function.
 
@@ -455,3 +450,8 @@ def start_disable_output(logfile):
 
         # Return the original stdout file descriptor
         return original_stdout
+
+
+def stop_disable_output(original_stdout):
+    # Restore the original stdout file descriptor
+    os.dup2(original_stdout, 1)

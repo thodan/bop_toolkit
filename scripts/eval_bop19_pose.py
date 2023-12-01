@@ -14,6 +14,9 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
+# Get the base name of the file without the .py extension
+file_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = misc.get_logger(file_name)
 
 # PARAMETERS (some can be overwritten by the command line arguments below).
 ################################################################################
@@ -105,9 +108,9 @@ eval_time_start = time.time()
 # Evaluation.
 # ------------------------------------------------------------------------------
 for result_filename in p["result_filenames"]:
-    misc.log("===========")
-    misc.log("EVALUATING: {}".format(result_filename))
-    misc.log("===========")
+    logger.info("===========")
+    logger.info("EVALUATING: {}".format(result_filename))
+    logger.info("===========")
 
     time_start = time.time()
 
@@ -175,7 +178,7 @@ for result_filename in p["result_filenames"]:
                 ),
             ]
 
-        misc.log("Running: " + " ".join(calc_errors_cmd))
+        logger.info("Running: " + " ".join(calc_errors_cmd))
         if subprocess.call(calc_errors_cmd) != 0:
             raise RuntimeError("Calculation of pose errors failed.")
 
@@ -224,7 +227,7 @@ for result_filename in p["result_filenames"]:
 
         if p["num_workers"] == 1:
             for calc_scores_cmd in calc_scores_cmds:
-                misc.log("Running: " + " ".join(calc_scores_cmd))
+                logger.info("Running: " + " ".join(calc_scores_cmd))
                 if subprocess.call(calc_scores_cmd) != 0:
                     raise RuntimeError("Calculation of performance scores failed.")
         else:
@@ -245,17 +248,17 @@ for result_filename in p["result_filenames"]:
                 )
 
                 # Load the scores.
-                misc.log("Loading calculated scores from: {}".format(scores_path))
+                logger.info("Loading calculated scores from: {}".format(scores_path))
                 scores = inout.load_json(scores_path)
                 recalls.append(scores["recall"])
 
         average_recalls[error["type"]] = np.mean(recalls)
 
-        misc.log("Recall scores: {}".format(" ".join(map(str, recalls))))
-        misc.log("Average recall: {}".format(average_recalls[error["type"]]))
+        logger.info("Recall scores: {}".format(" ".join(map(str, recalls))))
+        logger.info("Average recall: {}".format(average_recalls[error["type"]]))
 
     time_total = time.time() - time_start
-    misc.log("Evaluation of {} took {}s.".format(result_filename, time_total))
+    logger.info("Evaluation of {} took {}s.".format(result_filename, time_total))
 
     # Calculate the final scores.
     final_scores = {}
@@ -277,10 +280,10 @@ for result_filename in p["result_filenames"]:
     inout.save_json(final_scores_path, final_scores)
 
     # Print the final scores.
-    misc.log("FINAL SCORES:")
+    logger.info("FINAL SCORES:")
     for score_name, score_value in final_scores.items():
-        misc.log("- {}: {}".format(score_name, score_value))
+        logger.info("- {}: {}".format(score_name, score_value))
 
 total_eval_time = time.time() - eval_time_start
-misc.log("Evaluation took {}s.".format(total_eval_time))
-misc.log("Done.")
+logger.info("Evaluation took {}s.".format(total_eval_time))
+logger.info("Done.")
