@@ -10,9 +10,17 @@ import pytz
 import math
 import subprocess
 import numpy as np
+import logging
 from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
+
+logging.basicConfig()
+
+
+def stop_disable_output(original_stdout):
+    # Restore the original stdout file descriptor
+    os.dup2(original_stdout, 1)
 
 
 def log(s):
@@ -428,3 +436,22 @@ def run_command(cmd):
     log("Running: " + " ".join(cmd))
     if subprocess.call(cmd) != 0:
         raise RuntimeError(f"{cmd} failed!")
+
+
+def get_logger(name: str):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    return logger
+
+
+def start_disable_output(logfile):
+    # Open the logfile for append
+    with open(logfile, "a") as log_file:
+        # Save the original stdout file descriptor
+        original_stdout = os.dup(1)
+
+        # Redirect stdout to the log file
+        os.dup2(log_file.fileno(), 1)
+
+        # Return the original stdout file descriptor
+        return original_stdout

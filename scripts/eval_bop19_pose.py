@@ -74,7 +74,7 @@ p = {
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
     "targets_filename": "test_targets_bop19.json",
-    "num_workers": 10,  # Number of parallel workers for the calculation of errors.
+    "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
 }
 ################################################################################
 
@@ -222,17 +222,16 @@ for result_filename in p["result_filenames"]:
                 ]
                 calc_scores_cmds.append(calc_scores_cmd)
 
-        multiprocessing_start_time = time.time()
-        with multiprocessing.Pool(p["num_workers"]) as pool:
-            pool.map_async(misc.run_command, calc_scores_cmds)
-            pool.close()
-            pool.join()
-        total_multiprocessing_time = time.time() - multiprocessing_start_time
-        misc.log(
-            "Multiprocessing took {}s with {} workers.".format(
-                total_multiprocessing_time, p["num_workers"]
-            )
-        )
+        if p["num_workers"] == 1:
+            for calc_scores_cmd in calc_scores_cmds:
+                misc.log("Running: " + " ".join(calc_scores_cmd))
+                if subprocess.call(calc_scores_cmd) != 0:
+                    raise RuntimeError("Calculation of performance scores failed.")
+        else:
+            with multiprocessing.Pool(p["num_workers"]) as pool:
+                pool.map_async(misc.run_command, calc_scores_cmds)
+                pool.close()
+                pool.join()
 
         recalls = []
         for error_sign, error_dir_path in error_dir_paths.items():

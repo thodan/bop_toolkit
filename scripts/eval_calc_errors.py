@@ -16,6 +16,7 @@ from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_error
 from bop_toolkit_lib import renderer
+from bop_toolkit_lib import renderer_batch
 
 
 # PARAMETERS (can be overwritten by the command line arguments below).
@@ -71,7 +72,7 @@ p = {
     "out_errors_tpath": os.path.join(
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
-    "num_workers": 10,  # Number of parallel workers for the calculation of errors.
+    "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
 }
 ################################################################################
 
@@ -182,7 +183,21 @@ for result_filename in p["result_filenames"]:
     if p["error_type"] in ["vsd", "cus"]:
         misc.log("Initializing renderer...")
         width, height = dp_split["im_size"]
-        ren = renderer.create_renderer(width, height, p["renderer_type"], mode="depth")
+        if p["num_workers"] == 1:
+            ren = renderer.create_renderer(
+                width, height, p["renderer_type"], mode="depth"
+            )
+        else:
+            ren = renderer_batch.BatchRenderer(
+                width,
+                height,
+                p["renderer_type"],
+                mode="depth",
+                num_workers=p["num_workers"],
+                tmp_dir=os.path.join(
+                    p["results_path"], p["eval_path"], f"tmp{int(time.time())}"
+                ),
+            )
         for obj_id in dp_model["obj_ids"]:
             ren.add_object(obj_id, dp_model["model_tpath"].format(obj_id=obj_id))
 
@@ -348,23 +363,23 @@ for result_filename in p["result_filenames"]:
                                         obj_id,
                                         "step",
                                     )
-                                else:  # delayed the calculation of the error for batch_renderer
-                                    e = {
-                                        "R_e": R_e,
-                                        "t_e": t_e,
-                                        "R_g": R_g,
-                                        "t_g": t_g,
-                                        "depth_im": depth_im,
-                                        "K": K,
-                                        "vsd_deltas": p["vsd_deltas"][dataset],
-                                        "vsd_taus": p["vsd_taus"],
-                                        "vsd_normalized_by_diameter": p[
+                                else:  # delayed the calculation of the error for renderer_batch
+                                    e = renderer_batch.POSE_ERROR_VSD_ARGS(
+                                        R_e=R_e,
+                                        t_e=t_e,
+                                        R_g=R_g,
+                                        t_g=t_g,
+                                        depth_im=depth_im,
+                                        K=K,
+                                        vsd_deltas=p["vsd_deltas"][dataset],
+                                        vsd_taus=p["vsd_taus"],
+                                        vsd_normalized_by_diameter=p[
                                             "vsd_normalized_by_diameter"
                                         ],
-                                        "diameter": models_info[obj_id]["diameter"],
-                                        "obj_id": obj_id,
-                                        "step": "step",
-                                    }
+                                        diameter=models_info[obj_id]["diameter"],
+                                        obj_id=obj_id,
+                                        step="step",
+                                    )
 
                         elif p["error_type"] == "mssd":
                             if not spheres_overlap:
@@ -464,51 +479,33 @@ for result_filename in p["result_filenames"]:
                             raise ValueError("Unknown pose error function.")
 
                         errs[gt_id] = e
-                        im_errs.append(
-                            {
-                                "im_id": im_id,
-                                "obj_id": obj_id,
-                                "est_id": est_id,
-                                "score": est["score"],
-                                "errors": errs,
-                            }
-                        )
-                        assert len(im_errs) == per_image_ests_counter
+                    # Save the calculated errors.
+                    im_errs.append(
+                        {
+                            "im_id": im_id,
+                            "obj_id": obj_id,
+                            "est_id": est_id,
+                            "score": est["score"],
+                            "errors": errs,
+                        }
+                    )
+                assert (
+                    len(im_errs) == per_image_ests_counter
+                ), f"{len(im_errs)} != {per_image_ests_counter}"
             return im_errs
 
-        multiprocessing_start_time = time.time()
-        pool = multiprocessing.Pool(p["num_workers"])
-        all_im_errs = pool.map(calculate_errors_per_image, im_metaDatas)
-        total_multiprocessing_time = time.time() - multiprocessing_start_time
-        misc.log(
-            "Multiprocessing took {}s with {} workers.".format(
-                total_multiprocessing_time, p["num_workers"]
-            )
-        )
-
-        scene_errs = []
-        for im_errs in all_im_errs:
+        if p["num_workers"] == 1:
+            scene_errs = []
+            for im_metaData in im_metaDatas:
+                scene_errs.extend(calculate_errors_per_image(im_metaData))
+        else:
+            pool = multiprocessing.Pool(p["num_workers"])
+            all_im_errs = pool.map(calculate_errors_per_image, im_metaDatas)
             if p["error_type"] == "vsd":
-                # now, calculate the errors
-                for err in im_errs:
-                    for gt_id in err["errors"].keys():
-                        if isinstance(err["errors"][gt_id], dict):
-                            err["errors"][gt_id] = pose_error.vsd(
-                                    err["errors"][gt_id]["R_e"],
-                                    err["errors"][gt_id]["t_e"],
-                                    err["errors"][gt_id]["R_g"],
-                                    err["errors"][gt_id]["t_g"],
-                                    err["errors"][gt_id]["depth_im"],
-                                    err["errors"][gt_id]["K"],
-                                    err["errors"][gt_id]["vsd_deltas"],
-                                    err["errors"][gt_id]["vsd_taus"],
-                                    err["errors"][gt_id]["vsd_normalized_by_diameter"],
-                                    err["errors"][gt_id]["diameter"],
-                                    ren,
-                                    err["errors"][gt_id]["obj_id"],
-                                    err["errors"][gt_id]["step"],
-                                )
-            scene_errs.extend(im_errs)
+                all_im_errs = ren.run_vsd(all_im_errs)
+            scene_errs = []
+            for im_errs in all_im_errs:
+                scene_errs.extend(im_errs)
 
         def save_errors(_error_sign, _scene_errs):
             # Save the calculated errors to a JSON file.
