@@ -776,7 +776,7 @@ def save_ply2(
             if texture_uv_face is not None:
                 uv = texture_uv_face[face_id]
                 line += " " + " ".join(
-                    map(str, [len(uv)] + map(float, list(uv.squeeze())))
+                    map(str, [len(uv)] + list(map(float, list(uv.squeeze()))))
                 )
             f.write(line)
             f.write("\n")
