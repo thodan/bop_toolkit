@@ -239,10 +239,10 @@ for result_filename in p["result_filenames"]:
         )
 
         # collect all the images and their targets
-        im_metaDatas = []
+        im_meta_datas = []
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
-            im_megaData = [im_ind, (im_id, im_targets)]
-            im_metaDatas.append(im_megaData)
+            im_meta_data = [im_ind, (im_id, im_targets)]
+            im_meta_datas.append(im_meta_data)
 
         # Calculate errors for each image in parallel.
         def calculate_errors_per_image(im_metaData):
@@ -497,16 +497,15 @@ for result_filename in p["result_filenames"]:
                 ), f"{len(im_errs)} != {per_image_ests_counter}"
             return im_errs
 
+        scene_errs = []
         if p["num_workers"] == 1:
-            scene_errs = []
-            for im_metaData in im_metaDatas:
-                scene_errs.extend(calculate_errors_per_image(im_metaData))
+            for im_meta_data in im_meta_datas:
+                scene_errs.extend(calculate_errors_per_image(im_meta_data))
         else:
             pool = multiprocessing.Pool(p["num_workers"])
-            all_im_errs = pool.map(calculate_errors_per_image, im_metaDatas)
+            all_im_errs = pool.map(calculate_errors_per_image, im_meta_datas)
             if p["error_type"] == "vsd":
                 all_im_errs = ren.run_vsd(all_im_errs)
-            scene_errs = []
             for im_errs in all_im_errs:
                 scene_errs.extend(im_errs)
 

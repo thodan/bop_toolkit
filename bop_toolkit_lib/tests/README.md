@@ -1,9 +1,11 @@
-Simple tests for using multiprocessing with the BOP toolkit.
+# Unit tests of the BOP toolkit
+
+## Test of eval_bop19_pose.py
 ```
-bash bop_toolkit_lib/tests/unit_test.sh
+python bop_toolkit_lib/tests/eval_bop19_pose_test.py
 ```
 
 Results:
 <p align="center">
-  <img src=./unit_test_results.png width="100%"/>
+  <img src=./eval_bop19_pose_test_results.png width="100%"/>
 </p>

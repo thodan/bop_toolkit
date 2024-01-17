@@ -92,9 +92,22 @@ class BatchRenderer:
     def add_object(self, obj_id, model_path):
         self.models[obj_id] = model_path
 
-    def _init_renderers(self):
+    def get_num_workers_used(self, all_im_errs):
+        """
+        for each worker, its is required to initiate the rendering buffer, load object model, from scratch
+        which is slow. Thus, this multi-processing is only interesting when the number of images is large.
+        We make a simple test to see if the number of images is large enough to use multi-processing:
+        - If yes, it returns the number of workers available
+        - If no, it returns 1
+        """
+        if len(all_im_errs) < self.num_workers * len(self.models.keys()):
+            return 1
+        else:
+            return self.num_workers
+
+    def _init_renderers(self, num_workers):
         # create folder for each worker
-        for worker_id in range(self.num_workers):
+        for worker_id in range(num_workers):
             worker_folder = os.path.join(self.tmp_dir, f"vsd_worker_{worker_id}")
             os.makedirs(worker_folder, exist_ok=True)
 
@@ -110,15 +123,18 @@ class BatchRenderer:
         """
         Compute VSD errors for all POSE_ERROR_VSD_ARGS
         """
+        # get number of workers used: 1 or self.num_workers
+        num_workers_used = self.get_num_workers_used(all_im_errs)
+
         # call init_renderers for all workers, after adding all objects
-        self._init_renderers()
+        self._init_renderers(num_workers=num_workers_used)
 
         in_counter = 0
         for idx_im, im_errs in enumerate(all_im_errs):
             for idx_err, err in enumerate(im_errs):
                 for gt_id in err["errors"].keys():
                     if isinstance(err["errors"][gt_id], POSE_ERROR_VSD_ARGS):
-                        worker_id = in_counter % self.num_workers
+                        worker_id = in_counter % num_workers_used
                         vsd_args_path = os.path.join(
                             self.tmp_dir,
                             f"vsd_worker_{worker_id}/{idx_im}_{idx_err}_{gt_id}.npz",
@@ -130,8 +146,11 @@ class BatchRenderer:
         return all_im_errs
 
     def start_run_vsd(self, all_im_errs, in_counter):
+        # get number of workers used: 1 or self.num_workers
+        num_workers_used = self.get_num_workers_used(all_im_errs)
+
         cmds = []
-        for worker_id in range(self.num_workers):
+        for worker_id in range(num_workers_used):
             cmd = [
                 "python",
                 "bop_toolkit_lib/call_renderer.py",
@@ -142,14 +161,14 @@ class BatchRenderer:
 
         log_file_path = os.path.join(self.tmp_dir, "log.txt")
         log_file = misc.start_disable_output(log_file_path)
-        with multiprocessing.Pool(self.num_workers) as pool:
+        with multiprocessing.Pool(num_workers_used) as pool:
             pool.map_async(misc.run_command, cmds)
             pool.close()
             pool.join()
         misc.stop_disable_output(log_file)
 
         out_counter = 0
-        for worker_id in range(self.num_workers):
+        for worker_id in range(num_workers_used):
             worker_results = inout.load_json(self.tmp_dir + f"/worker_{worker_id}.json")
             for key, value in worker_results.items():
                 idx_im, idx_err, gt_id = key.split("_")
