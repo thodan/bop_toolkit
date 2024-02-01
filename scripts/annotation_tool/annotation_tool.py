@@ -708,7 +708,11 @@ class AppWindow:
                     cam_K = np.array(cam_K).reshape((3, 3))
                     depth_scale = data[str(image_num)]['depth_scale']
 
-                rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
+                # read rgb image with whatever extension it has (png or jpg)
+                if os.path.exists(os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')):
+                    rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
+                elif os.path.exists(os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.jpg')):
+                    rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.jpg')
                 rgb_img = cv2.imread(rgb_path)
                 depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
                 depth_img = cv2.imread(depth_path, -1)
