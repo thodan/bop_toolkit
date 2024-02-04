@@ -490,6 +490,7 @@ for result_filename in p["result_filenames"]:
                             "est_id": est_id,
                             "score": est["score"],
                             "errors": errs,
+                            "scene_id": scene_id,
                         }
                     )
                 assert (
