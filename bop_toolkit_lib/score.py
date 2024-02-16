@@ -205,24 +205,26 @@ def calc_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=Tru
     tps = 0  # Total number of true positives.
     obj_tps = {i: 0 for i in obj_ids}  # True positives per object.
     scene_tps = {i: 0 for i in scene_ids}  # True positives per scene.
+    est_ids_matched = {}
     for m in matches:
         if m["valid"] and m["est_id"] != -1:
             tps += 1
             obj_tps[m["obj_id"]] += 1
             scene_tps[m["scene_id"]] += 1
-
+            key = f"{m['scene_id']}_{m['im_id']}_{m['obj_id']}_{m['est_id']}"
+            est_ids_matched[key] = True
+            
     # Count the number of false positives.
     fps = 0  # Total number of false positives.
     obj_fps = {i: 0 for i in obj_ids}  # False positives per object.
     scene_fps = {i: 0 for i in scene_ids}  # False positives per scene.
-    est_ids_matched = set(
-        [m["est_id"] for m in matches if m["valid"] and m["est_id"] != -1]
-    )
     for e in errs:
-        if e["est_id"] not in est_ids_matched:
+        key = f"{e['scene_id']}_{e['im_id']}_{e['obj_id']}_{e['est_id']}"
+        if key not in est_ids_matched:
             fps += 1
             obj_fps[e["obj_id"]] += 1
             scene_fps[e["scene_id"]] += 1
+    assert tps + fps == len(errs), f"{tps} + {fps} != {len(errs)}"
 
     # Total recall.
     recall = calc_recall(tps, tars)
@@ -260,6 +262,7 @@ def calc_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=Tru
         "targets_count": int(tars),
         "tp_count": int(tps),
         "fp_count": int(fps),
+        "num_estimates": len(errs),
     }
     if do_print:
         obj_recalls_str = ", ".join(
@@ -277,6 +280,7 @@ def calc_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=Tru
         )
 
         misc.log("")
+        misc.log("Estimates count:    {:d}".format(scores["num_estimates"]))
         misc.log("GT count:           {:d}".format(scores["gt_count"]))
         misc.log("Target count:       {:d}".format(scores["targets_count"]))
         misc.log("TP count:           {:d}".format(scores["tp_count"]))
