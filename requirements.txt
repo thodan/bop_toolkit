@@ -11,5 +11,6 @@ opencv-python>=4.3.0.36
 Pillow>=8.2.0
 git+https://github.com/MartinSmeyer/cocoapi.git@v1.0#subdirectory=PythonAPI
 vispy>=0.6.5
-webdataset
+webdataset>=0.1.62
+imageio>=2.5.0
 numpy

@@ -73,6 +73,8 @@ python scripts/eval_bop19.py --renderer_type=vispy --result_filenames=NAME_OF_CS
 
 `--result_filenames`: Comma-separated filenames with pose estimates in .csv ([examples](https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019_sample_results.zip)).
 
+By default, this script is run with 10 parallel processes. You can change the number of processes by setting the `--num_worker 1`.
+
 ### 5. Evaluate the detections / instance segmentations
 ```
 python scripts/eval_bop22_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESULTS --ann_type='bbox'
