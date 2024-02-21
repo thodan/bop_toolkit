@@ -432,6 +432,13 @@ class AppWindow:
         objects = self._annotation_scene.get_objects()
         active_obj = objects[self._meshes_used.selected_index]
         source = active_obj.obj_geometry
+        # crop the target point cloud to the bounding box + 10% margin of the object
+        # get the bounding box of the annotation object (source)
+        bbox = source.get_axis_aligned_bounding_box()
+        # scale the bounding box by 1.1 to get a margin around the object
+        bbox.scale(1.1, center=bbox.get_center())
+        # crop the target point cloud with the scaled bounding box
+        target = target.crop(bbox)
 
         trans_init = np.eye(4)
 
