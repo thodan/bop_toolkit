@@ -794,9 +794,7 @@ class AppWindow:
 
                 self._annotation_scene.add_obj(obj_geometry, obj_name, obj_instance, transform_cam_to_obj)
                 # adding object to the scene
-                obj_geometry.translate(transform_cam_to_obj[0:3, 3])
-                center = obj_geometry.get_center()
-                obj_geometry.rotate(transform_cam_to_obj[0:3, 0:3], center=center)
+                obj_geometry.transform(transform_cam_to_obj)
                 self._scene.scene.add_geometry(obj_name, obj_geometry, self.settings.annotation_obj_material,
                                                add_downsampled_copy_for_fast_rendering=True)
                 active_meshes.append(obj_name)
