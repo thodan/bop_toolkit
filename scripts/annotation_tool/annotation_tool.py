@@ -409,11 +409,11 @@ class AppWindow:
                     elif event.key == gui.KeyName.COMMA:
                         print("Comma pressed: rotate around -ve Y direction")
                         move(0, 0, 0, 0, -deg * np.pi / 180, 0)
-                    elif event.key == gui.KeyName.K:
-                        print("K pressed: rotate around +ve Z direction")
-                        move(0, 0, 0, 0, 0, deg * np.pi / 180)
                     elif event.key == gui.KeyName.J:
-                        print("J pressed: rotate around -ve Z direction")
+                        print("J pressed: rotate around +ve Z direction")
+                        move(0, 0, 0, 0, 0, deg * np.pi / 180)
+                    elif event.key == gui.KeyName.K:
+                        print("K pressed: rotate around -ve Z direction")
                         move(0, 0, 0, 0, 0, -deg * np.pi / 180)
             elif p['tool_model'] == 'individual':
                 # Translation
@@ -445,11 +445,11 @@ class AppWindow:
                     elif event.key == gui.KeyName.I:
                         print("I pressed: rotate around -ve X direction")
                         move(0, 0, 0, -deg * np.pi / 180, 0, 0)
-                    elif event.key == gui.KeyName.J:
-                        print("J pressed: rotate around +ve Y direction")
-                        move(0, 0, 0, 0, deg * np.pi / 180, 0)
                     elif event.key == gui.KeyName.K:
-                        print("K pressed: rotate around -ve Y direction")
+                        print("K pressed: rotate around +ve Y direction")
+                        move(0, 0, 0, 0, deg * np.pi / 180, 0)
+                    elif event.key == gui.KeyName.J:
+                        print("J pressed: rotate around -ve Y direction")
                         move(0, 0, 0, 0, -deg * np.pi / 180, 0)
                     elif event.key == gui.KeyName.L:
                         print("L pressed: rotate around +ve Z direction")
