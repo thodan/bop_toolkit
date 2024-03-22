@@ -22,6 +22,7 @@ DATASET_NAME
 │  │  ├─ scene_camera.json
 │  │  ├─ scene_gt.json
 │  │  ├─ scene_gt_info.json
+│  │  ├─ scene_gt_coco.json
 │  │  ├─ depth
 │  │  ├─ mask
 │  │  ├─ mask_visib
