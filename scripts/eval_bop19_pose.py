@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
