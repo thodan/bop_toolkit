@@ -158,7 +158,7 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
     return scores
 
 
-def calc_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=True):
+def calc_pose_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=True):
     """Calculates performance scores for the 6D object detection task.
 
     References:

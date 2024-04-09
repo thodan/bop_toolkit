@@ -292,7 +292,7 @@ for error_dir_path in p["error_dir_paths"]:
             dp_split["scene_ids"], dp_model["obj_ids"], matches, n_top
         )
     elif p["eval_mode"] == "detection":
-        scores = score.calc_detection_scores(
+        scores = score.calc_pose_detection_scores(
             dp_split["scene_ids"], dp_model["obj_ids"], matches, estimates, n_top
         )
     else:

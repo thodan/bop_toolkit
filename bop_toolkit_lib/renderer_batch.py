@@ -3,61 +3,11 @@
 """Simple batch renderer for BOP toolkit, designed for parallel vsd computation
 """
 import os
-import numpy as np
+
 import multiprocessing
 import shutil
-
-# Standard Library
-from dataclasses import dataclass
-from typing import Optional
-
 from bop_toolkit_lib import inout, misc
-
-
-@dataclass
-class POSE_ERROR_VSD_ARGS:
-    # all args in pose_error.vsd
-    R_e: Optional[np.ndarray] = None
-    t_e: Optional[np.ndarray] = None
-    R_g: Optional[np.ndarray] = None
-    t_g: Optional[np.ndarray] = None
-    depth_im: Optional[np.ndarray] = None
-    K: Optional[np.ndarray] = None
-    vsd_deltas: Optional[float] = None
-    vsd_taus: Optional[list] = None
-    vsd_normalized_by_diameter: Optional[bool] = None
-    diameter: Optional[float] = None
-    obj_id: Optional[int] = None
-    step: Optional[str] = None
-
-    def from_dict(self, data):
-        for key, value in data.items():
-            setattr(self, key, value)
-        return self
-
-    def to_file(self, path):
-        for key, value in self.__dict__.items():
-            if value is None:
-                raise ValueError("Field {} is None".format(key))
-            value = np.array(value)
-        np.savez(path, self.__dict__)
-
-    def from_file(path):
-        args = POSE_ERROR_VSD_ARGS()
-        data = np.load(path, allow_pickle=True)
-        data = data["arr_0"].item()
-        for key, value in data.items():
-            if key == "vsd_taus":
-                setattr(args, key, list(value))
-            if key == "vsd_normalized_by_diameter":
-                setattr(args, key, bool(value))
-            if key == "step":
-                setattr(args, key, str(value))
-            if key == "obj_id":
-                setattr(args, key, int(value))
-            else:
-                setattr(args, key, value)
-        return args
+from bop_toolkit_lib.pose_error import POSE_ERROR_VSD_ARGS
 
 
 class BatchRenderer:
@@ -69,7 +19,7 @@ class BatchRenderer:
         self,
         width,
         height,
-        renderer_type="cpp",
+        renderer_type="vispy",
         mode="rgb+depth",
         shading="phong",
         bg_color=(0.0, 0.0, 0.0, 0.0),
@@ -142,18 +92,11 @@ class BatchRenderer:
                         err["errors"][gt_id].to_file(vsd_args_path)
                         in_counter += 1
 
-        all_im_errs = self.start_run_vsd(all_im_errs, in_counter)
-        return all_im_errs
-
-    def start_run_vsd(self, all_im_errs, in_counter):
-        # get number of workers used: 1 or self.num_workers
-        num_workers_used = self.get_num_workers_used(all_im_errs)
-
         cmds = []
         for worker_id in range(num_workers_used):
             cmd = [
                 "python",
-                "bop_toolkit_lib/call_renderer.py",
+                "bop_toolkit_lib/call_vsd_worker.py",
                 f"--input_dir={self.tmp_dir}",
                 f"--worker_id={worker_id}",
             ]
@@ -175,6 +118,5 @@ class BatchRenderer:
                 all_im_errs[int(idx_im)][int(idx_err)]["errors"][int(gt_id)] = value
                 out_counter += 1
         assert out_counter == in_counter, "Number of input and output files mismatch"
-
         shutil.rmtree(self.tmp_dir)
         return all_im_errs
