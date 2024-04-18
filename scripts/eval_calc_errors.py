@@ -367,7 +367,7 @@ for result_filename in p["result_filenames"]:
                                         "step",
                                     )
                                 else:  # delayed the calculation of the error for renderer_batch
-                                    e = renderer_batch.POSE_ERROR_VSD_ARGS(
+                                    e = pose_error.POSE_ERROR_VSD_ARGS(
                                         R_e=R_e,
                                         t_e=t_e,
                                         R_g=R_g,

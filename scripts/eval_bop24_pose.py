@@ -56,7 +56,7 @@ p = {
     "eval_path": config.eval_path,
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
-    "targets_filename": "test_targets_bop19.json",
+    "targets_filename": "test_targets_bop19.json", # TODO: change to "test_targets_bop24.json" 
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
 }
 ################################################################################
