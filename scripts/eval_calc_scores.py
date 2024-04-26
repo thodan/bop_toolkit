@@ -31,7 +31,9 @@ from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_matching
 from bop_toolkit_lib import score
 
-
+# Get the base name of the file without the .py extension
+file_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = misc.get_logger(file_name)
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
 p = {
@@ -82,6 +84,7 @@ p = {
     "out_scores_tpath": os.path.join(
         "{eval_path}", "{error_dir_path}", "scores_{score_sign}.json"
     ),
+    "eval_mode": "localization",  # Options: 'localization', 'detection'.
 }
 ################################################################################
 
@@ -115,7 +118,7 @@ parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--error_tpath", default=p["error_tpath"])
 parser.add_argument("--out_matches_tpath", default=p["out_matches_tpath"])
 parser.add_argument("--out_scores_tpath", default=p["out_scores_tpath"])
-
+parser.add_argument("--eval_mode", default=p["eval_mode"])
 # Process the command line arguments.
 args = parser.parse_args()
 
@@ -134,17 +137,18 @@ p["targets_filename"] = str(args.targets_filename)
 p["error_tpath"] = str(args.error_tpath)
 p["out_matches_tpath"] = str(args.out_matches_tpath)
 p["out_scores_tpath"] = str(args.out_scores_tpath)
+p["eval_mode"] = str(args.eval_mode)
 
-misc.log("-----------")
-misc.log("Parameters:")
+logger.info("-----------")
+logger.info("Parameters:")
 for k, v in p.items():
-    misc.log("- {}: {}".format(k, v))
-misc.log("-----------")
+    logger.info("- {}: {}".format(k, v))
+logger.info("-----------")
 
 # Calculation of the performance scores.
 # ------------------------------------------------------------------------------
 for error_dir_path in p["error_dir_paths"]:
-    misc.log("Processing: {}".format(error_dir_path))
+    logger.info("Processing: {}".format(error_dir_path))
 
     time_start = time.time()
 
@@ -162,7 +166,7 @@ for error_dir_path in p["error_dir_paths"]:
     # Evaluation signature.
     score_sign = misc.get_score_signature(p["correct_th"][err_type], p["visib_gt_min"])
 
-    misc.log(
+    logger.info(
         "Calculating score - error: {}, method: {}, dataset: {}.".format(
             err_type, method, dataset
         )
@@ -186,7 +190,7 @@ for error_dir_path in p["error_dir_paths"]:
     scene_im_ids = {}
 
     # Organize the targets by scene, image and object.
-    misc.log("Organizing estimation targets...")
+    logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
         targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
@@ -195,9 +199,10 @@ for error_dir_path in p["error_dir_paths"]:
 
     # Go through the test scenes and match estimated poses to GT poses.
     # ----------------------------------------------------------------------------
+    estimates = []
     matches = []  # Stores info about the matching pose estimate for each GT pose.
     for scene_id, scene_targets in targets_org.items():
-        misc.log("Processing scene {} of {}...".format(scene_id, dataset))
+        logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
@@ -276,13 +281,22 @@ for error_dir_path in p["error_dir_paths"]:
             n_top,
         )
 
+        # Keep all the estimates
+        estimates += scene_errs
+
     # Calculate the performance scores.
     # ----------------------------------------------------------------------------
     # 6D object localization scores (SiSo if n_top = 1).
-    scores = score.calc_localization_scores(
-        dp_split["scene_ids"], dp_model["obj_ids"], matches, n_top
-    )
-
+    if p["eval_mode"] == "localization":
+        scores = score.calc_localization_scores(
+            dp_split["scene_ids"], dp_model["obj_ids"], matches, n_top
+        )
+    elif p["eval_mode"] == "detection":
+        scores = score.calc_pose_detection_scores(
+            dp_split["scene_ids"], dp_model["obj_ids"], matches, estimates, n_top
+        )
+    else:
+        raise ValueError("Unknown eval_mode: {}".format(p["eval_mode"]))
     # Save scores.
     scores_path = p["out_scores_tpath"].format(
         eval_path=p["eval_path"], error_dir_path=error_dir_path, score_sign=score_sign
@@ -296,6 +310,6 @@ for error_dir_path in p["error_dir_paths"]:
     inout.save_json(matches_path, matches)
 
     time_total = time.time() - time_start
-    misc.log("Matching and score calculation took {}s.".format(time_total))
+    logger.info("Matching and score calculation took {}s.".format(time_total))
 
-misc.log("Done.")
+logger.info("Done.")

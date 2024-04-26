@@ -1,7 +1,7 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Evaluation script for the BOP Challenge 2019/2020."""
+"""Evaluation script for the BOP Challenge 2023/2024."""
 
 import os
 import time
@@ -13,6 +13,7 @@ import numpy as np
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
+from bop_toolkit_lib import score
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -24,33 +25,12 @@ p = {
     # Errors to calculate.
     "errors": [
         {
-            "n_top": -1,
-            "type": "vsd",
-            "vsd_deltas": {
-                "hb": 15,
-                "icbin": 15,
-                "icmi": 15,
-                "itodd": 5,
-                "lm": 15,
-                "lmo": 15,
-                "ruapc": 15,
-                "tless": 15,
-                "tudl": 15,
-                "tyol": 15,
-                "ycbv": 15,
-                "hope": 15,
-            },
-            "vsd_taus": list(np.arange(0.05, 0.51, 0.05)),
-            "vsd_normalized_by_diameter": True,
-            "correct_th": [[th] for th in np.arange(0.05, 0.51, 0.05)],
-        },
-        {
-            "n_top": -1,
+            "n_top": 0,
             "type": "mssd",
             "correct_th": [[th] for th in np.arange(0.05, 0.51, 0.05)],
         },
         {
-            "n_top": -1,
+            "n_top": 0,
             "type": "mspd",
             "correct_th": [[th] for th in np.arange(5, 51, 5)],
         },
@@ -76,7 +56,7 @@ p = {
     "eval_path": config.eval_path,
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
-    "targets_filename": "test_targets_bop19.json",
+    "targets_filename": "test_targets_bop19.json", # TODO: change to "test_targets_bop24.json" 
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
 }
 ################################################################################
@@ -115,7 +95,7 @@ for result_filename in p["result_filenames"]:
     time_start = time.time()
 
     # Volume under recall surface (VSD) / area under recall curve (MSSD, MSPD).
-    average_recalls = {}
+    mAP = {}
 
     # Name of the result and the dataset.
     result_name = os.path.splitext(os.path.basename(result_filename))[0]
@@ -166,38 +146,15 @@ for result_filename in p["result_filenames"]:
             "--skip_missing=1",
             "--num_workers={}".format(p["num_workers"]),
         ]
-        if error["type"] == "vsd":
-            vsd_deltas_str = ",".join(
-                ["{}:{}".format(k, v) for k, v in error["vsd_deltas"].items()]
-            )
-            calc_errors_cmd += [
-                "--vsd_deltas={}".format(vsd_deltas_str),
-                "--vsd_taus={}".format(",".join(map(str, error["vsd_taus"]))),
-                "--vsd_normalized_by_diameter={}".format(
-                    error["vsd_normalized_by_diameter"]
-                ),
-            ]
 
         logger.info("Running: " + " ".join(calc_errors_cmd))
         if subprocess.call(calc_errors_cmd) != 0:
             raise RuntimeError("Calculation of pose errors failed.")
 
         # Paths (rel. to p['eval_path']) to folders with calculated pose errors.
-        # For VSD, there is one path for each setting of tau. For the other pose
-        # error functions, there is only one path.
         error_dir_paths = {}
-        if error["type"] == "vsd":
-            for vsd_tau in error["vsd_taus"]:
-                error_sign = misc.get_error_signature(
-                    error["type"],
-                    error["n_top"],
-                    vsd_delta=error["vsd_deltas"][dataset],
-                    vsd_tau=vsd_tau,
-                )
-                error_dir_paths[error_sign] = os.path.join(result_name, error_sign)
-        else:
-            error_sign = misc.get_error_signature(error["type"], error["n_top"])
-            error_dir_paths[error_sign] = os.path.join(result_name, error_sign)
+        error_sign = misc.get_error_signature(error["type"], error["n_top"])
+        error_dir_paths[error_sign] = os.path.join(result_name, error_sign)
 
         # Recall scores for all settings of the threshold of correctness (and also
         # of the misalignment tolerance tau in the case of VSD).
@@ -216,6 +173,7 @@ for result_filename in p["result_filenames"]:
                     "--eval_path={}".format(p["eval_path"]),
                     "--targets_filename={}".format(p["targets_filename"]),
                     "--visib_gt_min={}".format(p["visib_gt_min"]),
+                    "--eval_mode=detection",
                 ]
 
                 calc_scores_cmd += [
@@ -236,7 +194,7 @@ for result_filename in p["result_filenames"]:
                 pool.close()
                 pool.join()
 
-        recalls = []
+        obj_precisions, obj_recalls = [], []
         for error_sign, error_dir_path in error_dir_paths.items():
             for correct_th in error["correct_th"]:
                 # Path to file with calculated scores.
@@ -250,12 +208,21 @@ for result_filename in p["result_filenames"]:
                 # Load the scores.
                 logger.info("Loading calculated scores from: {}".format(scores_path))
                 scores = inout.load_json(scores_path)
-                recalls.append(scores["recall"])
+                obj_precisions.append(scores["obj_precisions"])
+                obj_recalls.append(scores["obj_recalls"])
 
-        average_recalls[error["type"]] = np.mean(recalls)
-
-        logger.info("Recall scores: {}".format(" ".join(map(str, recalls))))
-        logger.info("Average recall: {}".format(average_recalls[error["type"]]))
+        # similar to 2D object detection, 6D object detection also uses the average precision and recall across all objects
+        obj_ids = list(obj_precisions[0].keys())
+        aps = []
+        for obj_id in obj_ids:
+            obj_precisions_all_th = [prec[obj_id] for prec in obj_precisions]
+            obj_recalls_all_th = [rec[obj_id] for rec in obj_recalls]
+            ap = score.calc_ap(rec=obj_recalls_all_th, pre=obj_precisions_all_th)
+            aps.append(ap)
+            logger.info("Object {}:, AP={}".format(obj_id, ap))
+            
+        mAP[error["type"]] = np.mean(aps)
+        logger.info("mAP: {}".format(mAP[error["type"]]))
 
     time_total = time.time() - time_start
     logger.info("Evaluation of {} took {}s.".format(result_filename, time_total))
@@ -263,20 +230,16 @@ for result_filename in p["result_filenames"]:
     # Calculate the final scores.
     final_scores = {}
     for error in p["errors"]:
-        final_scores["bop19_average_recall_{}".format(error["type"])] = average_recalls[
-            error["type"]
-        ]
+        final_scores["bop24_mAP_{}".format(error["type"])] = mAP[error["type"]]
 
     # Final score for the given dataset.
-    final_scores["bop19_average_recall"] = np.mean(
-        [average_recalls["vsd"], average_recalls["mssd"], average_recalls["mspd"]]
-    )
+    final_scores["bop24_mAP"] = np.mean([mAP["mssd"], mAP["mspd"]])
 
     # Average estimation time per image.
-    final_scores["bop19_average_time_per_image"] = average_time_per_image
+    final_scores["bop24_average_time_per_image"] = average_time_per_image
 
     # Save the final scores.
-    final_scores_path = os.path.join(p["eval_path"], result_name, "scores_bop19.json")
+    final_scores_path = os.path.join(p["eval_path"], result_name, "scores_bop24.json")
     inout.save_json(final_scores_path, final_scores)
 
     # Print the final scores.

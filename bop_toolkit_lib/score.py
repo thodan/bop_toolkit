@@ -158,6 +158,148 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
     return scores
 
 
+def calc_pose_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=True):
+    """Calculates performance scores for the 6D object detection task.
+
+    References:
+    Hodan et al., BOP: Benchmark for 6D Object Pose Estimation, ECCV'18.
+    Hodan et al., On Evaluation of 6D Object Pose Estimation, ECCVW'16.
+
+    :param scene_ids: ID's of considered scenes.
+    :param obj_ids: ID's of considered objects.
+    :param matches: Info about matching pose estimates to ground-truth poses
+      (see pose_matching.py for details).
+    :param scene_errs: List of dictionaries with:
+      - 'im_id': Image ID.
+      - 'obj_id': Object ID.
+      - 'est_id': ID of the pose estimate.
+      - 'score': Confidence score of the pose estimate.
+      - 'errors': Dictionary mapping ground-truth ID's to errors of the pose
+          estimate w.r.t. the ground-truth poses.
+    :param n_top: Number of top pose estimates to consider per test target.
+    :param do_print: Whether to print the scores to the standard output.
+    :return: Dictionary with the evaluation scores.
+    """
+    # Count the number of visible object instances in each image.
+    insts = {i: {j: defaultdict(lambda: 0) for j in scene_ids} for i in obj_ids}
+    for m in matches:
+        if m["valid"]:
+            insts[m["obj_id"]][m["scene_id"]][m["im_id"]] += 1
+
+    tars = 0  # Total number of targets.
+    obj_tars = {i: 0 for i in obj_ids}  # Targets per object.
+    scene_tars = {i: 0 for i in scene_ids}  # Targets per scene.
+    for obj_id, obj_insts in insts.items():
+        for scene_id, scene_insts in obj_insts.items():
+            # Count the number of targets for the current object in the current scene.
+            if n_top > 0:
+                count = sum(np.minimum(n_top, list(scene_insts.values())))
+            else:
+                count = sum(list(scene_insts.values()))
+
+            tars += count
+            obj_tars[obj_id] += count
+            scene_tars[scene_id] += count
+
+    # Count the number of true positives.
+    tps = 0  # Total number of true positives.
+    obj_tps = {i: 0 for i in obj_ids}  # True positives per object.
+    scene_tps = {i: 0 for i in scene_ids}  # True positives per scene.
+    est_ids_matched = {}
+    for m in matches:
+        if m["valid"] and m["est_id"] != -1:
+            tps += 1
+            obj_tps[m["obj_id"]] += 1
+            scene_tps[m["scene_id"]] += 1
+            key = f"{m['scene_id']}_{m['im_id']}_{m['obj_id']}_{m['est_id']}"
+            est_ids_matched[key] = True
+            
+    # Count the number of false positives.
+    fps = 0  # Total number of false positives.
+    obj_fps = {i: 0 for i in obj_ids}  # False positives per object.
+    scene_fps = {i: 0 for i in scene_ids}  # False positives per scene.
+    for e in errs:
+        key = f"{e['scene_id']}_{e['im_id']}_{e['obj_id']}_{e['est_id']}"
+        if key not in est_ids_matched:
+            fps += 1
+            obj_fps[e["obj_id"]] += 1
+            scene_fps[e["scene_id"]] += 1
+    assert tps + fps == len(errs), f"{tps} + {fps} != {len(errs)}"
+
+    # Total recall.
+    recall = calc_recall(tps, tars)
+    precision = tps / (tps + fps)
+
+    # Recall, Precisions per object.
+    obj_recalls, obj_precisions = {}, {}
+    for i in obj_ids:
+        obj_recalls[i] = calc_recall(obj_tps[i], obj_tars[i])
+        obj_precisions[i] = obj_tps[i] / (obj_tps[i] + obj_fps[i])
+    mean_obj_recall = float(np.mean(list(obj_recalls.values())).squeeze())
+    mean_obj_precision = float(np.mean(list(obj_precisions.values())).squeeze())
+
+    # Recall, Precisions per scene.
+    scene_recalls, scene_precisions = {}, {}
+    for i in scene_ids:
+        scene_recalls[i] = calc_recall(scene_tps[i], scene_tars[i])
+        scene_precisions[i] = scene_tps[i] / (scene_tps[i] + scene_fps[i])
+    mean_scene_recall = float(np.mean(list(scene_recalls.values())).squeeze())
+    mean_scene_precision = float(np.mean(list(scene_precisions.values())).squeeze())
+
+    # Final scores.
+    scores = {
+        "recall": float(recall),
+        "precision": float(precision),
+        "obj_recalls": obj_recalls,
+        "obj_precisions": obj_precisions,
+        "mean_obj_recall": float(mean_obj_recall),
+        "mean_obj_precision": float(mean_obj_precision),
+        "scene_recalls": scene_recalls,
+        "scene_precisions": scene_precisions,
+        "mean_scene_recall": float(mean_scene_recall),
+        "mean_scene_precision": float(mean_scene_precision),
+        "gt_count": len(matches),
+        "targets_count": int(tars),
+        "tp_count": int(tps),
+        "fp_count": int(fps),
+        "num_estimates": len(errs),
+    }
+    if do_print:
+        obj_recalls_str = ", ".join(
+            ["{}: {:.3f}".format(i, s) for i, s in scores["obj_recalls"].items()]
+        )
+        obj_precisions_str = ", ".join(
+            ["{}: {:.3f}".format(i, s) for i, s in scores["obj_precisions"].items()]
+        )
+
+        scene_recalls_str = ", ".join(
+            ["{}: {:.3f}".format(i, s) for i, s in scores["scene_recalls"].items()]
+        )
+        scene_precisions_str = ", ".join(
+            ["{}: {:.3f}".format(i, s) for i, s in scores["scene_precisions"].items()]
+        )
+
+        misc.log("")
+        misc.log("Estimates count:    {:d}".format(scores["num_estimates"]))
+        misc.log("GT count:           {:d}".format(scores["gt_count"]))
+        misc.log("Target count:       {:d}".format(scores["targets_count"]))
+        misc.log("TP count:           {:d}".format(scores["tp_count"]))
+        misc.log("FP count:           {:d}".format(scores["fp_count"]))
+        misc.log("Recall:             {:.4f}".format(scores["recall"]))
+        misc.log("Precision:          {:.4f}".format(scores["precision"]))
+        misc.log("Mean object recall: {:.4f}".format(scores["mean_obj_recall"]))
+        misc.log("Mean object precision: {:.4f}".format(scores["mean_obj_precision"]))
+        misc.log("Mean scene recall:  {:.4f}".format(scores["mean_scene_recall"]))
+        misc.log("Mean scene precision:  {:.4f}".format(scores["mean_scene_precision"]))
+        misc.log("Object recalls:\n{}".format(obj_recalls_str))
+        misc.log("Object precisions:\n{}".format(obj_precisions_str))
+        misc.log("Scene recalls:\n{}".format(scene_recalls_str))
+        misc.log("Scene precisions:\n{}".format(scene_precisions_str))
+        misc.log("")
+
+    return scores
+
+
 if __name__ == "__main__":
     # AP test.
     tp = np.array([False, True, True, False, True, False])

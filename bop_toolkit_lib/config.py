@@ -30,3 +30,6 @@ bop_renderer_path = r"/path/to/bop_renderer/build"
 
 # Executable of the MeshLab server.
 meshlab_server_path = r"/path/to/meshlabserver.exe"
+
+# Number of workers for the parallel evaluation of pose errors.
+num_workers = 10
