@@ -1,7 +1,7 @@
 # Author: Van Nguyen NGUYEN (van-nguyen.nguyen@enpc.fr)
 # Imagine Team, ENPC, France
 
-"""Cropping images and updating the scene_gt.json scene_gt_info.json files accordingly."""
+"""Cropping images and updating the scene_camera.json files accordingly."""
 
 import os
 import numpy as np
@@ -19,7 +19,7 @@ p = {
     # See dataset_params.py for options.
     "dataset": "hope",
     # Dataset split. Options: 'train', 'val', 'test'.
-    "dataset_split": "test_extension",
+    "dataset_split": "test_extension", # the output will be test_extension_cropped
     # Dataset split type. None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # Folder containing the BOP datasets.
