@@ -12,9 +12,15 @@ python bop_toolkit_lib/tests/eval_bop24_pose_test.py
 # add more false positive samples
 python bop_toolkit_lib/tests/eval_bop24_pose_test.py --num_false_positives 10000
 ```
+## Test of eval_bop24_pose.py with torch implementation
+```
+python bop_toolkit_lib/tests/eval_bop24_pose_test.py --use_torch
 
+# add more false positive samples
+python bop_toolkit_lib/tests/eval_bop24_pose_test.py --num_false_positives 10000 --use_torch
+```
 
 Results:
 <p align="center">
-  <img src=./eval_bop19_pose_test_results.png width="100%"/>
+  <img src=./unit_test_results.png width="100%"/>
 </p>
