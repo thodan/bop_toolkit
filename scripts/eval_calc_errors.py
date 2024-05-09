@@ -508,6 +508,7 @@ for result_filename in p["result_filenames"]:
             if p["error_type"] == "vsd":
                 all_im_errs = ren.run_vsd(all_im_errs)
             for im_errs in all_im_errs:
+                ests_counter += len(im_errs)
                 scene_errs.extend(im_errs)
 
         def save_errors(_error_sign, _scene_errs):
