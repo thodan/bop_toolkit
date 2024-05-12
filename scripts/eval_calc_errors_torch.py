@@ -129,6 +129,8 @@ p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
 
+if not torch.cuda.is_available():
+    logger.error("CUDA is not available!")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 logger.info("-----------")
