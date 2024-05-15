@@ -36,4 +36,4 @@ def project_pts(pts, K, R, t):
     batch_pts_im = torch.bmm(batch_pts_h, P.permute(0, 2, 1))
     batch_z = batch_pts_im[:, :, 2:].clone()
     batch_pts_im[:, :, :2] /= batch_z.repeat(1, 1, 2)
-    return batch_pts_im
+    return batch_pts_im[:, :, :2]  # Bxnx2
