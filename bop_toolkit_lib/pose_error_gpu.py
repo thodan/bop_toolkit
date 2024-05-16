@@ -6,6 +6,8 @@ import torch
 import gc
 from bop_toolkit_lib import misc_torch as misc
 
+MAX_BATCH_SIZE = 200  # (1.0 GB in average, less than 2 GB for all BOP objects)
+
 
 class BatchedData:
     # taken from https://github.com/nv-nguyen/gigapose/blob/f81a5413a912a0eae13c59b276ec4b41d4eca094/src/utils/batch.py
@@ -49,7 +51,7 @@ class BatchedData:
 
 
 @torch.no_grad()
-def mssd_by_batch(R_est, t_est, R_gt, t_gt, pts, syms, max_batch_size=200):
+def mssd_by_batch(R_est, t_est, R_gt, t_gt, pts, syms, max_batch_size=MAX_BATCH_SIZE):
     """
     mssd with max_batch_size for R_est, t_est, R_gt, t_gt.
     This allows to stabilize the memory usage (1GB for batch_size=200).
@@ -107,7 +109,9 @@ def mssd(R_est, t_est, R_gt, t_gt, pts, syms):
 
 
 @torch.no_grad()
-def mspd_by_batch(R_est, t_est, R_gt, t_gt, K, pts, syms, max_batch_size=200):
+def mspd_by_batch(
+    R_est, t_est, R_gt, t_gt, K, pts, syms, max_batch_size=MAX_BATCH_SIZE
+):
     """
     mspd with max_batch_size for R_est, t_est, R_gt, t_gt.
     This allows to stabilize the memory usage (1GB for batch_size=200).

@@ -35,4 +35,4 @@ meshlab_server_path = r"/path/to/meshlabserver.exe"
 num_workers = 10
 
 # use torch for calculate the errors
-use_torch = False
+use_gpu = False

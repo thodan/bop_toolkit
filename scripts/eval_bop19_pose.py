@@ -78,7 +78,7 @@ p = {
     # be stored in the dataset folder.
     "targets_filename": "test_targets_bop19.json",
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
-    "use_torch": config.use_torch,  # Use torch for the calculation of errors.
+    "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
 }
 ################################################################################
 
@@ -96,7 +96,7 @@ parser.add_argument("--results_path", default=p["results_path"])
 parser.add_argument("--eval_path", default=p["eval_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--num_workers", default=p["num_workers"])
-parser.add_argument("--use_torch", action="store_true", default=p["use_torch"])
+parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
@@ -158,7 +158,7 @@ for result_filename in p["result_filenames"]:
                 os.path.dirname(os.path.realpath(__file__)),
                 (
                     "eval_calc_errors_torch.py"
-                    if p["use_torch"] and error["type"] in ["mssd", "mspd"]
+                    if p["use_gpu"] and error["type"] in ["mssd", "mspd"]
                     else "eval_calc_errors.py"
                 ),
             ),

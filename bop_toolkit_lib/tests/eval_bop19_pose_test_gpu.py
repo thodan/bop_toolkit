@@ -53,7 +53,7 @@ for dataset_method_name, file_name in tqdm(
         "--num_worker",
         "10",
     ]
-    command.append("--use_torch")
+    command.append("--use_gpu")
     command_ = " ".join(command)
     print(f"Executing: {command_}")
     start_time = time.time()
