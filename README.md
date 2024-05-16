@@ -73,7 +73,7 @@ python scripts/eval_bop24_pose.py --result_filenames=NAME_OF_CSV_WITH_RESULTS --
 
 `--result_filenames`: Comma-separated filenames with pose estimates in .csv ([examples](https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019_sample_results.zip)).
 
-### 5. Evaluate the pose estimates for 6D detection task
+### 5. Evaluate the pose estimates for 6D localization task
 ```
 python scripts/eval_bop19_pose.py --renderer_type=vispy --result_filenames=NAME_OF_CSV_WITH_RESULTS
 ```
