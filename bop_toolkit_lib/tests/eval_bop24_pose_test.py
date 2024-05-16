@@ -10,7 +10,6 @@ from bop_toolkit_lib import inout
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--num_false_positives", default=0, type=int)
-parser.add_argument("--use_torch", action="store_true")
 args = parser.parse_args()
 
 # Define the input directory
@@ -94,8 +93,6 @@ for dataset_method_name, file_name in tqdm(
         "--num_worker",
         "10",
     ]
-    if args.use_torch:
-        command.append("--use_torch")
     command_ = " ".join(command)
     print(f"Executing: {command_}")
     start_time = time.time()

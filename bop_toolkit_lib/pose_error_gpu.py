@@ -1,3 +1,6 @@
+# Author: Van Nguyen Nguyen (vanngn.nguyen@gmail.com)
+# Imagine team, Ecole des Ponts ParisTech
+
 import numpy as np
 import torch
 import gc
@@ -5,6 +8,7 @@ from bop_toolkit_lib import misc_torch as misc
 
 
 class BatchedData:
+    # taken from https://github.com/nv-nguyen/gigapose/blob/f81a5413a912a0eae13c59b276ec4b41d4eca094/src/utils/batch.py
     """
     A structure for storing data in batched format to handle very large batch size.
     Implements basic filtering and concatenation.

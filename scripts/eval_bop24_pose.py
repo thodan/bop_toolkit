@@ -138,7 +138,7 @@ for result_filename in p["result_filenames"]:
             os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
                 (
-                    "eval_calc_errors_torch.py"
+                    "eval_calc_errors_gpu.py"
                     if p["use_torch"] and error["type"] in ["mssd", "mspd"]
                     else "eval_calc_errors.py"
                 ),

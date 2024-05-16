@@ -15,7 +15,7 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import pose_error_torch
+from bop_toolkit_lib import pose_error_gpu
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -326,7 +326,7 @@ for result_filename in p["result_filenames"]:
                 )
 
             if p["error_type"] == "mssd":
-                errors = pose_error_torch.mssd_by_batch(
+                errors = pose_error_gpu.mssd_by_batch(
                     est_per_object[obj_id]["R_e"],
                     est_per_object[obj_id]["t_e"],
                     est_per_object[obj_id]["R_g"],
@@ -335,7 +335,7 @@ for result_filename in p["result_filenames"]:
                     models_sym[obj_id],
                 )
             elif p["error_type"] == "mspd":
-                errors = pose_error_torch.mspd_by_batch(
+                errors = pose_error_gpu.mspd_by_batch(
                     est_per_object[obj_id]["R_e"],
                     est_per_object[obj_id]["t_e"],
                     est_per_object[obj_id]["R_g"],
