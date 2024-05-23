@@ -6,20 +6,24 @@ from bop_toolkit_lib import misc_torch as misct
 from bop_toolkit_lib import transform
 
 
-# project_pts
-# transform_pts_Rt
-
-
-
 class TestMisc(unittest.TestCase):
+
+    """
+    Non regression tests for misc module.
+
+    Checks that transform_pts_Rt and project_pts give similar
+    results in sequential and batched implementations.
+    """
 
     def setUp(self) -> None:
         self.Np = 100
         self.B = 10
-
         self.pts = torch.rand(self.Np,3)
 
     def test_transform_pts_Rt(self):
+        """
+        Sample poses at random and transform point cloud.
+        """
 
         R_np = np.array([transform.random_rotation_matrix()[:3,:3] for _ in range(self.B)])
         t_np = np.random.rand(self.B,3,1)
@@ -37,10 +41,10 @@ class TestMisc(unittest.TestCase):
     def test_project_pts(self):
 
         """
-        For this test, we cannot sample poses completely at random:
-        Points close to the camera plane Zc~0 will create issues
+        For this test, we cannot sample poses completely at random since
+        Points close to the camera plane Zc~0 will create numerical issues.
         Instead, sample camera rotation and translation around
-        a reference pose that looks toward the point cloud
+        a reference pose that looks toward the point cloud.
         """
         R_ref = np.array([
             0,-1, 0,
@@ -69,11 +73,6 @@ class TestMisc(unittest.TestCase):
         for i in range(self.B):
             proj_np[i] = misc.project_pts(self.pts, K, R_np[i], t_np[i])
         proj_ts = misct.project_pts(self.pts, K_ts, R_ts, t_ts)
-
-        # eh = np.allclose(proj_ts.numpy(), proj_np, atol=1e-3)
-        # # if not eh:
-        # #     print(eh)
-        # #     breakpoint()
 
         self.assertTrue(np.allclose(proj_ts.numpy(), proj_np, atol=1e-3))
 
