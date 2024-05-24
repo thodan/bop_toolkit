@@ -501,7 +501,9 @@ for result_filename in p["result_filenames"]:
         scene_errs = []
         if p["num_workers"] == 1:
             for im_meta_data in im_meta_datas:
-                scene_errs.extend(calculate_errors_per_image(im_meta_data))
+                im_errs = calculate_errors_per_image(im_meta_data)
+                ests_counter += len(im_errs)
+                scene_errs.extend(im_errs)
         else:
             pool = multiprocessing.Pool(p["num_workers"])
             all_im_errs = pool.map(calculate_errors_per_image, im_meta_datas)
