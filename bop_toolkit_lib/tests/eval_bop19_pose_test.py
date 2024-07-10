@@ -12,12 +12,20 @@ OUTPUT_DIR = "./bop_toolkit_lib/tests/logs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Define the dataset dictionary
+# FILE_DICTIONARY = {
+#     "lmo_megaPose": "cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv",
+#     "lmo_gt": "gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv",
+#     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
+#     "tless_gt": "gt-pbrreal-rgb-mmodel_tless-test_tless.csv",
+# }
 FILE_DICTIONARY = {
     "lmo_megaPose": "cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv",
-    "lmo_gt": "gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv",
+    "icbin_megaPose": "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv",
+    "tudl_megaPose": "cnos-fastsammegapose_tudl-test_1328490c-bf88-46ce-a12c-a5e5a7712220.csv",
+    "ycbv_megaPose": "cnos-fastsammegapose_ycbv-test_8fe0af14-16e3-431a-83e7-df00e93828a6.csv",
     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
-    "tless_gt": "gt-pbrreal-rgb-mmodel_tless-test_tless.csv",
 }
+
 
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {

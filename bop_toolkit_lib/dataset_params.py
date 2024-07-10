@@ -349,6 +349,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["scene_ids"] = {
             "train": [],
             "val": list(range(1, 11)),
+            "test": list(range(1, 41)),
+        }[split]
+        p["im_size"] = (1920, 1080)
+
+        if split == "test":
+            p["depth_range"] = None  # Not calculated yet.
+            p["azimuth_range"] = None  # Not calculated yet.
+            p["elev_range"] = None  # Not calculated yet.
+    
+    # HOPE.
+    elif dataset_name == "hope_v2":
+        p["scene_ids"] = {
+            "train": [],
+            "val": list(range(1, 11)),
             "test": list(range(1, 48)),
         }[split]
         p["im_size"] = (1920, 1080)
