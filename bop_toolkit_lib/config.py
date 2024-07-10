@@ -34,5 +34,5 @@ meshlab_server_path = r"/path/to/meshlabserver.exe"
 # Number of workers for the parallel evaluation of pose errors.
 num_workers = 10
 
-# use torch for calculate the errors
+# use torch to calculate the errors
 use_gpu = False

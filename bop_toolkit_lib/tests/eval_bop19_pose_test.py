@@ -79,33 +79,33 @@ for dataset_method_name, file_name in tqdm(
 print("Script executed successfully.")
 
 
-# # Check scores for each dataset
-# for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
-#     log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
+# Check scores for each dataset
+for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
+    log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
 
-#     # Read the content of the log file
-#     with open(log_file_path, "r") as log_file:
-#         last_lines = log_file.readlines()[-7:]
+    # Read the content of the log file
+    with open(log_file_path, "r") as log_file:
+        last_lines = log_file.readlines()[-7:]
 
-#     # Combine the last lines into a single string
-#     log_content = "".join(last_lines)
+    # Combine the last lines into a single string
+    log_content = "".join(last_lines)
 
-#     # Extract scores using regular expressions
-#     scores = {
-#         key: float(value) for key, value in re.findall(r"- (\S+): (\S+)", log_content)
-#     }
+    # Extract scores using regular expressions
+    scores = {
+        key: float(value) for key, value in re.findall(r"- (\S+): (\S+)", log_content)
+    }
 
-#     # Compare the extracted scores with the expected scores
-#     for key, expected_value in EXPECTED_OUTPUT[dataset_method_name].items():
-#         actual_value = scores.get(key)
-#         if actual_value is not None:
-#             if actual_value == expected_value:
-#                 print(f"{dataset_method_name}: {key}: {actual_value} - PASSED")
-#             else:
-#                 print(
-#                     f"{dataset_method_name}: {key} - FAILED. Expected: {expected_value}, Actual: {actual_value}"
-#                 )
-#         else:
-#             print(f"{dataset_method_name}: {key} - NOT FOUND")
+    # Compare the extracted scores with the expected scores
+    for key, expected_value in EXPECTED_OUTPUT[dataset_method_name].items():
+        actual_value = scores.get(key)
+        if actual_value is not None:
+            if actual_value == expected_value:
+                print(f"{dataset_method_name}: {key}: {actual_value} - PASSED")
+            else:
+                print(
+                    f"{dataset_method_name}: {key} - FAILED. Expected: {expected_value}, Actual: {actual_value}"
+                )
+        else:
+            print(f"{dataset_method_name}: {key} - NOT FOUND")
 
-# print("Verification completed.")
+print("Verification completed.")
