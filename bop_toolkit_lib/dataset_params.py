@@ -86,6 +86,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hb": list(range(1, 34)),  # Full HB dataset.
         "ycbv": list(range(1, 22)),
         "hope": list(range(1, 29)),
+        "hopev2": list(range(1, 29)),
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error
@@ -103,7 +104,8 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hbs": [10, 12, 18, 29],
         "hb": [6, 10, 11, 12, 13, 14, 18, 24, 29],
         "ycbv": [1, 13, 14, 16, 18, 19, 20, 21],
-        "hope": None,  # Not defined yet.
+        "hope": [],
+        "hopev2": [],
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -359,7 +361,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["elev_range"] = None  # Not calculated yet.
     
     # HOPE.
-    elif dataset_name == "hope_v2":
+    elif dataset_name == "hopev2":
         p["scene_ids"] = {
             "train": [],
             "val": list(range(1, 11)),
