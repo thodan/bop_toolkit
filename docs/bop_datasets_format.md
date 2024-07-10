@@ -17,7 +17,7 @@ DATASET_NAME
 ├─ models[_MODELTYPE][_eval]
 │  ├─ models_info.json
 │  ├─ obj_OBJ_ID.ply
-├─ train|val|test[_TYPE]
+├─ train|val|test[_TYPE]|onboarding_static|onboarding_dynamic
 │  ├─ SCENE_ID|OBJ_ID
 │  │  ├─ scene_camera.json
 │  │  ├─ scene_gt.json
@@ -37,6 +37,8 @@ DATASET_NAME
 * *train[\_TRAINTYPE]/X* (optional) - Training images of object X.
 * *val[\_VALTYPE]/Y* (optional) - Validation images of scene Y.
 * *test[\_TESTTYPE]/Y* - Test images of scene Y.
+* *onboarding_static/obj_X_SIDE* - Only for model-free tasks, static onboarding images of object X at up/down side.
+* *onboarding_dynamic/obj_X* - Only for model-free tasks, dynamic onboarding images of object X.
 
 
 * *camera.json* - Camera parameters (for sensor simulation only; per-image
