@@ -15,6 +15,8 @@ from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
 
+from hand_tracking_toolkit.camera import CameraModel
+
 logging.basicConfig()
 
 
@@ -109,6 +111,23 @@ def project_pts(pts, K, R, t):
     pts_im = P.dot(pts_h.T)
     pts_im /= pts_im[2, :]
     return pts_im[:2, :].T
+
+
+def project_pts_htt(pts, cam: CameraModel, R, t):
+    """Transform and projects points with Hand Tracking Toolbox CameraModel.
+
+    :param pts: nx3 ndarray with the 3D points.
+    :param cam: HTT CameraModel instance.
+    :param R: 3x3 ndarray with a rotation matrix.
+    :param t: 3x1 ndarray with a translation vector.
+    :return: nx2 ndarray with 2D image coordinates of the projections.
+    """
+
+    pts_w = transform_pts_Rt(pts, R, t)
+    pts_im = cam.eye_to_window(pts_w)
+
+    return pts_im 
+
 
 
 class Precomputer(object):
