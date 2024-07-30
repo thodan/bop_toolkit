@@ -15,7 +15,6 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_error
-from bop_toolkit_lib import pose_error_htt
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import renderer_batch
 
@@ -264,10 +263,7 @@ for result_filename in p["result_filenames"]:
                 )
 
             # Intrinsic camera matrix.
-            if p["error_type"] == "mspd":
-                cam = misc.create_camera_model(scene_camera[im_id])
-            else:
-                K = scene_camera[im_id]["cam_K"]
+            K = scene_camera[im_id]["cam_K"]
 
             # Load the depth image if VSD is selected as the pose error function.
             depth_im = None
@@ -405,12 +401,12 @@ for result_filename in p["result_filenames"]:
 
                         elif p["error_type"] == "mspd":
                             e = [
-                                pose_error_htt.mspd(
+                                pose_error.mspd(
                                     R_e,
                                     t_e,
                                     R_g,
                                     t_g,
-                                    cam,
+                                    K,
                                     models[obj_id]["pts"],
                                     models_sym[obj_id],
                                 )

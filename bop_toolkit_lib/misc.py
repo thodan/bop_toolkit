@@ -15,7 +15,7 @@ from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
 
-from hand_tracking_toolkit.camera import CameraModel
+from hand_tracking_toolkit.camera import CameraModel, PinholePlaneCameraModel 
 
 logging.basicConfig()
 
@@ -129,6 +129,19 @@ def project_pts_htt(pts, cam: CameraModel, R, t):
     return pts_im 
 
 
+def create_camera_model(image_camera: dict):
+    """
+    TODO
+    """
+    if "cam_K" in image_camera:        
+        K = image_camera["cam_K"]            
+        fx, fy = K[0,0], K[1,1]
+        cx, cy = K[0,2], K[1,2]
+        im_size = 10,10  # does not matter
+        return PinholePlaneCameraModel(width=im_size[0], height=im_size[1], f=(fx,fy), c=(cx,cy), distort_coeffs=())
+    elif "cam_model" in image_camera:
+        # TODO: red pinhole and fisheye camera models 
+        raise NotImplementedError
 
 class Precomputer(object):
     """Caches pre_Xs, pre_Ys for a 30% speedup of depth_im_to_dist_im()"""
