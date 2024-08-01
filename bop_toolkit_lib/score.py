@@ -9,7 +9,7 @@ from collections import defaultdict
 from bop_toolkit_lib import misc
 
 
-def calc_ap(rec, pre):
+def calc_ap(rec, pre, coco_interpolation=None):
     """Calculates Average Precision (AP).
 
     Calculated in the PASCAL VOC challenge from 2010 onwards [1]:
@@ -30,6 +30,8 @@ def calc_ap(rec, pre):
 
     :param rec: A list (or 1D ndarray) of recall rates.
     :param pre: A list (or 1D ndarray) of precision rates.
+    :param coco_interpolation: If True, do interpolation at these recall thresholds as done in COCO
+    https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py#L507
     :return: Average Precision - the area under the monotonically decreasing
              version of the precision/recall curve given by rec and pre.
     """
@@ -41,8 +43,20 @@ def calc_ap(rec, pre):
     assert mrec.shape == mpre.shape
     for i in range(mpre.size - 3, -1, -1):
         mpre[i] = max(mpre[i], mpre[i + 1])
-    i = np.nonzero(mrec[1:] != mrec[:-1])[0] + 1
-    ap = np.sum((mrec[i] - mrec[i - 1]) * mpre[i])
+    if not coco_interpolation:
+        i = np.nonzero(mrec[1:] != mrec[:-1])[0] + 1
+        ap = np.sum((mrec[i] - mrec[i - 1]) * mpre[i])
+    else:
+        # Interpolate precision at specified recall thresholds
+        # https://pyimagesearch.com/2022/05/02/mean-average-precision-map-using-the-coco-evaluator/#H3Calc
+        rec_thresholds = np.linspace(0.0, 1.00, 101, endpoint=True)
+        interpolated_precisions = []
+        for rt in rec_thresholds:
+            if np.any(mrec >= rt):
+                interpolated_precisions.append(np.max(mpre[mrec >= rt]))
+            else:
+                interpolated_precisions.append(0.0)
+        ap = np.mean(interpolated_precisions)
     return ap
 
 
@@ -201,100 +215,45 @@ def calc_pose_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_prin
             obj_tars[obj_id] += count
             scene_tars[scene_id] += count
 
-    # Count the number of true positives.
-    tps = 0  # Total number of true positives.
-    obj_tps = {i: 0 for i in obj_ids}  # True positives per object.
-    scene_tps = {i: 0 for i in scene_ids}  # True positives per scene.
-    est_ids_matched = {}
-    for m in matches:
-        if m["valid"] and m["est_id"] != -1:
-            tps += 1
-            obj_tps[m["obj_id"]] += 1
-            scene_tps[m["scene_id"]] += 1
-            key = f"{m['scene_id']}_{m['im_id']}_{m['obj_id']}_{m['est_id']}"
-            est_ids_matched[key] = True
-            
-    # Count the number of false positives.
-    fps = 0  # Total number of false positives.
-    obj_fps = {i: 0 for i in obj_ids}  # False positives per object.
-    scene_fps = {i: 0 for i in scene_ids}  # False positives per scene.
-    for e in errs:
-        key = f"{e['scene_id']}_{e['im_id']}_{e['obj_id']}_{e['est_id']}"
-        if key not in est_ids_matched:
-            fps += 1
-            obj_fps[e["obj_id"]] += 1
-            scene_fps[e["scene_id"]] += 1
-    assert tps + fps == len(errs), f"{tps} + {fps} != {len(errs)}"
+    # For each object, sort the pose estimates by confidence score.
+    # Then calculate the average precision for each object.
+    scores_per_object = {}
+    for obj_id, obj_tar in obj_tars.items():
+        obj_matches = [m for m in matches if m["obj_id"] == obj_id]
 
-    # Total recall.
-    recall = calc_recall(tps, tars)
-    precision = tps / (tps + fps)
+        # Sorting the predictions by confidences score and calculate TP, FP.
+        sorted_obj_matches = sorted(obj_matches, key=lambda x: x["score"], reverse=True)
+        true_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
+        false_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
 
-    # Recall, Precisions per object.
-    obj_recalls, obj_precisions = {}, {}
-    for i in obj_ids:
-        obj_recalls[i] = calc_recall(obj_tps[i], obj_tars[i])
-        obj_precisions[i] = obj_tps[i] / (obj_tps[i] + obj_fps[i])
-    mean_obj_recall = float(np.mean(list(obj_recalls.values())).squeeze())
-    mean_obj_precision = float(np.mean(list(obj_precisions.values())).squeeze())
+        for i, m in enumerate(sorted_obj_matches):
+            if m["valid"] and m["est_id"] != -1:
+                true_positives[i] = True
+            else:
+                false_positives[i] = True
+        cum_true_positives = np.cumsum(true_positives)
+        cum_false_positives = np.cumsum(false_positives)
 
-    # Recall, Precisions per scene.
-    scene_recalls, scene_precisions = {}, {}
-    for i in scene_ids:
-        scene_recalls[i] = calc_recall(scene_tps[i], scene_tars[i])
-        scene_precisions[i] = scene_tps[i] / (scene_tps[i] + scene_fps[i])
-    mean_scene_recall = float(np.mean(list(scene_recalls.values())).squeeze())
-    mean_scene_precision = float(np.mean(list(scene_precisions.values())).squeeze())
+        # Recall, Precision.
+        recall = cum_true_positives / obj_tar
+        precision = cum_true_positives / (cum_true_positives + cum_false_positives)
+        ap = calc_ap(recall, precision, coco_interpolation=True)
+        scores_per_object[obj_id] = ap
+        if do_print:
+            misc.log("Object {:d} AP: {:.4f}".format(obj_id, ap))
 
     # Final scores.
     scores = {
-        "recall": float(recall),
-        "precision": float(precision),
-        "obj_recalls": obj_recalls,
-        "obj_precisions": obj_precisions,
-        "mean_obj_recall": float(mean_obj_recall),
-        "mean_obj_precision": float(mean_obj_precision),
-        "scene_recalls": scene_recalls,
-        "scene_precisions": scene_precisions,
-        "mean_scene_recall": float(mean_scene_recall),
-        "mean_scene_precision": float(mean_scene_precision),
         "gt_count": len(matches),
         "targets_count": int(tars),
-        "tp_count": int(tps),
-        "fp_count": int(fps),
         "num_estimates": len(errs),
+        "scores": scores_per_object,
     }
     if do_print:
-        obj_recalls_str = ", ".join(
-            ["{}: {:.3f}".format(i, s) for i, s in scores["obj_recalls"].items()]
-        )
-        obj_precisions_str = ", ".join(
-            ["{}: {:.3f}".format(i, s) for i, s in scores["obj_precisions"].items()]
-        )
-
-        scene_recalls_str = ", ".join(
-            ["{}: {:.3f}".format(i, s) for i, s in scores["scene_recalls"].items()]
-        )
-        scene_precisions_str = ", ".join(
-            ["{}: {:.3f}".format(i, s) for i, s in scores["scene_precisions"].items()]
-        )
-
         misc.log("")
         misc.log("Estimates count:    {:d}".format(scores["num_estimates"]))
         misc.log("GT count:           {:d}".format(scores["gt_count"]))
         misc.log("Target count:       {:d}".format(scores["targets_count"]))
-        misc.log("TP count:           {:d}".format(scores["tp_count"]))
-        misc.log("FP count:           {:d}".format(scores["fp_count"]))
-        misc.log("Recall:             {:.4f}".format(scores["recall"]))
-        misc.log("Precision:          {:.4f}".format(scores["precision"]))
-        misc.log("Mean object recall: {:.4f}".format(scores["mean_obj_recall"]))
-        misc.log("Mean object precision: {:.4f}".format(scores["mean_obj_precision"]))
-        misc.log("Mean scene recall:  {:.4f}".format(scores["mean_scene_recall"]))
-        misc.log("Mean scene precision:  {:.4f}".format(scores["mean_scene_precision"]))
-        misc.log("Object recalls:\n{}".format(obj_recalls_str))
-        misc.log("Object precisions:\n{}".format(obj_precisions_str))
-        misc.log("Scene recalls:\n{}".format(scene_recalls_str))
-        misc.log("Scene precisions:\n{}".format(scene_precisions_str))
         misc.log("")
 
     return scores
