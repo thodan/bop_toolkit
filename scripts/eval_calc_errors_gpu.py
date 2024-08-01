@@ -234,6 +234,7 @@ for result_filename in p["result_filenames"]:
             "est_id": [],
             "gt_id": [],
             "scores": [],
+            "gt_visib_fract": [],
         }
     all_estimates = copy.deepcopy(estimate_templates)
 
@@ -247,6 +248,9 @@ for result_filename in p["result_filenames"]:
         )
         scene_gt = inout.load_scene_gt(
             dp_split["scene_gt_tpath"].format(scene_id=scene_id)
+        )
+        scene_gt_info = inout.load_scene_gt(
+            dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
         )
 
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
@@ -299,6 +303,9 @@ for result_filename in p["result_filenames"]:
                         # Ground-truth pose.
                         est_per_object[obj_id]["R_g"].append(gt["cam_R_m2c"])
                         est_per_object[obj_id]["t_g"].append(gt["cam_t_m2c"])
+                        est_per_object[obj_id]["gt_visib_fract"].append(
+                            scene_gt_info[im_id][gt_id]["visib_fract"]
+                        )
                         est_per_object[obj_id]["cam_K"].append(
                             scene_camera[im_id]["cam_K"]
                         )
@@ -354,6 +361,7 @@ for result_filename in p["result_filenames"]:
                 est_id = int(est_per_object[obj_id]["est_id"][i].item())
                 gt_id = int(est_per_object[obj_id]["gt_id"][i].item())
                 score = est_per_object[obj_id]["scores"][i].item()
+                gt_visib_fract = est_per_object[obj_id]["gt_visib_fract"][i].item()
 
                 key_name = f"scene{scene_id:06d}_im_id{im_id:06d}obj_id{obj_id:06d}est_id{est_id:06d}"
                 if key_name not in scene_errs:
@@ -363,6 +371,7 @@ for result_filename in p["result_filenames"]:
                         "obj_id": obj_id,
                         "est_id": est_id,
                         "score": score,
+                        "gt_visib_fract": gt_visib_fract,
                         "errors": {},
                     }
                 scene_errs[key_name]["errors"][gt_id] = [errors[i]]

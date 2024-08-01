@@ -293,7 +293,12 @@ for error_dir_path in p["error_dir_paths"]:
         )
     elif p["eval_mode"] == "detection":
         scores = score.calc_pose_detection_scores(
-            dp_split["scene_ids"], dp_model["obj_ids"], matches, estimates, n_top
+            dp_split["scene_ids"],
+            dp_model["obj_ids"],
+            matches,
+            estimates,
+            n_top,
+            visib_gt_min=p["visib_gt_min"],
         )
     else:
         raise ValueError("Unknown eval_mode: {}".format(p["eval_mode"]))

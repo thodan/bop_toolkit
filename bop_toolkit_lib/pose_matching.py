@@ -83,6 +83,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
                     "score": e["score"],
                     "error": best_error,
                     "error_norm": best_errors_normed,
+                    "gt_visib_fract": e["gt_visib_fract"],
                 }
             )
 
@@ -134,6 +135,7 @@ def match_poses_scene(
                     "error": -1,
                     "error_norm": -1,
                     "valid": scene_gt_valid[im_id][gt_id],
+                    "gt_visib_fract": 1, # initialize for each gt valid as 1
                 }
             )
 
@@ -155,6 +157,7 @@ def match_poses_scene(
                     g["score"] = m["score"]
                     g["error"] = m["error"]
                     g["error_norm"] = m["error_norm"]
+                    g["gt_visib_fract"] = m["gt_visib_fract"] # update gt_visib_fract
 
         scene_matches += im_matches
 

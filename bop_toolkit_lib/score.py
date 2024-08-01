@@ -172,7 +172,9 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
     return scores
 
 
-def calc_pose_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_print=True):
+def calc_pose_detection_scores(
+    scene_ids, obj_ids, matches, errs, n_top, visib_gt_min, do_print=True
+):
     """Calculates performance scores for the 6D object detection task.
 
     References:
@@ -225,12 +227,19 @@ def calc_pose_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_prin
         sorted_obj_matches = sorted(obj_matches, key=lambda x: x["score"], reverse=True)
         true_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
         false_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
+        false_positives_ignore = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
         for i, m in enumerate(sorted_obj_matches):
             if m["valid"] and m["est_id"] != -1:
                 true_positives[i] = True
             else:
-                false_positives[i] = True
+                if m["gt_visib_fract"] < visib_gt_min:
+                    gt_visib_fract = m["gt_visib_fract"]
+                    false_positives_ignore[i] = True
+                    misc.log(
+                        f"Ignoring false positive (visib_gt_fract = {gt_visib_fract:.2f})"
+                    )
+                else:
+                    false_positives[i] = True
         cum_true_positives = np.cumsum(true_positives)
         cum_false_positives = np.cumsum(false_positives)
 
@@ -241,7 +250,10 @@ def calc_pose_detection_scores(scene_ids, obj_ids, matches, errs, n_top, do_prin
         scores_per_object[obj_id] = ap
         if do_print:
             misc.log("Object {:d} AP: {:.4f}".format(obj_id, ap))
-
+            if np.sum(false_positives_ignore) > 0:
+                misc.log(
+                    f"Number of false positives ignored: {np.sum(false_positives_ignore)}"
+                )
     # Final scores.
     scores = {
         "gt_count": len(matches),
