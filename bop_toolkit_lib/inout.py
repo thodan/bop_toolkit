@@ -139,22 +139,37 @@ def load_cam_params(path):
 
 
 def _camera_as_numpy(camera):
+    """
+    TODO: document cam_K vs cam_model
+    """
+    if "cam_K" in camera and "cam_model" in camera:
+        raise ValueError("Only one of 'cam_K', 'cam_model' field should be present in a scene camera configuration")
     if "cam_K" in camera.keys():
         camera["cam_K"] = np.array(camera["cam_K"], np.float64).reshape((3, 3))
     if "cam_R_w2c" in camera.keys():
         camera["cam_R_w2c"] = np.array(camera["cam_R_w2c"], np.float64).reshape((3, 3))
     if "cam_t_w2c" in camera.keys():
         camera["cam_t_w2c"] = np.array(camera["cam_t_w2c"], np.float64).reshape((3, 1))
+    if "cam_model" in camera:
+        camera["cam_model"]["projection_params"] = np.array(camera["cam_model"]["projection_params"], np.float64)
     return camera
 
 
 def _camera_as_json(camera):
+    """
+    TODO: document cam_K vs cam_model
+    """
+    if "cam_K" in camera and "cam_model" in camera:
+        raise ValueError("Only one of 'cam_K', 'cam_model' field should be present in a scene camera configuration")
     if "cam_K" in camera.keys():
         camera["cam_K"] = camera["cam_K"].flatten().tolist()
     if "cam_R_w2c" in camera.keys():
         camera["cam_R_w2c"] = camera["cam_R_w2c"].flatten().tolist()
     if "cam_t_w2c" in camera.keys():
         camera["cam_t_w2c"] = camera["cam_t_w2c"].flatten().tolist()
+    # cam_model field introduced for hot3d dataset to deal with projection models other than pinhole camera
+    if "cam_model" in camera:
+        camera["cam_model"]["projection_params"] = camera["cam_model"]["projection_params"].flatten().tolist() 
     return camera
 
 
@@ -324,6 +339,77 @@ def save_bop_results(path, results, version="bop19"):
 
     else:
         raise ValueError("Unknown version of BOP results.")
+
+
+def scene_targets_24to19(scene_targets_24, scene_gt):
+    """
+    :param scene_targets_24: list of scene targets of bop24 format for one scene
+    :param scene_targets_24: scene ground truth data, obtained with inout.load_scene_gt
+    :return scene_targets_19: list of scene targets in bop19 format for one scene
+
+    Target have slightly different meanings for BOP19 localization and BOP24 detection tasks.
+    -BOP19 target: number of instances of a particular object in a target image. 
+    Ex: {"im_id": 1, "inst_count": 1, "obj_id": 1, "scene_id": 48} 
+    - BOP24 target: a target image
+    Ex: {"im_id": 1, "scene_id": 48} 
+    
+    """
+    scene_targets_19 = []
+    for target24 in scene_targets_24:
+        im_gt = scene_gt[target24["im_id"]]
+        inst_counts = {}
+        for gt in im_gt:
+            obj_id = int(gt["obj_id"])
+            if obj_id not in inst_counts:
+                inst_counts[obj_id] = 1
+            else:
+                inst_counts[obj_id] += 1
+        for obj_id, inst_count in inst_counts.items():
+            scene_targets_19.append({
+                "scene_id": target24["scene_id"],
+                "im_id": target24["im_id"],
+                "obj_id": obj_id,
+                "inst_count": inst_count,
+            })
+    return scene_targets_19
+
+def targets_24to19(targets24, dp_split, scene_gt_tpath):
+    """
+    Target have slightly different meanings for BOP19 localization and BOP24 detection tasks.
+
+    BOP19 target: number of instances of a particular object in a target image. 
+    Ex: {"im_id": 3, "inst_count": 1, "obj_id": 5, "scene_id": 48} 
+
+    Turn into targets_org =
+    {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
+
+    BOP24 target: a target image
+    Ex: {"im_id": 1, "scene_id": 48} 
+    """
+    targets19 = []
+    scene_gts = {}
+    for target24 in targets24:
+        scene_id, im_id = target24["scene_id"], target24["im_id"]
+        if scene_id not in scene_gts:
+            scene_gts[scene_id] = load_scene_gt(
+            dp_split[scene_gt_tpath].format(scene_id=scene_id)
+        )
+        im_gt = scene_gts[scene_id][im_id]
+        inst_counts = {}
+        for gt in im_gt:
+            obj_id = int(gt["obj_id"])
+            if obj_id not in inst_counts:
+                inst_counts[obj_id] = 1
+            else:
+                inst_counts[obj_id] += 1
+        for obj_id, inst_count in inst_counts.items():
+            targets19.append({
+                "scene_id": scene_id,
+                "im_id": im_id,
+                "obj_id": obj_id,
+                "inst_count": inst_count,
+            })
+    return targets19
 
 
 def check_bop_results(path, version="bop19"):

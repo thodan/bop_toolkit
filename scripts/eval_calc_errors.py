@@ -77,6 +77,7 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
 }
 ################################################################################
 
@@ -107,6 +108,7 @@ parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--modality", default=p["modality"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -126,12 +128,21 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
+p["modality"] = str(args.modality) if args.modality is not None else None
 
 logger.info("-----------")
 logger.info("Parameters:")
 for k, v in p.items():
     logger.info("- {}: {}".format(k, v))
 logger.info("-----------")
+
+if p["modality"] is None:
+    scene_gt_tpath = "scene_gt_tpath"
+    scene_camera_tpath = "scene_camera_tpath"
+else:
+    scene_gt_tpath = "scene_gt_{}_tpath".format(p["modality"])
+    scene_camera_tpath = "scene_camera_{}_tpath".format(p["modality"])
+
 
 # Error calculation.
 # ------------------------------------------------------------------------------
@@ -209,9 +220,12 @@ for result_filename in p["result_filenames"]:
     targets = inout.load_json(
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
+    if True:
+        targets = inout.targets_24to19(targets, dp_split, scene_gt_tpath)
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
+    # targets_org : {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
     targets_org = {}
     for target in targets:
         targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
@@ -233,15 +247,20 @@ for result_filename in p["result_filenames"]:
     for scene_id, scene_targets in targets_org.items():
         # Load camera and GT poses for the current scene.
         scene_camera = inout.load_scene_camera(
-            dp_split["scene_camera_tpath"].format(scene_id=scene_id)
+            dp_split[scene_camera_tpath].format(scene_id=scene_id)
         )
         scene_gt = inout.load_scene_gt(
-            dp_split["scene_gt_tpath"].format(scene_id=scene_id)
+            dp_split[scene_gt_tpath].format(scene_id=scene_id)
         )
 
         # collect all the images and their targets
         im_meta_datas = []
+        
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
+            # if im_targets is None:
+            #     # BOP24 detection: Get target object ids from ground truth 
+            #     # TODO: check if not possible to skip invisible objects here
+            #     im_targets = {int(obj["obj_id"]): None for obj in scene_gt[im_id]}
             im_meta_data = [im_ind, (im_id, im_targets)]
             im_meta_datas.append(im_meta_data)
 
@@ -263,11 +282,12 @@ for result_filename in p["result_filenames"]:
                     )
                 )
 
-            # Intrinsic camera matrix.
+            # Retrieve camera model.
             if p["error_type"] == "mspd":
                 cam = misc.create_camera_model(scene_camera[im_id])
-            else:
-                K = scene_camera[im_id]["cam_K"]
+            # TODO
+            # else:
+            #     K = scene_camera[im_id]["cam_K"]
 
             # Load the depth image if VSD is selected as the pose error function.
             depth_im = None
@@ -278,13 +298,13 @@ for result_filename in p["result_filenames"]:
                 depth_im = inout.load_depth(depth_path)
                 depth_im *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
-            for obj_id, target in im_targets.items():
+            for obj_id, im_target in im_targets.items():
                 # The required number of top estimated poses.
-                if p["n_top"] == 0:  # All estimates are considered.
+                if im_target is None or p["n_top"] == 0:  # All estimates are considered.
                     n_top_curr = None
                 elif p["n_top"] == -1:  # Given by the number of GT poses.
                     # n_top_curr = sum([gt['obj_id'] == obj_id for gt in scene_gt[im_id]])
-                    n_top_curr = target["inst_count"]
+                    n_top_curr = im_target["inst_count"]
                 else:
                     n_top_curr = p["n_top"]
 
@@ -323,7 +343,8 @@ for result_filename in p["result_filenames"]:
 
                     errs = {}  # Errors w.r.t. GT poses of the same object class.
                     for gt_id, gt in enumerate(scene_gt[im_id]):
-                        if gt["obj_id"] != obj_id:
+                        # if gt["obj_id"] != obj_id:  # TODO: why?
+                        if int(gt["obj_id"]) != obj_id:
                             continue
 
                         # Ground-truth pose.
@@ -486,6 +507,7 @@ for result_filename in p["result_filenames"]:
                             raise ValueError("Unknown pose error function.")
 
                         errs[gt_id] = e
+                        
                     # Save the calculated errors.
                     im_errs.append(
                         {

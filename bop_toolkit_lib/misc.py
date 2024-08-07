@@ -15,7 +15,7 @@ from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
 
-from hand_tracking_toolkit.camera import CameraModel, PinholePlaneCameraModel 
+from hand_tracking_toolkit.camera import model_by_name, CameraModel 
 
 logging.basicConfig()
 
@@ -137,11 +137,37 @@ def create_camera_model(image_camera: dict):
         K = image_camera["cam_K"]            
         fx, fy = K[0,0], K[1,1]
         cx, cy = K[0,2], K[1,2]
-        im_size = 10,10  # does not matter
-        return PinholePlaneCameraModel(width=im_size[0], height=im_size[1], f=(fx,fy), c=(cx,cy), distort_coeffs=())
+        width, height = 1,1  # does not matter
+        model = "PinholePlane"
+        coeffs = ()
+    
     elif "cam_model" in image_camera:
-        # TODO: red pinhole and fisheye camera models 
-        raise NotImplementedError
+        calib = image_camera["cam_model"]
+        width = calib["image_width"]
+        height = calib["image_height"]
+        model = calib["projection_model_type"]
+
+        if model == "CameraModelType.FISHEYE624" and len(calib["projection_params"]) == 15:
+            # TODO: Aria data hack
+            f, cx, cy = calib["projection_params"][:3]
+            fx = fy = f
+            coeffs = calib["projection_params"][3:]
+        else:
+            fx, fy, cx, cy = calib["projection_params"][:4]
+            coeffs = calib["projection_params"][4:]
+
+    else:
+        raise ValueError("Scene camera data missing 'cam_K' or 'cam_model' fields")
+
+    cls = model_by_name[model]
+    return cls(
+        width,
+        height,
+        (fx, fy),
+        (cx, cy),
+        coeffs
+    )
+
 
 class Precomputer(object):
     """Caches pre_Xs, pre_Ys for a 30% speedup of depth_im_to_dist_im()"""

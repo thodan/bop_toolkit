@@ -23,7 +23,6 @@ DS_SPLIT = 'test'
 
 
 def generate_random_pose_est(R, t, B):
-    # breakpoint()
     R_np = np.array([R@(transform.random_rotation_matrix()[:3,:3]) for _ in range(B)])
     t_np = t + np.random.rand(B,3,1)
     R_ts = torch.Tensor(R_np)
