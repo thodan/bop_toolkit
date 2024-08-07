@@ -107,7 +107,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "ycbv": [1, 13, 14, 16, 18, 19, 20, 21],
         "hope": [],
         "hopev2": [],
-        "hot3d": [],  # TODO: ?
+        "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -121,8 +121,6 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
 
     # Name of the folder with object models.
     models_folder_name = "models"
-    if dataset_name == 'hot3d':
-        models_folder_name = "object_models"
     if model_type is not None:
         models_folder_name += "_" + model_type
 
@@ -175,7 +173,11 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         depth_ext = ".tif"
 
     p["im_modalities"] = ["rgb", "depth"]
-    modalities_are_separate_streams = False 
+    # for Classic datasets, test modality is implicit... 
+    p["eval_modality"] = None
+    # ...and only one set of annotation is present in the dataset 
+    # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
+    modalities_have_separate_annotations = False 
 
     # Linemod (LM).
     if dataset_name == "lm":
@@ -381,11 +383,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     # HOT3D.
     elif dataset_name == "hot3d":
-        modalities_are_separate_streams = True 
+        modalities_have_separate_annotations = True 
         p["im_modalities"] = ["rgb","gray1","gray2"]
+        p["eval_modality"] = "rgb"
         p["scene_ids"] = {
-            # "trainariasubsample": [1849, 2102],
-            "trainariasubsample": [1849],
+            "trainariasubsample": [1849, 2102],
+            # "trainariasubsample": [1849],
         }[split]
         # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
 
@@ -406,7 +409,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     # Path to the split directory.
     p["split_path"] = split_path
-    if not modalities_are_separate_streams:
+    if not modalities_have_separate_annotations:
         p.update(
             {
                 # Path template to a gray image.

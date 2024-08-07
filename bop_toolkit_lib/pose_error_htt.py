@@ -13,7 +13,7 @@ def mspd(R_est, t_est, R_gt, t_gt, cam: CameraModel, pts, syms):
     :param t_est: 3x1 ndarray with the estimated translation vector.
     :param R_gt: 3x3 ndarray with the ground-truth rotation matrix.
     :param t_gt: 3x1 ndarray with the ground-truth translation vector.
-    :param cam: TODO.
+    :param cam: Hand Tracking Toolkit CameraModel object.
     :param pts: nx3 ndarray with 3D model points.
     :param syms: Set of symmetry transformations, each given by a dictionary with:
       - 'R': 3x3 ndarray with the rotation matrix.

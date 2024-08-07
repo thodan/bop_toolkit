@@ -129,20 +129,21 @@ def project_pts_htt(pts, cam: CameraModel, R, t):
     return pts_im 
 
 
-def create_camera_model(image_camera: dict):
+def create_camera_model(camera: dict):
+    """Create a Hand Tracking Toolkit Camera model from a scene camera.
+    
+
     """
-    TODO
-    """
-    if "cam_K" in image_camera:        
-        K = image_camera["cam_K"]            
+    if "cam_K" in camera:        
+        K = camera["cam_K"]            
         fx, fy = K[0,0], K[1,1]
         cx, cy = K[0,2], K[1,2]
         width, height = 1,1  # does not matter
         model = "PinholePlane"
         coeffs = ()
     
-    elif "cam_model" in image_camera:
-        calib = image_camera["cam_model"]
+    elif "cam_model" in camera:
+        calib = camera["cam_model"]
         width = calib["image_width"]
         height = calib["image_height"]
         model = calib["projection_model_type"]

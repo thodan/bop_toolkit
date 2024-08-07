@@ -77,7 +77,7 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
-    "modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
+    "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
 }
 ################################################################################
 
@@ -108,7 +108,7 @@ parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
-parser.add_argument("--modality", default=p["modality"])
+parser.add_argument("--eval_modality", default=p["eval_modality"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -128,21 +128,13 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
-p["modality"] = str(args.modality) if args.modality is not None else None
+p["eval_modality"] = str(args.eval_modality) if args.eval_modality is not None else None
 
 logger.info("-----------")
 logger.info("Parameters:")
 for k, v in p.items():
     logger.info("- {}: {}".format(k, v))
 logger.info("-----------")
-
-if p["modality"] is None:
-    scene_gt_tpath = "scene_gt_tpath"
-    scene_camera_tpath = "scene_camera_tpath"
-else:
-    scene_gt_tpath = "scene_gt_{}_tpath".format(p["modality"])
-    scene_camera_tpath = "scene_camera_{}_tpath".format(p["modality"])
-
 
 # Error calculation.
 # ------------------------------------------------------------------------------
@@ -166,6 +158,19 @@ for result_filename in p["result_filenames"]:
     dp_split = dataset_params.get_split_params(
         p["datasets_path"], dataset, split, split_type
     )
+
+    if p["eval_modality"] is None:
+        p["eval_modality"] = dp_split["eval_modality"]
+
+    if p["eval_modality"] is None:
+        scene_gt_tpath = "scene_gt_tpath"
+        scene_gt_info_tpath = "scene_gt_info_tpath"
+        scene_camera_tpath = "scene_camera_tpath"
+    else:
+        scene_gt_tpath = "scene_gt_{}_tpath".format(p["eval_modality"])
+        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(p["eval_modality"])
+        scene_camera_tpath = "scene_camera_{}_tpath".format(p["eval_modality"])
+
 
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
@@ -220,8 +225,10 @@ for result_filename in p["result_filenames"]:
     targets = inout.load_json(
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
-    if True:
-        targets = inout.targets_24to19(targets, dp_split, scene_gt_tpath)
+
+    # convert 24 targets to 19 targets 
+    if "obj_id" not in targets[0]:
+        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath])
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
@@ -252,17 +259,19 @@ for result_filename in p["result_filenames"]:
         scene_gt = inout.load_scene_gt(
             dp_split[scene_gt_tpath].format(scene_id=scene_id)
         )
+        ############
+        # TODO: REMOVE when scene gt obj_id problem solved 
+        for i, im_gt in scene_gt.items():
+            for gt in im_gt:
+                gt["obj_id"] = int(gt["obj_id"])
+        ############
         scene_gt_info = inout.load_scene_gt(
-            dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
+            dp_split[scene_gt_info_tpath].format(scene_id=scene_id)
         )
         # collect all the images and their targets
         im_meta_datas = []
         
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
-            # if im_targets is None:
-            #     # BOP24 detection: Get target object ids from ground truth 
-            #     # TODO: check if not possible to skip invisible objects here
-            #     im_targets = {int(obj["obj_id"]): None for obj in scene_gt[im_id]}
             im_meta_data = [im_ind, (im_id, im_targets)]
             im_meta_datas.append(im_meta_data)
 
@@ -285,11 +294,10 @@ for result_filename in p["result_filenames"]:
                 )
 
             # Retrieve camera model.
-            if p["error_type"] == "mspd":
+            if p["error_type"] in ["mspd"]:
                 cam = misc.create_camera_model(scene_camera[im_id])
-            # TODO
-            # else:
-            #     K = scene_camera[im_id]["cam_K"]
+            elif p["error_type"] in ['vsd','cus','proj']:
+                cam = scene_camera[im_id]["cam_K"]
 
             # Load the depth image if VSD is selected as the pose error function.
             depth_im = None
@@ -345,8 +353,7 @@ for result_filename in p["result_filenames"]:
 
                     errs = {}  # Errors w.r.t. GT poses of the same object class.
                     for gt_id, gt in enumerate(scene_gt[im_id]):
-                        # if gt["obj_id"] != obj_id:  # TODO: why?
-                        if int(gt["obj_id"]) != obj_id:
+                        if gt["obj_id"] != obj_id:
                             continue
 
                         # Ground-truth pose.
@@ -385,7 +392,7 @@ for result_filename in p["result_filenames"]:
                                         R_g,
                                         t_g,
                                         depth_im,
-                                        K,
+                                        cam,
                                         p["vsd_deltas"][dataset],
                                         p["vsd_taus"],
                                         p["vsd_normalized_by_diameter"],
@@ -401,7 +408,7 @@ for result_filename in p["result_filenames"]:
                                         R_g=R_g,
                                         t_g=t_g,
                                         depth_im=depth_im,
-                                        K=K,
+                                        K=cam,
                                         vsd_deltas=p["vsd_deltas"][dataset],
                                         vsd_taus=p["vsd_taus"],
                                         vsd_normalized_by_diameter=p[
@@ -486,14 +493,14 @@ for result_filename in p["result_filenames"]:
 
                         elif p["error_type"] == "cus":
                             if sphere_projections_overlap:
-                                e = [pose_error.cus(R_e, t_e, R_g, t_g, K, ren, obj_id)]
+                                e = [pose_error.cus(R_e, t_e, R_g, t_g, cam, ren, obj_id)]
                             else:
                                 e = [1.0]
 
                         elif p["error_type"] == "proj":
                             e = [
                                 pose_error.proj(
-                                    R_e, t_e, R_g, t_g, K, models[obj_id]["pts"]
+                                    R_e, t_e, R_g, t_g, cam, models[obj_id]["pts"]
                                 )
                             ]
 

@@ -139,8 +139,17 @@ def load_cam_params(path):
 
 
 def _camera_as_numpy(camera):
-    """
-    TODO: document cam_K vs cam_model
+    """Convert fields from scene camera from native python to numpy.
+
+    See docs/bop_datasets_format.md for details.
+    Note: "cam_K" and "cam_model" are mutually exclusive and raise a ValueError.
+
+    :param camera: Dictionnary containing
+    - 'cam_R_w2c': orientation of world frame in camera frame
+    - 'cam_t_w2c': position of world frame in camera frame
+    - 'cam_K': IF BOP19 format, camera pinhole intrinsics parameters
+    - 'cam_model': IF BOP24 format
+    :return: Dictionnary with same keys and flat lists field as numpy arrays 
     """
     if "cam_K" in camera and "cam_model" in camera:
         raise ValueError("Only one of 'cam_K', 'cam_model' field should be present in a scene camera configuration")
@@ -152,12 +161,22 @@ def _camera_as_numpy(camera):
         camera["cam_t_w2c"] = np.array(camera["cam_t_w2c"], np.float64).reshape((3, 1))
     if "cam_model" in camera:
         camera["cam_model"]["projection_params"] = np.array(camera["cam_model"]["projection_params"], np.float64)
+        # TODO: convert extrinsics too
     return camera
 
 
 def _camera_as_json(camera):
-    """
-    TODO: document cam_K vs cam_model
+    """Convert fields from scene camera from numpy to native python.
+
+    See docs/bop_datasets_format.md for details.
+    Note: "cam_K" and "cam_model" are mutually exclusive and raise a ValueError.
+
+    :param camera: Dictionnary containing
+    - 'cam_R_w2c': orientation of world frame in camera frame
+    - 'cam_t_w2c': position of world frame in camera frame
+    - 'cam_K': IF BOP19 format, camera pinhole intrinsics parameters
+    - 'cam_model': IF BOP24 format
+    :return: Dictionnary with same keys and numpy arrays field as flat lists 
     """
     if "cam_K" in camera and "cam_model" in camera:
         raise ValueError("Only one of 'cam_K', 'cam_model' field should be present in a scene camera configuration")
@@ -167,9 +186,9 @@ def _camera_as_json(camera):
         camera["cam_R_w2c"] = camera["cam_R_w2c"].flatten().tolist()
     if "cam_t_w2c" in camera.keys():
         camera["cam_t_w2c"] = camera["cam_t_w2c"].flatten().tolist()
-    # cam_model field introduced for hot3d dataset to deal with projection models other than pinhole camera
     if "cam_model" in camera:
         camera["cam_model"]["projection_params"] = camera["cam_model"]["projection_params"].flatten().tolist() 
+        # TODO: convert extrinsics too
     return camera
 
 
@@ -343,16 +362,17 @@ def save_bop_results(path, results, version="bop19"):
 
 def scene_targets_24to19(scene_targets_24, scene_gt):
     """
+    Convert from BOP24 and to BOP19 target for targets of one scene.
+    
     :param scene_targets_24: list of scene targets of bop24 format for one scene
-    :param scene_targets_24: scene ground truth data, obtained with inout.load_scene_gt
+    :param scene_gt: scene ground truth data, obtained with inout.load_scene_gt
     :return scene_targets_19: list of scene targets in bop19 format for one scene
 
-    Target have slightly different meanings for BOP19 localization and BOP24 detection tasks.
-    -BOP19 target: number of instances of a particular object in a target image. 
-    Ex: {"im_id": 1, "inst_count": 1, "obj_id": 1, "scene_id": 48} 
-    - BOP24 target: a target image
+    Targets have slightly different meanings for BOP19 localization and BOP24 detection tasks:
+    - BOP19 target: number of instances of a particular object in a target image. 
+    Ex: {"im_id": 3, "inst_count": 1, "obj_id": 5, "scene_id": 48} 
+    - BOP24 target: a target sceme/image
     Ex: {"im_id": 1, "scene_id": 48} 
-    
     """
     scene_targets_19 = []
     for target24 in scene_targets_24:
@@ -373,17 +393,18 @@ def scene_targets_24to19(scene_targets_24, scene_gt):
             })
     return scene_targets_19
 
-def targets_24to19(targets24, dp_split, scene_gt_tpath):
+def targets_24to19(targets24, scene_gt_tpath):
     """
-    Target have slightly different meanings for BOP19 localization and BOP24 detection tasks.
+    Convert from BOP24 and to BOP19 target for all targets.
 
-    BOP19 target: number of instances of a particular object in a target image. 
+    :param targets24: list of targets of bop24 format for all scenes
+    :param scene_gt_tpath: scene ground truth json path template
+    :return scene_targets_19: list of scene targets in bop19 format for one scene
+
+    Targets have slightly different meanings for BOP19 localization and BOP24 detection tasks:
+    - BOP19 target: number of instances of a particular object in a target image. 
     Ex: {"im_id": 3, "inst_count": 1, "obj_id": 5, "scene_id": 48} 
-
-    Turn into targets_org =
-    {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
-
-    BOP24 target: a target image
+    - BOP24 target: a target sceme/image
     Ex: {"im_id": 1, "scene_id": 48} 
     """
     targets19 = []
@@ -391,9 +412,7 @@ def targets_24to19(targets24, dp_split, scene_gt_tpath):
     for target24 in targets24:
         scene_id, im_id = target24["scene_id"], target24["im_id"]
         if scene_id not in scene_gts:
-            scene_gts[scene_id] = load_scene_gt(
-            dp_split[scene_gt_tpath].format(scene_id=scene_id)
-        )
+            scene_gts[scene_id] = load_scene_gt(scene_gt_tpath.format(scene_id=scene_id))
         im_gt = scene_gts[scene_id][im_id]
         inst_counts = {}
         for gt in im_gt:

@@ -85,7 +85,7 @@ p = {
         "{eval_path}", "{error_dir_path}", "scores_{score_sign}.json"
     ),
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
-    "modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
+    "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
 }
 ################################################################################
 
@@ -120,7 +120,7 @@ parser.add_argument("--error_tpath", default=p["error_tpath"])
 parser.add_argument("--out_matches_tpath", default=p["out_matches_tpath"])
 parser.add_argument("--out_scores_tpath", default=p["out_scores_tpath"])
 parser.add_argument("--eval_mode", default=p["eval_mode"])
-parser.add_argument("--modality", default=p["modality"])
+parser.add_argument("--eval_modality", default=p["eval_modality"])
 # Process the command line arguments.
 args = parser.parse_args()
 
@@ -140,22 +140,13 @@ p["error_tpath"] = str(args.error_tpath)
 p["out_matches_tpath"] = str(args.out_matches_tpath)
 p["out_scores_tpath"] = str(args.out_scores_tpath)
 p["eval_mode"] = str(args.eval_mode)
-p["modality"] = str(args.modality) if args.modality is not None else None
+p["eval_modality"] = str(args.eval_modality) if args.eval_modality is not None else None
 
 logger.info("-----------")
 logger.info("Parameters:")
 for k, v in p.items():
     logger.info("- {}: {}".format(k, v))
 logger.info("-----------")
-
-if p["modality"] is None:
-    scene_gt_tpath = "scene_gt_tpath"
-    scene_camera_tpath = "scene_camera_tpath"
-    scene_gt_info_tpath = "scene_gt_info_tpath"
-else:
-    scene_gt_tpath = "scene_gt_{}_tpath".format(p["modality"])
-    scene_camera_tpath = "scene_camera_{}_tpath".format(p["modality"])
-    scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(p["modality"])
 
 
 # Calculation of the performance scores.
@@ -200,8 +191,22 @@ for error_dir_path in p["error_dir_paths"]:
     targets = inout.load_json(
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
-    if True:
-        targets = inout.targets_24to19(targets, dp_split, scene_gt_tpath)
+
+    if p["eval_modality"] is None:
+        p["eval_modality"] = dp_split["eval_modality"]
+
+    if p["eval_modality"] is None:
+        scene_gt_tpath = "scene_gt_tpath"
+        scene_gt_info_tpath = "scene_gt_info_tpath"
+        scene_camera_tpath = "scene_camera_tpath"
+    else:
+        scene_gt_tpath = "scene_gt_{}_tpath".format(p["eval_modality"])
+        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(p["eval_modality"])
+        scene_camera_tpath = "scene_camera_{}_tpath".format(p["eval_modality"])
+
+    # convert 24 targets to 19 targets 
+    if "obj_id" not in targets[0]:
+        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath])
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")

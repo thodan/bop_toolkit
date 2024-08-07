@@ -102,6 +102,5 @@ class TestPoseErrors(unittest.TestCase):
         self.assertTrue(np.allclose(err_htt, err_np, atol=1e-4))
         
 
-
 if __name__ == "__main__":
     unittest.main()
