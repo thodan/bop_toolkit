@@ -252,7 +252,9 @@ for result_filename in p["result_filenames"]:
         scene_gt = inout.load_scene_gt(
             dp_split[scene_gt_tpath].format(scene_id=scene_id)
         )
-
+        scene_gt_info = inout.load_scene_gt(
+            dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
+        )
         # collect all the images and their targets
         im_meta_datas = []
         
@@ -350,6 +352,7 @@ for result_filename in p["result_filenames"]:
                         # Ground-truth pose.
                         R_g = gt["cam_R_m2c"]
                         t_g = gt["cam_t_m2c"]
+                        gt_visib_fract = scene_gt_info[im_id][gt_id]["visib_fract"]
 
                         # Check if the projections of the bounding spheres of the object in
                         # the two poses overlap (to speed up calculation of some errors).
@@ -517,6 +520,7 @@ for result_filename in p["result_filenames"]:
                             "score": est["score"],
                             "errors": errs,
                             "scene_id": scene_id,
+                            "gt_visib_fract": gt_visib_fract,
                         }
                     )
                 assert (

@@ -13,7 +13,6 @@ import numpy as np
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import score
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -130,6 +129,9 @@ for result_filename in p["result_filenames"]:
     else:
         average_time_per_image = -1.0
 
+    # Loop 1: Over the error types (mssd, mspd)
+    mAP_per_error_type = {}
+
     # Evaluate the pose estimates.
     for error in p["errors"]:
         # Calculate error of the pose estimates.
@@ -205,8 +207,17 @@ for result_filename in p["result_filenames"]:
                 pool.close()
                 pool.join()
 
-        obj_precisions, obj_recalls = [], []
+        # After calculating the scores, load them and calculate the average precision and recall.
+        # There are three loops to calculate mAP of 6D detection:
+        # Loop 1: Iterate over the error types (mssd, mspd)
+        # Loop 2: Iterate over the object IDs  (~ averaging over classes in COCO)
+        # Loop 3: Iterate over the each threshold of correctness (~ IoU in COCO)
+        # For a given (error type, object ID, threshold of correctness), compute mAP with recall range (0, 1, 0.01)
+        # COCO reference for loop 4: https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py#L507
+
         for error_sign, error_dir_path in error_dir_paths.items():
+            mAP_scores_per_object = {}
+            # Loop 3: Over the each threshold of correctness
             for correct_th in error["correct_th"]:
                 # Path to file with calculated scores.
                 score_sign = misc.get_score_signature(correct_th, p["visib_gt_min"])
@@ -218,22 +229,26 @@ for result_filename in p["result_filenames"]:
 
                 # Load the scores.
                 logger.info("Loading calculated scores from: {}".format(scores_path))
-                scores = inout.load_json(scores_path)
-                obj_precisions.append(scores["obj_precisions"])
-                obj_recalls.append(scores["obj_recalls"])
+                scores = inout.load_json(scores_path)["scores"]
 
-        # similar to 2D object detection, 6D object detection also uses the average precision and recall across all objects
-        obj_ids = list(obj_precisions[0].keys())
-        aps = []
-        for obj_id in obj_ids:
-            obj_precisions_all_th = [prec[obj_id] for prec in obj_precisions]
-            obj_recalls_all_th = [rec[obj_id] for rec in obj_recalls]
-            ap = score.calc_ap(rec=obj_recalls_all_th, pre=obj_precisions_all_th)
-            aps.append(ap)
-            logger.info("Object {}:, AP={}".format(obj_id, ap))
+                for obj_id in scores:
+                    if obj_id not in mAP_scores_per_object:
+                        mAP_scores_per_object[obj_id] = [scores[obj_id]]
+                    else:
+                        mAP_scores_per_object[obj_id].append(scores[obj_id])
 
-        mAP[error["type"]] = np.mean(aps)
-        logger.info("mAP: {}".format(mAP[error["type"]]))
+            # Loop 2: Over the object IDs
+            mAP_over_correct_ths = []
+            for obj_id in mAP_scores_per_object:
+                mAP_over_correct_th = np.mean(mAP_scores_per_object[obj_id])
+                logger.info(
+                    f"mAP, {error['type']}, {obj_id}: {mAP_over_correct_th:.3f}"
+                )
+                mAP_over_correct_ths.append(mAP_over_correct_th)
+            mAP_per_error_type[error["type"]] = np.mean(mAP_over_correct_ths)
+            logger.info(
+                f"{error['type']}, mAP: {mAP_per_error_type[error['type']]:.3f}"
+            )
 
     time_total = time.time() - time_start
     logger.info("Evaluation of {} took {}s.".format(result_filename, time_total))
@@ -241,10 +256,14 @@ for result_filename in p["result_filenames"]:
     # Calculate the final scores.
     final_scores = {}
     for error in p["errors"]:
-        final_scores["bop24_mAP_{}".format(error["type"])] = mAP[error["type"]]
+        final_scores["bop24_mAP_{}".format(error["type"])] = mAP_per_error_type[
+            error["type"]
+        ]
 
     # Final score for the given dataset.
-    final_scores["bop24_mAP"] = np.mean([mAP["mssd"], mAP["mspd"]])
+    final_scores["bop24_mAP"] = np.mean(
+        [mAP_per_error_type["mssd"], mAP_per_error_type["mspd"]]
+    )
 
     # Average estimation time per image.
     final_scores["bop24_average_time_per_image"] = average_time_per_image
