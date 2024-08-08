@@ -387,8 +387,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = ["rgb","gray1","gray2"]
         p["eval_modality"] = "rgb"
         p["scene_ids"] = {
-            "trainariasubsample": [1849, 2102],
-            # "trainariasubsample": [1849],
+            # "trainariasubsample": [1849, 2102],
+            "trainariasubsample": [1901, 2503],  # TODO: replace with actual test split scenes
         }[split]
         # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
 

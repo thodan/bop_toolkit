@@ -252,22 +252,17 @@ for result_filename in p["result_filenames"]:
         ).setdefault(est["obj_id"], []).append(est)
 
     for scene_id, scene_targets in targets_org.items():
-        # Load camera and GT poses for the current scene.
-        scene_camera = inout.load_scene_camera(
-            dp_split[scene_camera_tpath].format(scene_id=scene_id)
-        )
+        # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
             dp_split[scene_gt_tpath].format(scene_id=scene_id)
         )
-        ############
-        # TODO: REMOVE when scene gt obj_id problem solved 
-        for i, im_gt in scene_gt.items():
-            for gt in im_gt:
-                gt["obj_id"] = int(gt["obj_id"])
-        ############
-        scene_gt_info = inout.load_scene_gt(
-            dp_split[scene_gt_info_tpath].format(scene_id=scene_id)
+        # Load info about the GT poses (e.g. visibility) for the current scene.
+        scene_gt_info = inout.load_json(
+            dp_split[scene_gt_info_tpath].format(scene_id=scene_id), keys_to_int=True
         )
+        # Load ground truth camera 
+        scene_camera = inout.load_scene_camera(dp_split[scene_camera_tpath].format(scene_id=scene_id))
+
         # collect all the images and their targets
         im_meta_datas = []
         

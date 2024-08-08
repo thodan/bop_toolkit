@@ -383,7 +383,6 @@ def scene_targets_24to19(scene_targets_24, scene_gt, scene_gt_info, visib_gt_min
         assert len(im_gt) == len(im_gt_info)
         inst_counts = defaultdict(lambda: 0)
         for gt, gt_info in zip(im_gt, im_gt_info):
-            gt["obj_id"] = int(gt["obj_id"])  # TODO: remove when fixed in json
             if gt_info["visib_fract"] > visib_gt_min:
                 inst_counts[gt["obj_id"]] += 1
 
@@ -424,7 +423,6 @@ def targets_24to19(targets24, scene_gt_tpath, scene_gt_info_tpath, visib_gt_min=
         assert len(im_gt) == len(im_gt_info)
         inst_counts = defaultdict(lambda: 0)
         for gt, gt_info in zip(im_gt, im_gt_info):
-            gt["obj_id"] = int(gt["obj_id"])  # TODO: remove when fixed in json
             if gt_info["visib_fract"] > visib_gt_min:
                 inst_counts[gt["obj_id"]] += 1
 
