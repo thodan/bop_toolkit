@@ -108,6 +108,10 @@ def create_renderer(
         from . import renderer_cpp
 
         return renderer_cpp.RendererCpp(width, height)
+    elif renderer_type == "htt":
+        from . import renderer_htt
+
+        return renderer_htt.RendererHtt(width, height)
 
     else:
         raise ValueError("Unknown renderer type.")

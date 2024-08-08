@@ -19,6 +19,7 @@ from bop_toolkit_lib import visualization
 p = {
     # See dataset_params.py for options.
     "dataset": "lm",
+    "dataset": "ycbv",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -30,9 +31,12 @@ p = {
     "targets_filename": None,
     # Select ID's of scenes, images and GT poses to be processed.
     # Empty list [] means that all ID's will be used.
-    "scene_ids": [],
-    "im_ids": [],
-    "gt_ids": [],
+    # "scene_ids": [],  # TODO: reset
+    # "im_ids": [],  # TODO: reset
+    # "gt_ids": [],  # TODO: reset
+    "scene_ids": [48],
+    "im_ids": [1],
+    "gt_ids": [1],
     # Indicates whether to render RGB images.
     "vis_rgb": True,
     # Indicates whether to resolve visibility in the rendered RGB images (using
@@ -45,11 +49,12 @@ p = {
     # Whether to use the original model color.
     "vis_orig_color": False,
     # Type of the renderer (used for the VSD pose error function).
-    "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
+    "renderer_type": "htt",  # Options: 'vispy', 'cpp', 'python', 'htt'.
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
     # Folder for output visualisations.
-    "vis_path": os.path.join(config.output_path, "vis_gt_poses"),
+    # "vis_path": os.path.join(config.output_path, "vis_gt_poses"),
+    "vis_path": "data/vis/",
     # Path templates for output images.
     "vis_rgb_tpath": os.path.join(
         "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}.jpg"
@@ -142,7 +147,10 @@ for scene_id in scene_ids:
                 )
             )
 
-        K = scene_camera[im_id]["cam_K"]
+        if p["renderer_type"] == 'htt':
+            cam = misc.create_camera_model(scene_camera[im_id])
+        else:
+            K = scene_camera[im_id]["cam_K"]
 
         # List of considered ground-truth poses.
         gt_ids_curr = range(len(scene_gt[im_id]))
@@ -213,15 +221,28 @@ for scene_id in scene_ids:
             )
 
         # Visualization.
-        visualization.vis_object_poses(
-            poses=gt_poses,
-            K=K,
-            renderer=ren,
-            rgb=rgb,
-            depth=depth,
-            vis_rgb_path=vis_rgb_path,
-            vis_depth_diff_path=vis_depth_diff_path,
-            vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
-        )
+        if p["renderer_type"] == 'htt':
+            visualization.vis_object_poses(
+                poses=gt_poses,
+                K=cam,
+                renderer=ren,
+                rgb=rgb,
+                depth=depth,
+                vis_rgb_path=vis_rgb_path,
+                vis_depth_diff_path=vis_depth_diff_path,
+                vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
+            )
+        else:
+            visualization.vis_object_poses(
+                poses=gt_poses,
+                K=cam,
+                renderer=ren,
+                rgb=rgb,
+                depth=depth,
+                vis_rgb_path=vis_rgb_path,
+                vis_depth_diff_path=vis_depth_diff_path,
+                vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
+            )
+
 
 misc.log("Done.")
