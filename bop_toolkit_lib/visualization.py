@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
+from hand_tracking_toolkit.camera import CameraModel
+
 
 def draw_rect(im, rect, color=(1.0, 1.0, 1.0)):
     """Draws a rectangle on an image.
@@ -120,8 +122,6 @@ def vis_object_poses(
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
-    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-
     # Indicators of visualization types.
     vis_rgb = vis_rgb_path is not None
     vis_depth_diff = vis_depth_diff_path is not None
@@ -155,9 +155,15 @@ def vis_object_poses(
     # Render the pose estimates one by one.
     for pose in poses:
         # Rendering.
-        ren_out = renderer.render_object(
-            pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
-        )
+        if isinstance(K, CameraModel):
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], K
+            )
+        else:
+            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
+            )
 
         m_rgb = None
         if vis_rgb:
@@ -199,13 +205,13 @@ def vis_object_poses(
 
                 if "text_info" in pose:
                     text_loc = (bbox[0] + 2, bbox[1])
-                    ren_rgb_info = write_text_on_image(
-                        ren_rgb_info,
-                        pose["text_info"],
-                        text_loc,
-                        color=text_color,
-                        size=text_size,
-                    )
+                    # ren_rgb_info = write_text_on_image(
+                    #     ren_rgb_info,
+                    #     pose["text_info"],
+                    #     text_loc,
+                    #     color=text_color,
+                    #     size=text_size,
+                    # )
 
     # Blend and save the RGB visualization.
     if vis_rgb:
@@ -248,5 +254,5 @@ def vis_object_poses(
             {"name": "max diff", "fmt": ":.3f", "val": np.max(depth_diff_valid)},
             {"name": "mean diff", "fmt": ":.3f", "val": np.mean(depth_diff_valid)},
         ]
-        depth_diff_vis = write_text_on_image(depth_diff_vis, depth_info)
+        # depth_diff_vis = write_text_on_image(depth_diff_vis, depth_info)
         inout.save_im(vis_depth_diff_path, depth_diff_vis)

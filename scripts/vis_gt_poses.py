@@ -18,9 +18,11 @@ from bop_toolkit_lib import visualization
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    # "dataset": "lm",
+    "dataset": "hot3d",
     # Dataset split. Options: 'train', 'val', 'test'.
-    "dataset_split": "test",
+    # "dataset_split": "test",
+    "dataset_split": "trainariasubsample",
     # Dataset split type. None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # File with a list of estimation targets used to determine the set of images
@@ -30,8 +32,11 @@ p = {
     "targets_filename": None,
     # Select ID's of scenes, images and GT poses to be processed.
     # Empty list [] means that all ID's will be used.
+    # "scene_ids": [],  # TODO: reset
+    # "im_ids": [],  # TODO: reset
+    # "gt_ids": [],  # TODO: reset
     "scene_ids": [],
-    "im_ids": [],
+    "im_ids": [1],
     "gt_ids": [],
     # Indicates whether to render RGB images.
     "vis_rgb": True,
@@ -39,17 +44,18 @@ p = {
     # depth renderings). If True, only the part of object surface, which is not
     # occluded by any other modeled object, is visible. If False, RGB renderings
     # of individual objects are blended together.
-    "vis_rgb_resolve_visib": True,
+    "vis_rgb_resolve_visib": False,
     # Indicates whether to save images of depth differences.
-    "vis_depth_diff": True,
+    "vis_depth_diff": False,
     # Whether to use the original model color.
     "vis_orig_color": False,
     # Type of the renderer (used for the VSD pose error function).
-    "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
+    "renderer_type": "htt",  # Options: 'vispy', 'cpp', 'python', 'htt'.
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
     # Folder for output visualisations.
-    "vis_path": os.path.join(config.output_path, "vis_gt_poses"),
+    # "vis_path": os.path.join(config.output_path, "vis_gt_poses"),
+    "vis_path": "data/vis/",
     # Path templates for output images.
     "vis_rgb_tpath": os.path.join(
         "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}.jpg"
@@ -102,7 +108,10 @@ if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
 renderer_mode = "+".join(renderer_modalities)
 
 # Create a renderer.
-width, height = dp_split["im_size"]
+if "im_size" in dp_split:
+    width, height = dp_split["im_size"]
+else:
+    width, height = None, None
 ren = renderer.create_renderer(
     width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
 )
@@ -119,11 +128,13 @@ for obj_id in dp_model["obj_ids"]:
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
+    scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
     # Load scene info and ground-truth poses.
     scene_camera = inout.load_scene_camera(
-        dp_split["scene_camera_tpath"].format(scene_id=scene_id)
+        dp_split[scene_camera_tpath].format(scene_id=scene_id)
     )
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
+    scene_gt = inout.load_scene_gt(dp_split[scene_gt_tpath].format(scene_id=scene_id))
 
     # List of considered images.
     if scene_im_ids is not None:
@@ -142,7 +153,12 @@ for scene_id in scene_ids:
                 )
             )
 
-        K = scene_camera[im_id]["cam_K"]
+        if p["renderer_type"] == 'htt':
+            cam = misc.create_camera_model(scene_camera[im_id])
+            if cam.height == cam.width == 1:
+                cam.width, cam.height = width, height
+        else:
+            K = scene_camera[im_id]["cam_K"]
 
         # List of considered ground-truth poses.
         gt_ids_curr = range(len(scene_gt[im_id]))
@@ -184,7 +200,8 @@ for scene_id in scene_ids:
                 raise ValueError("RGB nor gray images are available.")
 
         depth = None
-        if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+        if ("depth_tpath" in dp_split
+            and (p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]))) :
             depth = inout.load_depth(
                 dp_split["depth_tpath"].format(scene_id=scene_id, im_id=im_id)
             )
@@ -213,15 +230,28 @@ for scene_id in scene_ids:
             )
 
         # Visualization.
-        visualization.vis_object_poses(
-            poses=gt_poses,
-            K=K,
-            renderer=ren,
-            rgb=rgb,
-            depth=depth,
-            vis_rgb_path=vis_rgb_path,
-            vis_depth_diff_path=vis_depth_diff_path,
-            vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
-        )
+        if p["renderer_type"] == 'htt':
+            visualization.vis_object_poses(
+                poses=gt_poses,
+                K=cam,
+                renderer=ren,
+                rgb=rgb,
+                depth=depth,
+                vis_rgb_path=vis_rgb_path,
+                vis_depth_diff_path=vis_depth_diff_path,
+                vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
+            )
+        else:
+            visualization.vis_object_poses(
+                poses=gt_poses,
+                K=cam,
+                renderer=ren,
+                rgb=rgb,
+                depth=depth,
+                vis_rgb_path=vis_rgb_path,
+                vis_depth_diff_path=vis_depth_diff_path,
+                vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
+            )
+
 
 misc.log("Done.")

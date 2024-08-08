@@ -55,7 +55,7 @@ p = {
     "eval_path": config.eval_path,
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
-    "targets_filename": "test_targets_bop19.json",  # TODO: change to "test_targets_bop24.json"
+    "targets_filename": "test_targets_bop24.json",
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
 }
@@ -143,6 +143,7 @@ for result_filename in p["result_filenames"]:
                     "eval_calc_errors_gpu.py"
                     if p["use_gpu"] and error["type"] in ["mssd", "mspd"]
                     else "eval_calc_errors.py"
+                    # else "eval_calc_errors_backup.py"
                 ),
             ),
             "--n_top={}".format(error["n_top"]),
