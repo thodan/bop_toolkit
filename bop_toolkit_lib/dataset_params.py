@@ -394,6 +394,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         }[split]
         # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
 
+        exts = {
+            "rgb": ".jpg",
+            "gray1": ".png",
+            "gray2": ".png",
+        }
+
         if split == "test":
             p["depth_range"] = None  # Not calculated yet.
             p["azimuth_range"] = None  # Not calculated yet.
@@ -462,7 +468,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 {
                     # Path template to modality image.
                     "{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", moda, "{im_id:06d}" + rgb_ext
+                        split_path, "{scene_id:06d}", moda, "{im_id:06d}" + exts[moda]
                     ),
                     # Path template to a file with per-image camera parameters.
                     "scene_camera_{}_tpath".format(moda): join(

@@ -138,7 +138,7 @@ def create_camera_model(camera: dict):
         K = camera["cam_K"]            
         fx, fy = K[0,0], K[1,1]
         cx, cy = K[0,2], K[1,2]
-        width, height = 1,1  # does not matter
+        width, height = 1,1
         model = "PinholePlane"
         coeffs = ()
     
