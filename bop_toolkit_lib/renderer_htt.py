@@ -65,10 +65,15 @@ class RendererHtt(renderer.Renderer):
     def render_object(self, obj_id, R, t, camera: CameraModel):
         """See base class."""
 
-        # transform points to camera frame
-        pts_c = misc.transform_pts_Rt(self.models[obj_id]["pts"], R, t)
+        # transform points to camera frame...
+        pts = misc.transform_pts_Rt(self.models[obj_id]["pts"], R, t)
 
-        self.rgb, self.mask, self.depth = rasterize_mesh(pts_c, self.models[obj_id]["faces"], camera)
+        # ... or change the camera location
+        # pts = self.models[obj_id]["pts"]
+        # camera.T_world_from_eye[:3,:3] = R
+        # camera.T_world_from_eye[:3,3] = t.flatten()
+
+        self.rgb, self.mask, self.depth = rasterize_mesh(pts, self.models[obj_id]["faces"], camera)
 
         if self.mode == "rgb":
             return {"rgb": self.rgb}
