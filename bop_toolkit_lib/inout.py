@@ -395,7 +395,7 @@ def scene_targets_24to19(scene_targets_24, scene_gt, scene_gt_info, visib_gt_min
             })
     return scene_targets_19
 
-def targets_24to19(targets24, scene_gt_tpath, scene_gt_info_tpath, visib_gt_min=0.1):
+def targets_24to19(targets24, dp_split, eval_modality, visib_gt_min=0.1):
     """
     Convert from BOP24 and to BOP19 target for all targets.
 
@@ -410,14 +410,17 @@ def targets_24to19(targets24, scene_gt_tpath, scene_gt_info_tpath, visib_gt_min=
     - BOP24 target: a target sceme/image
     Ex: {"im_id": 1, "scene_id": 48} 
     """
+    from bop_toolkit_lib import dataset_params
+
     targets19 = []
     scene_gts = {}
     scene_gts_info = {}
     for target24 in targets24:
         scene_id, im_id = target24["scene_id"], target24["im_id"]
         if scene_id not in scene_gts:
-            scene_gts[scene_id] = load_scene_gt(scene_gt_tpath.format(scene_id=scene_id))
-            scene_gts_info[scene_id] = load_scene_gt(scene_gt_info_tpath.format(scene_id=scene_id))
+            scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(eval_modality, scene_id)
+            scene_gts[scene_id] = load_scene_gt(dp_split[scene_gt_tpath].format(scene_id=scene_id))
+            scene_gts_info[scene_id] = load_scene_gt(dp_split[scene_gt_info_tpath].format(scene_id=scene_id))
         im_gt = scene_gts[scene_id][im_id]
         im_gt_info = scene_gts_info[scene_id][im_id]
         assert len(im_gt) == len(im_gt_info)

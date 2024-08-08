@@ -385,10 +385,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     elif dataset_name == "hot3d":
         modalities_have_separate_annotations = True 
         p["im_modalities"] = ["rgb","gray1","gray2"]
-        p["eval_modality"] = "rgb"
+        # scene_id < 1849 -> Aria, scene_id >= 1849 -> Quest3 
+        p["eval_modality"] = lambda scene_id: "rgb" if scene_id >= 1849 else "gray1"
         p["scene_ids"] = {
             # "trainariasubsample": [1849, 2102],
             "trainariasubsample": [1901, 2503],  # TODO: replace with actual test split scenes
+            "trainquest3subsample": [1901, 2503],  # TODO: replace with actual test split scenes
         }[split]
         # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
 
@@ -493,6 +495,43 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             )
 
     return p
+
+
+def scene_tpaths_keys(eval_modality, scene_id=None):
+    """
+    Define keys corresponding template path defined in get_split_params output.
+    
+    Definition for scene gt, scene gt info and scene camera.
+    - BOP19: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
+    - BOP24: with separate annotations: "scene_gt_{modality}_tpath", 
+    "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath"
+    modality may be the same for the whole dataset split (defined as a `str`), 
+    or vary scene by scene (defined as function or a dictionary)
+
+    :param eval_modality: None, str, callable or ditc, defines
+    :param scene_id: None or int, should be specified if eval modality 
+                     changes from scene to scen
+    :return: scene tpath keys
+    """
+    scene_gt_tpath = scene_gt_info_tpath = scene_camera_tpath = None
+    if eval_modality is None:
+        scene_gt_tpath = "scene_gt_tpath"
+        scene_gt_info_tpath = "scene_gt_info_tpath"
+        scene_camera_tpath = "scene_camera_tpath"
+    elif isinstance(eval_modality, str):
+        scene_gt_tpath = "scene_gt_{}_tpath".format(eval_modality)
+        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(eval_modality)
+        scene_camera_tpath = "scene_camera_{}_tpath".format(eval_modality)
+    elif callable(eval_modality) and scene_id is not None:
+        scene_gt_tpath = "scene_gt_{}_tpath".format(eval_modality(scene_id))
+        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(eval_modality(scene_id))
+        scene_camera_tpath = "scene_camera_{}_tpath".format(eval_modality(scene_id))
+    elif isinstance(eval_modality, dict) and scene_id is not None:
+        scene_gt_tpath = "scene_gt_{}_tpath".format(eval_modality[scene_id])
+        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(eval_modality[scene_id])
+        scene_camera_tpath = "scene_camera_{}_tpath".format(eval_modality[scene_id])
+    
+    return scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath
 
 
 def get_present_scene_ids(dp_split):

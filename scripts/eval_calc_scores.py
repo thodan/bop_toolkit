@@ -192,21 +192,14 @@ for error_dir_path in p["error_dir_paths"]:
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
 
+    # Eval modality can be None, str or a function (if )
     if p["eval_modality"] is None:
         p["eval_modality"] = dp_split["eval_modality"]
-
-    if p["eval_modality"] is None:
-        scene_gt_tpath = "scene_gt_tpath"
-        scene_gt_info_tpath = "scene_gt_info_tpath"
-        scene_camera_tpath = "scene_camera_tpath"
-    else:
-        scene_gt_tpath = "scene_gt_{}_tpath".format(p["eval_modality"])
-        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(p["eval_modality"])
-        scene_camera_tpath = "scene_camera_{}_tpath".format(p["eval_modality"])
+    scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(p["eval_modality"])
 
     # convert 24 targets to 19 targets 
     if "obj_id" not in targets[0]:
-        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath], dp_split[scene_gt_info_tpath])
+        targets = inout.targets_24to19(targets, dp_split, p["eval_modality"])
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
@@ -224,6 +217,8 @@ for error_dir_path in p["error_dir_paths"]:
     scene_im_widths = {}
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
+
+        scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(p["eval_modality"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
