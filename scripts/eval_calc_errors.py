@@ -228,7 +228,7 @@ for result_filename in p["result_filenames"]:
 
     # convert 24 targets to 19 targets 
     if "obj_id" not in targets[0]:
-        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath])
+        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath], dp_split[scene_gt_info_tpath])
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
@@ -310,7 +310,7 @@ for result_filename in p["result_filenames"]:
 
             for obj_id, im_target in im_targets.items():
                 # The required number of top estimated poses.
-                if im_target is None or p["n_top"] == 0:  # All estimates are considered.
+                if p["n_top"] == 0:  # All estimates are considered.
                     n_top_curr = None
                 elif p["n_top"] == -1:  # Given by the number of GT poses.
                     # n_top_curr = sum([gt['obj_id'] == obj_id for gt in scene_gt[im_id]])

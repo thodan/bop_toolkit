@@ -9,6 +9,7 @@ import numpy as np
 import imageio
 import png
 import json
+from collections import defaultdict
 
 from bop_toolkit_lib import misc
 
@@ -360,12 +361,13 @@ def save_bop_results(path, results, version="bop19"):
         raise ValueError("Unknown version of BOP results.")
 
 
-def scene_targets_24to19(scene_targets_24, scene_gt):
+def scene_targets_24to19(scene_targets_24, scene_gt, scene_gt_info, visib_gt_min=0.1):
     """
     Convert from BOP24 and to BOP19 target for targets of one scene.
     
     :param scene_targets_24: list of scene targets of bop24 format for one scene
-    :param scene_gt: scene ground truth data, obtained with inout.load_scene_gt
+    :param scene_gt: scene ground truth data, containing object ids
+    :param scene_gt: scene ground truth info data, containing visibility of objects
     :return scene_targets_19: list of scene targets in bop19 format for one scene
 
     Targets have slightly different meanings for BOP19 localization and BOP24 detection tasks:
@@ -377,13 +379,14 @@ def scene_targets_24to19(scene_targets_24, scene_gt):
     scene_targets_19 = []
     for target24 in scene_targets_24:
         im_gt = scene_gt[target24["im_id"]]
-        inst_counts = {}
-        for gt in im_gt:
-            obj_id = int(gt["obj_id"])
-            if obj_id not in inst_counts:
-                inst_counts[obj_id] = 1
-            else:
-                inst_counts[obj_id] += 1
+        im_gt_info = scene_gt_info[target24["im_id"]]
+        assert len(im_gt) == len(im_gt_info)
+        inst_counts = defaultdict(lambda: 0)
+        for gt, gt_info in zip(im_gt, im_gt_info):
+            gt["obj_id"] = int(gt["obj_id"])  # TODO: remove when fixed in json
+            if gt_info["visib_fract"] > visib_gt_min:
+                inst_counts[gt["obj_id"]] += 1
+
         for obj_id, inst_count in inst_counts.items():
             scene_targets_19.append({
                 "scene_id": target24["scene_id"],
@@ -393,12 +396,13 @@ def scene_targets_24to19(scene_targets_24, scene_gt):
             })
     return scene_targets_19
 
-def targets_24to19(targets24, scene_gt_tpath):
+def targets_24to19(targets24, scene_gt_tpath, scene_gt_info_tpath, visib_gt_min=0.1):
     """
     Convert from BOP24 and to BOP19 target for all targets.
 
     :param targets24: list of targets of bop24 format for all scenes
     :param scene_gt_tpath: scene ground truth json path template
+    :param scene_gt_info_tpath: scene ground truth info json path template
     :return scene_targets_19: list of scene targets in bop19 format for one scene
 
     Targets have slightly different meanings for BOP19 localization and BOP24 detection tasks:
@@ -409,18 +413,21 @@ def targets_24to19(targets24, scene_gt_tpath):
     """
     targets19 = []
     scene_gts = {}
+    scene_gts_info = {}
     for target24 in targets24:
         scene_id, im_id = target24["scene_id"], target24["im_id"]
         if scene_id not in scene_gts:
             scene_gts[scene_id] = load_scene_gt(scene_gt_tpath.format(scene_id=scene_id))
+            scene_gts_info[scene_id] = load_scene_gt(scene_gt_info_tpath.format(scene_id=scene_id))
         im_gt = scene_gts[scene_id][im_id]
-        inst_counts = {}
-        for gt in im_gt:
-            obj_id = int(gt["obj_id"])
-            if obj_id not in inst_counts:
-                inst_counts[obj_id] = 1
-            else:
-                inst_counts[obj_id] += 1
+        im_gt_info = scene_gts_info[scene_id][im_id]
+        assert len(im_gt) == len(im_gt_info)
+        inst_counts = defaultdict(lambda: 0)
+        for gt, gt_info in zip(im_gt, im_gt_info):
+            gt["obj_id"] = int(gt["obj_id"])  # TODO: remove when fixed in json
+            if gt_info["visib_fract"] > visib_gt_min:
+                inst_counts[gt["obj_id"]] += 1
+
         for obj_id, inst_count in inst_counts.items():
             targets19.append({
                 "scene_id": scene_id,

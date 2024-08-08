@@ -206,7 +206,7 @@ for error_dir_path in p["error_dir_paths"]:
 
     # convert 24 targets to 19 targets 
     if "obj_id" not in targets[0]:
-        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath])
+        targets = inout.targets_24to19(targets, dp_split[scene_gt_tpath], dp_split[scene_gt_info_tpath])
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
