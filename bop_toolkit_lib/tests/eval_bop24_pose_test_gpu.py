@@ -54,9 +54,9 @@ for dataset_method_name, file_name in FILE_DICTIONARY.items():
 
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
-        "bop24_mAP_mssd": 0.4248351626966518,
-        "bop24_mAP_mspd": 0.45256928969533605,
-        "bop24_mAP": 0.4387022261959939,
+        "bop24_mAP_mssd": 0.503589108910891,
+        "bop24_mAP_mspd": 0.6172029702970296,
+        "bop24_mAP": 0.5603960396039603,
     },
     "lmo_gt": {
         "bop24_mAP_mssd": 1.0,
@@ -64,14 +64,14 @@ EXPECTED_OUTPUT = {
         "bop24_mAP": 1.0,
     },
     "tless_megaPose": {
-        "bop24_mAP_mssd": 0.3145410625507144,
-        "bop24_mAP_mspd": 0.33137928347498696,
-        "bop24_mAP": 0.3229601730128507,
+        "bop24_mAP_mssd": 0.5056105610561056,
+        "bop24_mAP_mspd": 0.5648844884488449,
+        "bop24_mAP": 0.5352475247524753,
     },
     "tless_gt": {
-        "bop24_mAP_mssd": 1.0,  # 0.9791824358328837,
-        "bop24_mAP_mspd": 1.0,  # 0.9791824358328837,
-        "bop24_mAP": 1.0,  # 0.9791824358328837,
+        "bop24_mAP_mssd": 1.0, 
+        "bop24_mAP_mspd": 1.0,
+        "bop24_mAP": 1.0,
     },
 }
 
@@ -93,7 +93,7 @@ for dataset_method_name, file_name in tqdm(
         "--result_filenames",
         file_name,
         "--num_worker",
-        "1",
+        "10",
     ]
     command.append("--use_gpu")
     command_ = " ".join(command)
@@ -111,7 +111,7 @@ print("Script executed successfully.")
 if args.num_false_positives == 0:
     for dataset_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
         if dataset_name in EXPECTED_OUTPUT:
-            log_file_path = f"{OUTPUT_DIR}/eval_bop24_pose_test_{dataset_name}.txt"
+            log_file_path = f"{OUTPUT_DIR}/eval_bop24_pose_test_{dataset_name}_gpu.txt"
 
             # Read the content of the log file
             with open(log_file_path, "r") as log_file:

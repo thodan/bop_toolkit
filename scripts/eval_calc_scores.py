@@ -55,10 +55,10 @@ p = {
     "normalized_by_diameter": ["ad", "add", "adi", "mssd"],
     # Pose errors that will be normalized the image width before thresholding.
     "normalized_by_im_width": ["mspd"],
-    # Minimum visible surface fraction of a valid GT pose.
-    # -1 == k most visible GT poses will be considered, where k is given by
-    # the "inst_count" item loaded from "targets_filename".
-    "visib_gt_min": -1,
+    # by default, we consider only objects that are at least 10% visible
+    "visib_gt_min": 0.1,
+    # Whether to use the visible surface fraction of a valid GT pose in the 6D detection
+    "use_visib_gt_min_in_6d_detection": True,
     # Paths (relative to p['eval_path']) to folders with pose errors calculated
     # using eval_calc_errors.py.
     # Example: 'hodan-iros15_lm-test/error=vsd_ntop=1_delta=15_tau=20_cost=step'
@@ -108,6 +108,9 @@ parser.add_argument(
 )
 parser.add_argument("--visib_gt_min", default=p["visib_gt_min"])
 parser.add_argument(
+    "--use_visib_gt_min_in_6d_detection", action="store_true", default=p["use_visib_gt_min_in_6d_detection"]
+)
+parser.add_argument(
     "--error_dir_paths",
     default=",".join(p["error_dir_paths"]),
     help="Comma-sep. paths to errors from eval_calc_errors.py.",
@@ -130,6 +133,7 @@ for err_type in p["correct_th"]:
 p["normalized_by_diameter"] = args.normalized_by_diameter.split(",")
 p["normalized_by_im_width"] = args.normalized_by_im_width.split(",")
 p["visib_gt_min"] = float(args.visib_gt_min)
+p["use_visib_gt_min_in_6d_detection"] = bool(args.use_visib_gt_min_in_6d_detection)
 p["error_dir_paths"] = args.error_dir_paths.split(",")
 p["eval_path"] = str(args.eval_path)
 p["datasets_path"] = str(args.datasets_path)
@@ -298,7 +302,9 @@ for error_dir_path in p["error_dir_paths"]:
             matches,
             estimates,
             n_top,
-            visib_gt_min=p["visib_gt_min"],
+            visib_gt_min=(
+                p["visib_gt_min"] if p["use_visib_gt_min_in_6d_detection"] else 0
+            ),
         )
     else:
         raise ValueError("Unknown eval_mode: {}".format(p["eval_mode"]))

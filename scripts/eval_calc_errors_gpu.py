@@ -28,6 +28,8 @@ p = {
     # object class in each image.
     # Options: 0 = all, -1 = given by the number of GT poses.
     "n_top": 1,
+    # by default, we consider only objects that are at least 10% visible
+    "visib_gt_min": 0.1,
     # Pose error function.
     # Options: 'vsd', 'mssd', 'mspd', 'ad', 'adi', 'add', 'cus', 're', 'te, etc.
     "error_type": "vsd",
@@ -85,6 +87,7 @@ vsd_deltas_str = ",".join(["{}:{}".format(k, v) for k, v in p["vsd_deltas"].item
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_top", default=p["n_top"])
+parser.add_argument("--visib_gt_min", default=p["visib_gt_min"])
 parser.add_argument("--error_type", default=p["error_type"])
 parser.add_argument("--vsd_deltas", default=vsd_deltas_str)
 parser.add_argument("--vsd_taus", default=",".join(map(str, p["vsd_taus"])))
@@ -108,6 +111,7 @@ parser.add_argument("--num_workers", default=p["num_workers"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
+p["visib_gt_min"] = float(args.visib_gt_min)
 p["error_type"] = str(args.error_type)
 assert p["error_type"] in [
     "mssd",
@@ -205,9 +209,7 @@ for result_filename in p["result_filenames"]:
     logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
-            target["obj_id"]
-        ] = target
+        targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
@@ -257,7 +259,27 @@ for result_filename in p["result_filenames"]:
 
             if im_ind % 10 == 0:
                 logger.info(f"Processing scene: {scene_id}, im: {im_ind}")
+
+            # Create im_targets directly from scene_gt and scene_gt_info.
+            im_targets = {}
+            im_gt = scene_gt[im_id]
+            im_gt_info = scene_gt_info[im_id]
+            for gt_id, gt in enumerate(im_gt):
+                gt_info = im_gt_info[gt_id]
+                obj_id = gt["obj_id"]
+
+                # keep only objects having visib_fract > p["visib_gt_min"]
+                if gt_info["visib_fract"] < p["visib_gt_min"]:
+                    continue
+                
+                if obj_id not in im_targets:
+                    im_targets[obj_id] = {
+                        "inst_count": 0,
+                    }
+                im_targets[obj_id]["inst_count"] += 1
+
             for obj_id, target in im_targets.items():
+
                 # The required number of top estimated poses.
                 if p["n_top"] == 0:  # All estimates are considered.
                     n_top_curr = None

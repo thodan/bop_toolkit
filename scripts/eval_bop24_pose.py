@@ -35,9 +35,10 @@ p = {
         },
     ],
     # Minimum visible surface fraction of a valid GT pose.
-    # -1 == k most visible GT poses will be considered, where k is given by
-    # the "inst_count" item loaded from "targets_filename".
-    "visib_gt_min": -1,
+    # by default, we consider only objects that are at least 10% visible
+    "visib_gt_min": 0.1,
+    # Whether to use the visible surface fraction of a valid GT pose in the 6D detection
+    "use_visib_gt_min_in_6d_detection": True,
     # See misc.get_symmetry_transformations().
     "max_sym_disc_step": 0.01,
     # Type of the renderer (used for the VSD pose error function).
@@ -131,7 +132,6 @@ for result_filename in p["result_filenames"]:
 
     # Loop 1: Over the error types (mssd, mspd)
     mAP_per_error_type = {}
-
     # Evaluate the pose estimates.
     for error in p["errors"]:
         # Calculate error of the pose estimates.
@@ -146,6 +146,7 @@ for result_filename in p["result_filenames"]:
                 ),
             ),
             "--n_top={}".format(error["n_top"]),
+            "--visib_gt_min={}".format(p["visib_gt_min"]),
             "--error_type={}".format(error["type"]),
             "--result_filenames={}".format(result_filename),
             "--renderer_type={}".format(p["renderer_type"]),
@@ -184,6 +185,7 @@ for result_filename in p["result_filenames"]:
                     "--targets_filename={}".format(p["targets_filename"]),
                     "--visib_gt_min={}".format(p["visib_gt_min"]),
                     "--eval_mode=detection",
+                    "--use_visib_gt_min_in_6d_detection"
                 ]
 
                 calc_scores_cmd += [
@@ -211,7 +213,7 @@ for result_filename in p["result_filenames"]:
         # Loop 3: Iterate over the each threshold of correctness (~ IoU in COCO)
         # For a given (error type, object ID, threshold of correctness), compute mAP with recall range (0, 1, 0.01)
         # COCO reference for loop 4: https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py#L507
-
+        num_object_ids_ignored = []
         for error_sign, error_dir_path in error_dir_paths.items():
             mAP_scores_per_object = {}
             # Loop 3: Over the each threshold of correctness
@@ -224,19 +226,36 @@ for result_filename in p["result_filenames"]:
                     p["eval_path"], result_name, error_sign, scores_filename
                 )
 
-                # Load the scores.
+                # Load the scores and number of instances.
                 logger.info("Loading calculated scores from: {}".format(scores_path))
                 scores = inout.load_json(scores_path)["scores"]
+                num_instances_per_object = inout.load_json(scores_path)[
+                    "num_instances_per_object"
+                ]
 
                 for obj_id in scores:
-                    if obj_id not in mAP_scores_per_object:
-                        mAP_scores_per_object[obj_id] = [scores[obj_id]]
+                    if num_instances_per_object[obj_id] > 0:
+                        if obj_id not in mAP_scores_per_object:
+                            mAP_scores_per_object[obj_id] = [scores[obj_id]]
+                        else:
+                            mAP_scores_per_object[obj_id].append(scores[obj_id])
                     else:
-                        mAP_scores_per_object[obj_id].append(scores[obj_id])
-
+                        num_object_ids_ignored.append(obj_id)
+                        logger.warning(
+                            f"Object {obj_id} not found in the dataset. Skipping object {obj_id} in mAP calculation."
+                        )
             # Loop 2: Over the object IDs
+            if len(num_object_ids_ignored) == 0:
+                logger.info("Considering all objects for mAP calculation.")
+            else:
+                logger.info(
+                    f"WARNING: Ignoring {len(num_object_ids_ignored)} objects: {num_object_ids_ignored} in mAp calculation!!!"
+                )
             mAP_over_correct_ths = []
             for obj_id in mAP_scores_per_object:
+                # make sure that the object is not ignored
+                assert obj_id not in num_object_ids_ignored
+
                 mAP_over_correct_th = np.mean(mAP_scores_per_object[obj_id])
                 logger.info(
                     f"mAP, {error['type']}, {obj_id}: {mAP_over_correct_th:.3f}"
@@ -244,7 +263,7 @@ for result_filename in p["result_filenames"]:
                 mAP_over_correct_ths.append(mAP_over_correct_th)
             mAP_per_error_type[error["type"]] = np.mean(mAP_over_correct_ths)
             logger.info(
-                f"{error['type']}, mAP: {mAP_per_error_type[error['type']]:.3f}"
+                f"{error['type']}, Final mAP: {mAP_per_error_type[error['type']]:.3f}"
             )
 
     time_total = time.time() - time_start

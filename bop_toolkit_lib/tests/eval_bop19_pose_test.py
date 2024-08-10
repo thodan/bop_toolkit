@@ -26,7 +26,8 @@ FILE_DICTIONARY = {
     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
 }
 
-
+# Note that the expected output in case of 6D localization in case of GT can be different than 1.0
+# this is because we set confidence scores = 1 for all GT poses and the matching can be matched 
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
         "bop19_average_recall_vsd": 0.3976885813148789,
@@ -34,23 +35,11 @@ EXPECTED_OUTPUT = {
         "bop19_average_recall_mspd": 0.6067128027681661,
         "bop19_average_recall": 0.49950634371395614,
     },
-    "lmo_gt": {
-        "bop19_average_recall_vsd": 1.0,
-        "bop19_average_recall_mssd": 1.0,
-        "bop19_average_recall_mspd": 1.0,
-        "bop19_average_recall": 1.0,
-    },
     "tless_megaPose": {
         "bop19_average_recall_vsd": 0.4574871555347968,
         "bop19_average_recall_mssd": 0.45304374902693445,
         "bop19_average_recall_mspd": 0.5210493538844776,
         "bop19_average_recall": 0.47719341948206956,
-    },
-    "tless_gt": {
-        "bop19_average_recall_vsd": 1.0,  # 0.979774248793399,
-        "bop19_average_recall_mssd": 1.0,  # 0.9797602366495408,
-        "bop19_average_recall_mspd": 1.0,  # 0.9798069437957342,
-        "bop19_average_recall": 1.0,  # 0.9797804764128912,
     },
 }
 

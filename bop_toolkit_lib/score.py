@@ -220,6 +220,7 @@ def calc_pose_detection_scores(
     # For each object, sort the pose estimates by confidence score.
     # Then calculate the average precision for each object.
     scores_per_object = {}
+    num_instances_per_object = {}
     for obj_id, obj_tar in obj_tars.items():
         obj_matches = [m for m in matches if m["obj_id"] == obj_id]
 
@@ -248,6 +249,7 @@ def calc_pose_detection_scores(
         precision = cum_true_positives / (cum_true_positives + cum_false_positives)
         ap = calc_ap(recall, precision, coco_interpolation=True)
         scores_per_object[obj_id] = ap
+        num_instances_per_object[obj_id] = obj_tar
         if do_print:
             misc.log("Object {:d} AP: {:.4f}".format(obj_id, ap))
             if np.sum(false_positives_ignore) > 0:
@@ -260,6 +262,7 @@ def calc_pose_detection_scores(
         "targets_count": int(tars),
         "num_estimates": len(errs),
         "scores": scores_per_object,
+        "num_instances_per_object": num_instances_per_object,
     }
     if do_print:
         misc.log("")
