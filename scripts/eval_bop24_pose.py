@@ -38,7 +38,7 @@ p = {
     # by default, we consider only objects that are at least 10% visible
     "visib_gt_min": 0.1,
     # Whether to use the visible surface fraction of a valid GT pose in the 6D detection
-    "use_visib_gt_min_in_6d_detection": True,
+    "ignore_object_visible_less_than_visib_gt_min": True,
     # See misc.get_symmetry_transformations().
     "max_sym_disc_step": 0.01,
     # Type of the renderer (used for the VSD pose error function).
@@ -147,6 +147,7 @@ for result_filename in p["result_filenames"]:
             ),
             "--n_top={}".format(error["n_top"]),
             "--visib_gt_min={}".format(p["visib_gt_min"]),
+            "--eval_mode=detection",
             "--error_type={}".format(error["type"]),
             "--result_filenames={}".format(result_filename),
             "--renderer_type={}".format(p["renderer_type"]),
@@ -185,8 +186,11 @@ for result_filename in p["result_filenames"]:
                     "--targets_filename={}".format(p["targets_filename"]),
                     "--visib_gt_min={}".format(p["visib_gt_min"]),
                     "--eval_mode=detection",
-                    "--use_visib_gt_min_in_6d_detection"
                 ]
+                if p["ignore_object_visible_less_than_visib_gt_min"]:
+                    calc_scores_cmd += [
+                        "--ignore_object_visible_less_than_visib_gt_min"
+                    ]
 
                 calc_scores_cmd += [
                     "--correct_th_{}={}".format(

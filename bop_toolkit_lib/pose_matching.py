@@ -135,7 +135,7 @@ def match_poses_scene(
                     "error": -1,
                     "error_norm": -1,
                     "valid": scene_gt_valid[im_id][gt_id],
-                    "gt_visib_fract": 1, # initialize for each gt valid as 1
+                    "gt_visib_fract": -1, # initialize for each gt valid as -1
                 }
             )
 
@@ -148,6 +148,8 @@ def match_poses_scene(
             ):
                 # Greedily match the estimated poses to the ground truth poses.
                 errs_im_obj = scene_errs_org[im_id][obj_id]
+                # for errs_im_obj_ in errs_im_obj:
+                #     assert errs_im_obj_["gt_visib_fract"] >0.1
                 ms = match_poses(errs_im_obj, correct_th, n_top, scene_gt_valid[im_id])
 
                 # Update info about the matched GT poses.

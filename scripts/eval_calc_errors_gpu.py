@@ -77,6 +77,7 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "eval_mode": "localization",  # Options: 'localization', 'detection'.
 }
 ################################################################################
 
@@ -132,6 +133,7 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
+p["eval_mode"] = str(args.eval_mode)
 
 if not torch.cuda.is_available():
     logger.error("CUDA is not available!")
@@ -268,8 +270,9 @@ for result_filename in p["result_filenames"]:
                 gt_info = im_gt_info[gt_id]
                 obj_id = gt["obj_id"]
 
-                # keep only objects having visib_fract > p["visib_gt_min"]
-                if gt_info["visib_fract"] < p["visib_gt_min"]:
+                # for 6D localization: keep only GT objects having visib_fract > p["visib_gt_min"]
+                # for 6D detection: keep all GT objects
+                if gt_info["visib_fract"] < p["visib_gt_min"] and p["eval_mode"] == "localization":
                     continue
                 
                 if obj_id not in im_targets:

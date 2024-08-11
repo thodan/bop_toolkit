@@ -78,6 +78,7 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "eval_mode": "localization",  # Options: 'localization', 'detection'.
 }
 ################################################################################
 
@@ -109,6 +110,7 @@ parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--eval_mode", default=p["eval_mode"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -129,6 +131,7 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
+p["eval_mode"] = str(args.eval_mode)
 
 logger.info("-----------")
 logger.info("Parameters:")
@@ -217,9 +220,7 @@ for result_filename in p["result_filenames"]:
     logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
-            target["obj_id"]
-        ] = target
+        targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
@@ -288,8 +289,9 @@ for result_filename in p["result_filenames"]:
                 gt_info = im_gt_info[gt_id]
                 obj_id = gt["obj_id"]
 
-                # keep only objects having visib_fract > p["visib_gt_min"]
-                if gt_info["visib_fract"] < p["visib_gt_min"]:
+                # for 6D localization: keep only GT objects having visib_fract > p["visib_gt_min"]
+                # for 6D detection: keep all GT objects
+                if gt_info["visib_fract"] < p["visib_gt_min"] and p["eval_mode"] == "localization":
                     continue
                 
                 if obj_id not in im_targets:

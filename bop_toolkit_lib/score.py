@@ -173,7 +173,14 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
 
 
 def calc_pose_detection_scores(
-    scene_ids, obj_ids, matches, errs, n_top, visib_gt_min, do_print=True
+    scene_ids,
+    obj_ids,
+    matches,
+    errs,
+    n_top,
+    visib_gt_min,
+    ignore_object_visible_less_than_visib_gt_min,
+    do_print=True,
 ):
     """Calculates performance scores for the 6D object detection task.
 
@@ -193,6 +200,8 @@ def calc_pose_detection_scores(
       - 'errors': Dictionary mapping ground-truth ID's to errors of the pose
           estimate w.r.t. the ground-truth poses.
     :param n_top: Number of top pose estimates to consider per test target.
+    :param visib_gt_min: Min visiblity for GT.
+    :param ignore_object_visible_less_than_visib_gt_min: Whether ignore objects visible less than visib_gt_min.
     :param do_print: Whether to print the scores to the standard output.
     :return: Dictionary with the evaluation scores.
     """
@@ -230,26 +239,35 @@ def calc_pose_detection_scores(
         false_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
         false_positives_ignore = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
         for i, m in enumerate(sorted_obj_matches):
-            if m["valid"] and m["est_id"] != -1:
+            if m["valid"] and m["est_id"] != -1 and m["gt_visib_fract"] >= visib_gt_min:
                 true_positives[i] = True
             else:
-                if m["gt_visib_fract"] < visib_gt_min:
+                if (
+                    m["gt_visib_fract"] < visib_gt_min
+                    and m["gt_visib_fract"] != -1
+                    and ignore_object_visible_less_than_visib_gt_min
+                ):
                     gt_visib_fract = m["gt_visib_fract"]
                     false_positives_ignore[i] = True
                     misc.log(
-                        f"Ignoring false positive (visib_gt_fract = {gt_visib_fract:.2f})"
+                        f"Ignoring false positive (visib_gt_fract = {gt_visib_fract:.3f})"
                     )
                 else:
                     false_positives[i] = True
+        # remove the false positives that are ignored
+        true_positives = true_positives[np.invert(false_positives_ignore)]
+        false_positives = false_positives[np.invert(false_positives_ignore)]
+        obj_tar = obj_tar - np.sum(false_positives_ignore)
+
         cum_true_positives = np.cumsum(true_positives)
         cum_false_positives = np.cumsum(false_positives)
 
         # Recall, Precision.
-        recall = cum_true_positives / obj_tar
+        recall = cum_true_positives / int(obj_tar)
         precision = cum_true_positives / (cum_true_positives + cum_false_positives)
         ap = calc_ap(recall, precision, coco_interpolation=True)
         scores_per_object[obj_id] = ap
-        num_instances_per_object[obj_id] = obj_tar
+        num_instances_per_object[obj_id] = int(obj_tar)
         if do_print:
             misc.log("Object {:d} AP: {:.4f}".format(obj_id, ap))
             if np.sum(false_positives_ignore) > 0:
