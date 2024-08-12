@@ -162,7 +162,6 @@ def _camera_as_numpy(camera):
         camera["cam_t_w2c"] = np.array(camera["cam_t_w2c"], np.float64).reshape((3, 1))
     if "cam_model" in camera:
         camera["cam_model"]["projection_params"] = np.array(camera["cam_model"]["projection_params"], np.float64)
-        # TODO: convert extrinsics too
     return camera
 
 
@@ -189,7 +188,6 @@ def _camera_as_json(camera):
         camera["cam_t_w2c"] = camera["cam_t_w2c"].flatten().tolist()
     if "cam_model" in camera:
         camera["cam_model"]["projection_params"] = camera["cam_model"]["projection_params"].flatten().tolist() 
-        # TODO: convert extrinsics too
     return camera
 
 
