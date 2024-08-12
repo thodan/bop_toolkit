@@ -205,13 +205,13 @@ def vis_object_poses(
 
                 if "text_info" in pose:
                     text_loc = (bbox[0] + 2, bbox[1])
-                    # ren_rgb_info = write_text_on_image(
-                    #     ren_rgb_info,
-                    #     pose["text_info"],
-                    #     text_loc,
-                    #     color=text_color,
-                    #     size=text_size,
-                    # )
+                    ren_rgb_info = write_text_on_image(
+                        ren_rgb_info,
+                        pose["text_info"],
+                        text_loc,
+                        color=text_color,
+                        size=text_size,
+                    )
 
     # Blend and save the RGB visualization.
     if vis_rgb:
