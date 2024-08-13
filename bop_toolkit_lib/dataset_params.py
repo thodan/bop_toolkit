@@ -385,12 +385,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     elif dataset_name == "hot3d":
         modalities_have_separate_annotations = True 
         p["im_modalities"] = ["rgb","gray1","gray2"]
-        # scene_id < 1849 -> Aria, scene_id >= 1849 -> Quest3 
+        # scene_id >= 1849 -> Aria
+        # scene_id <= 1848 -> Quest3
         p["eval_modality"] = lambda scene_id: "rgb" if scene_id >= 1849 else "gray1"
         p["scene_ids"] = {
             # "trainariasubsample": [1849, 2102],
             "trainariasubsample": [1901, 2503],  # TODO: replace with actual test split scenes
-            "trainquest3subsample": [1901, 2503],  # TODO: replace with actual test split scenes
         }[split]
         # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
 
@@ -482,10 +482,10 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                     "scene_gt_info_{}_tpath".format(moda): join(
                         split_path, "{scene_id:06d}", "scene_gt_info_{}.json".format(moda)
                     ),
-                    # # Path template to a file with the coco GT annotations.  TODO: should be included?
-                    # "scene_gt_coco_tpath": join(
-                    #     split_path, "{scene_id:06d}", "scene_gt_coco.json"
-                    # ),
+                    # Path template to a file with the coco GT annotations.
+                    "scene_gt_coco_{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", "scene_gt_coco_{}.json".format(moda)
+                    ),
                     # Path template to a mask of the full object silhouette.
                     "mask_{}_tpath".format(moda): join(
                         split_path, "{scene_id:06d}", "mask_{}".format(moda), "{im_id:06d}_{gt_id:06d}.png"
@@ -517,27 +517,28 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
     :param eval_modality: None, str, callable or ditc, defines
     :param scene_id: None or int, should be specified if eval modality 
                      changes from scene to scen
-    :return: scene tpath keys
+    :return: scene tpath keys dictionary
     """
-    scene_gt_tpath = scene_gt_info_tpath = scene_camera_tpath = None
-    if eval_modality is None:
-        scene_gt_tpath = "scene_gt_tpath"
-        scene_gt_info_tpath = "scene_gt_info_tpath"
-        scene_camera_tpath = "scene_camera_tpath"
-    elif isinstance(eval_modality, str):
-        scene_gt_tpath = "scene_gt_{}_tpath".format(eval_modality)
-        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(eval_modality)
-        scene_camera_tpath = "scene_camera_{}_tpath".format(eval_modality)
-    elif callable(eval_modality) and scene_id is not None:
-        scene_gt_tpath = "scene_gt_{}_tpath".format(eval_modality(scene_id))
-        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(eval_modality(scene_id))
-        scene_camera_tpath = "scene_camera_{}_tpath".format(eval_modality(scene_id))
-    elif isinstance(eval_modality, dict) and scene_id is not None:
-        scene_gt_tpath = "scene_gt_{}_tpath".format(eval_modality[scene_id])
-        scene_gt_info_tpath = "scene_gt_info_{}_tpath".format(eval_modality[scene_id])
-        scene_camera_tpath = "scene_camera_{}_tpath".format(eval_modality[scene_id])
+
+    tpath_keys = ["scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
+                  "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath"]
+    tpath_multi = ["scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
+                   "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath"]
+
+    tpath_keys_dic = {}
+    for i, key in enumerate(tpath_keys):
+        if eval_modality is None:
+            tpath_keys_dic[key] = key
+        elif isinstance(eval_modality, str):
+            tpath_keys_dic[key] = tpath_multi[i].format(eval_modality)
+        elif callable(eval_modality) and scene_id is not None:
+            tpath_keys_dic[key] = tpath_multi[i].format(eval_modality(scene_id))
+        elif isinstance(eval_modality, dict) and scene_id is not None:
+            tpath_keys_dic[key] = tpath_multi[i].format(eval_modality[scene_id])
+        else:
+            raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
     
-    return scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath
+    return tpath_keys_dic
 
 
 def get_present_scene_ids(dp_split):

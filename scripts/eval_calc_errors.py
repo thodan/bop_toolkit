@@ -77,7 +77,6 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
-    "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
 }
 ################################################################################
 
@@ -108,7 +107,6 @@ parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
-parser.add_argument("--eval_modality", default=p["eval_modality"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -128,7 +126,6 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
-p["eval_modality"] = str(args.eval_modality) if args.eval_modality is not None else None
 
 logger.info("-----------")
 logger.info("Parameters:")
@@ -158,9 +155,6 @@ for result_filename in p["result_filenames"]:
     dp_split = dataset_params.get_split_params(
         p["datasets_path"], dataset, split, split_type
     )
-
-    if p["eval_modality"] is None:
-        p["eval_modality"] = dp_split["eval_modality"]
     
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
@@ -218,7 +212,7 @@ for result_filename in p["result_filenames"]:
 
     # convert 24 targets to 19 targets 
     if "obj_id" not in targets[0]:
-        targets = inout.targets_24to19(targets, dp_split, p["eval_modality"])
+        targets = inout.targets_24to19(targets, dp_split, eval_modality)
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
@@ -243,18 +237,18 @@ for result_filename in p["result_filenames"]:
 
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
-        scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(p["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
-            dp_split[scene_gt_tpath].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
         )
         # Load info about the GT poses (e.g. visibility) for the current scene.
         scene_gt_info = inout.load_json(
-            dp_split[scene_gt_info_tpath].format(scene_id=scene_id), keys_to_int=True
+            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
         )
         # Load ground truth camera 
-        scene_camera = inout.load_scene_camera(dp_split[scene_camera_tpath].format(scene_id=scene_id))
+        scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
 
         # collect all the images and their targets
         im_meta_datas = []

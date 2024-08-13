@@ -120,7 +120,6 @@ parser.add_argument("--error_tpath", default=p["error_tpath"])
 parser.add_argument("--out_matches_tpath", default=p["out_matches_tpath"])
 parser.add_argument("--out_scores_tpath", default=p["out_scores_tpath"])
 parser.add_argument("--eval_mode", default=p["eval_mode"])
-parser.add_argument("--eval_modality", default=p["eval_modality"])
 # Process the command line arguments.
 args = parser.parse_args()
 
@@ -140,7 +139,6 @@ p["error_tpath"] = str(args.error_tpath)
 p["out_matches_tpath"] = str(args.out_matches_tpath)
 p["out_scores_tpath"] = str(args.out_scores_tpath)
 p["eval_mode"] = str(args.eval_mode)
-p["eval_modality"] = str(args.eval_modality) if args.eval_modality is not None else None
 
 logger.info("-----------")
 logger.info("Parameters:")
@@ -192,14 +190,9 @@ for error_dir_path in p["error_dir_paths"]:
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
 
-    # Eval modality can be None, str or a function (if )
-    if p["eval_modality"] is None:
-        p["eval_modality"] = dp_split["eval_modality"]
-    scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(p["eval_modality"])
-
     # convert 24 targets to 19 targets 
     if "obj_id" not in targets[0]:
-        targets = inout.targets_24to19(targets, dp_split, p["eval_modality"])
+        targets = inout.targets_24to19(targets, dp_split, dp_split["eval_modality"])
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
@@ -218,18 +211,18 @@ for error_dir_path in p["error_dir_paths"]:
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
-        scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(p["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
-            dp_split[scene_gt_tpath].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
         )
         # Load info about the GT poses (e.g. visibility) for the current scene.
         scene_gt_info = inout.load_json(
-            dp_split[scene_gt_info_tpath].format(scene_id=scene_id), keys_to_int=True
+            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
         )
         # Load ground truth camera 
-        scene_camera = inout.load_scene_camera(dp_split[scene_camera_tpath].format(scene_id=scene_id))
+        scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
 
         # Handle change of image size location between BOP19 and BOP24 dataset formats
         if "cam_model" in scene_camera[0]:

@@ -19,11 +19,11 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "tudl",
+    "dataset": "hot3d",
     # Dataset split. Options: 'train', 'test'.
-    "dataset_split": "train",
+    "dataset_split": "trainariasubsample",
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
-    "dataset_split_type": "pbr",
+    "dataset_split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
     "bbox_type": "amodal",
     # Folder containing the BOP datasets.
@@ -60,6 +60,8 @@ INFO = {
 }
 
 for scene_id in dp_split["scene_ids"]:
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
     segmentation_id = 1
 
     coco_scene_output = {
@@ -71,12 +73,15 @@ for scene_id in dp_split["scene_ids"]:
     }
 
     # Load info about the GT poses (e.g. visibility) for the current scene.
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
+    scene_gt = inout.load_scene_gt(dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id))
     scene_gt_info = inout.load_json(
-        dp_split["scene_gt_info_tpath"].format(scene_id=scene_id), keys_to_int=True
+        dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
+    )
+    scene_camera = inout.load_scene_camera(
+        dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
     )
     # Output coco path
-    coco_gt_path = dp_split["scene_gt_coco_tpath"].format(scene_id=scene_id)
+    coco_gt_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
     if bbox_type == "modal":
         coco_gt_path = coco_gt_path.replace("scene_gt_coco", "scene_gt_coco_modal")
     misc.log(
@@ -91,8 +96,12 @@ for scene_id in dp_split["scene_ids"]:
 
         img_path = dp_split["rgb_tpath"].format(scene_id=scene_id, im_id=im_id)
         relative_img_path = os.path.relpath(img_path, os.path.dirname(coco_gt_path))
+        if 'cam_model' in scene_camera[im_id]:
+            im_size = scene_camera[im_id]["cam_model"]["image_width"], scene_camera[im_id]["cam_model"]["image_height"]
+        else:
+            im_size = dp_split["im_size"]
         image_info = pycoco_utils.create_image_info(
-            im_id, relative_img_path, dp_split["im_size"]
+            im_id, relative_img_path, im_size
         )
         coco_scene_output["images"].append(image_info)
         gt_info = scene_gt_info[scene_view]
@@ -103,18 +112,18 @@ for scene_id in dp_split["scene_ids"]:
             visibility = gt_info[idx]["visib_fract"]
             # Add ignore flag for objects smaller than 10% visible
             ignore_gt = visibility < 0.1
-            mask_visib_p = dp_split["mask_visib_tpath"].format(
+            mask_visib_p = dp_split[tpath_keys["mask_visib_tpath"]].format(
                 scene_id=scene_id, im_id=im_id, gt_id=idx
             )
-            mask_full_p = dp_split["mask_tpath"].format(
+            mask_full_p = dp_split[tpath_keys["mask_visib_tpath"]].format(
                 scene_id=scene_id, im_id=im_id, gt_id=idx
             )
 
-            binary_inst_mask_visib = inout.load_depth(mask_visib_p).astype(np.bool)
+            binary_inst_mask_visib = inout.load_depth(mask_visib_p).astype(bool)
             if binary_inst_mask_visib.sum() < 1:
                 continue
             if bbox_type == "amodal":
-                binary_inst_mask_full = inout.load_depth(mask_full_p).astype(np.bool)
+                binary_inst_mask_full = inout.load_depth(mask_full_p).astype(bool)
                 if binary_inst_mask_full.sum() < 1:
                     continue
                 bounding_box = pycoco_utils.bbox_from_binary_mask(binary_inst_mask_full)

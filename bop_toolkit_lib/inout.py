@@ -416,9 +416,9 @@ def targets_24to19(targets24, dp_split, eval_modality, visib_gt_min=0.1):
     for target24 in targets24:
         scene_id, im_id = target24["scene_id"], target24["im_id"]
         if scene_id not in scene_gts:
-            scene_gt_tpath, scene_gt_info_tpath, scene_camera_tpath = dataset_params.scene_tpaths_keys(eval_modality, scene_id)
-            scene_gts[scene_id] = load_scene_gt(dp_split[scene_gt_tpath].format(scene_id=scene_id))
-            scene_gts_info[scene_id] = load_scene_gt(dp_split[scene_gt_info_tpath].format(scene_id=scene_id))
+            tpath_keys = dataset_params.scene_tpaths_keys(eval_modality, scene_id)
+            scene_gts[scene_id] = load_scene_gt(dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id))
+            scene_gts_info[scene_id] = load_scene_gt(dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id))
         im_gt = scene_gts[scene_id][im_id]
         im_gt_info = scene_gts_info[scene_id][im_id]
         assert len(im_gt) == len(im_gt_info)
