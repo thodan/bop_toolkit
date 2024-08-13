@@ -26,8 +26,7 @@ FILE_DICTIONARY = {
     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
 }
 
-# Note that the expected output in case of 6D localization in case of GT can be different than 1.0
-# this is because we set confidence scores = 1 for all GT poses and the matching can be matched 
+# Note that the expected output of unittests using GT in case of 6D localization can be different than 1.0 due to matching stage
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
         "bop19_average_recall_vsd": 0.3976885813148789,

@@ -200,8 +200,8 @@ def calc_pose_detection_scores(
       - 'errors': Dictionary mapping ground-truth ID's to errors of the pose
           estimate w.r.t. the ground-truth poses.
     :param n_top: Number of top pose estimates to consider per test target.
-    :param visib_gt_min: Min visiblity for GT.
-    :param ignore_object_visible_less_than_visib_gt_min: Whether ignore objects visible less than visib_gt_min.
+    :param visib_gt_min: Min visiblity for GT. Default: 0.1
+    :param ignore_object_visible_less_than_visib_gt_min: Whether ignore objects visible less than visib_gt_min. Default: True
     :param do_print: Whether to print the scores to the standard output.
     :return: Dictionary with the evaluation scores.
     """

@@ -239,10 +239,7 @@ for result_filename in p["result_filenames"]:
 
                 for obj_id in scores:
                     if num_instances_per_object[obj_id] > 0:
-                        if obj_id not in mAP_scores_per_object:
-                            mAP_scores_per_object[obj_id] = [scores[obj_id]]
-                        else:
-                            mAP_scores_per_object[obj_id].append(scores[obj_id])
+                        mAP_scores_per_object.setdefault(obj_id, []).append(scores[obj_id])
                     else:
                         num_object_ids_ignored.append(obj_id)
                         logger.warning(
