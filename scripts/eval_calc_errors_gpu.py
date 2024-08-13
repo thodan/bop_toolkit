@@ -263,23 +263,9 @@ for result_filename in p["result_filenames"]:
                 logger.info(f"Processing scene: {scene_id}, im: {im_ind}")
 
             # Create im_targets directly from scene_gt and scene_gt_info.
-            im_targets = {}
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
-            for gt_id, gt in enumerate(im_gt):
-                gt_info = im_gt_info[gt_id]
-                obj_id = gt["obj_id"]
-
-                # for 6D localization: keep only GT objects having visib_fract > p["visib_gt_min"]
-                # for 6D detection: keep all GT objects
-                if gt_info["visib_fract"] < p["visib_gt_min"] and p["eval_mode"] == "localization":
-                    continue
-                
-                if obj_id not in im_targets:
-                    im_targets[obj_id] = {
-                        "inst_count": 0,
-                    }
-                im_targets[obj_id]["inst_count"] += 1
+            im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             for obj_id, target in im_targets.items():
 
