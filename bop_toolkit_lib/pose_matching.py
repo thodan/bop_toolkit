@@ -135,7 +135,7 @@ def match_poses_scene(
                     "error": -1,
                     "error_norm": -1,
                     "valid": scene_gt_valid[im_id][gt_id],
-                    "gt_visib_fract": 1, # initialize for each gt valid as 1
+                    "gt_visib_fract": -1, # initialize for each gt valid as -1
                 }
             )
 

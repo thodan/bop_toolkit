@@ -28,6 +28,8 @@ p = {
     # object class in each image.
     # Options: 0 = all, -1 = given by the number of GT poses.
     "n_top": 1,
+    # by default, we consider only objects that are at least 10% visible
+    "visib_gt_min": 0.1,
     # Pose error function.
     # Options: 'vsd', 'mssd', 'mspd', 'ad', 'adi', 'add', 'cus', 're', 'te, etc.
     "error_type": "vsd",
@@ -75,6 +77,7 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "eval_mode": "localization",  # Options: 'localization', 'detection'.
 }
 ################################################################################
 
@@ -85,6 +88,7 @@ vsd_deltas_str = ",".join(["{}:{}".format(k, v) for k, v in p["vsd_deltas"].item
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_top", default=p["n_top"])
+parser.add_argument("--visib_gt_min", default=p["visib_gt_min"])
 parser.add_argument("--error_type", default=p["error_type"])
 parser.add_argument("--vsd_deltas", default=vsd_deltas_str)
 parser.add_argument("--vsd_taus", default=",".join(map(str, p["vsd_taus"])))
@@ -108,6 +112,7 @@ parser.add_argument("--num_workers", default=p["num_workers"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
+p["visib_gt_min"] = float(args.visib_gt_min)
 p["error_type"] = str(args.error_type)
 assert p["error_type"] in [
     "mssd",
@@ -128,6 +133,7 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
+p["eval_mode"] = str(args.eval_mode)
 
 if not torch.cuda.is_available():
     logger.error("CUDA is not available!")
@@ -205,9 +211,7 @@ for result_filename in p["result_filenames"]:
     logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
-            target["obj_id"]
-        ] = target
+        targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
@@ -257,7 +261,14 @@ for result_filename in p["result_filenames"]:
 
             if im_ind % 10 == 0:
                 logger.info(f"Processing scene: {scene_id}, im: {im_ind}")
+
+            # Create im_targets directly from scene_gt and scene_gt_info.
+            im_gt = scene_gt[im_id]
+            im_gt_info = scene_gt_info[im_id]
+            im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
+
             for obj_id, target in im_targets.items():
+
                 # The required number of top estimated poses.
                 if p["n_top"] == 0:  # All estimates are considered.
                     n_top_curr = None
