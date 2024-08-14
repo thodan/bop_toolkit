@@ -1,6 +1,6 @@
 
 # Author: Mederic Fourmy (mederic.fourmy@gmail.com)
-# Center for Machine Perception, Czech Technical University in Prague
+# Czech Technical University in Prague
 
 """A wrapper around Hand Tracking Toolkit rasterizer."""
 

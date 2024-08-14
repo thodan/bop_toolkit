@@ -1,5 +1,5 @@
 # Author: Mederic Fourmy (mederic.fourmy@gmail.com)
-# Center for Machine Perception, Czech Technical University in Prague
+# Czech Technical University in Prague
 
 """
 Create targets file for a given dataset.
