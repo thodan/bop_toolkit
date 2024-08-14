@@ -198,10 +198,6 @@ for error_dir_path in p["error_dir_paths"]:
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
 
-    # convert 24 targets to 19 targets 
-    if "obj_id" not in targets[0]:
-        targets = inout.targets_24to19(targets, dp_split, dp_split["eval_modality"])
-
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
     # targets_org : {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
