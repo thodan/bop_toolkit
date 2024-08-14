@@ -162,6 +162,10 @@ for result_filename in p["result_filenames"]:
     dp_split = dataset_params.get_split_params(
         p["datasets_path"], dataset, split, split_type
     )
+
+    if p["error_type"] not in dp_split["supported_error_types"]:
+        raise ValueError("""{} error is not among {} """
+                         """supported error types: {}""".format(p["error_type"], dataset, dp_split["supported_error_types"]))
     
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
@@ -276,12 +280,18 @@ for result_filename in p["result_filenames"]:
                     )
                 )
 
-            # Retrieve camera model.
+            # Retrieve camera model for projection/rendering based errors.
             if p["error_type"] in ["mspd"]:
+                # MSPD is compatible with "cam_K" or "cam_model" scene camera format
                 cam = misc.create_camera_model(scene_camera[im_id])
             elif p["error_type"] in ['vsd','cus','proj']:
-                cam = scene_camera[im_id]["cam_K"]
-
+                # VSD,CUS,PROJ are only compatible with "cam_K"
+                try:
+                    cam = scene_camera[im_id]["cam_K"]
+                except KeyError as e:
+                    logger.error(e)
+                    logger.error("""{} error type is only compatible with camera model """ 
+                                 """defined as 'cam_K' field to: {}""".format(p["error_type"]))
             # Load the depth image if VSD is selected as the pose error function.
             depth_im = None
             if p["error_type"] == "vsd":

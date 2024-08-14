@@ -179,6 +179,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
     modalities_have_separate_annotations = False 
 
+    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
+
     # Linemod (LM).
     if dataset_name == "lm":
         p["scene_ids"] = list(range(1, 16))
@@ -405,6 +407,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
 
+        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+
     else:
         raise ValueError("Unknown BOP dataset ({}).".format(dataset_name))
 
@@ -417,6 +421,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     # Path to the split directory.
     p["split_path"] = split_path
+    p["supported_error_types"] = supported_error_types
     if not modalities_have_separate_annotations:
         p.update(
             {
