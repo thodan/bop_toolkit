@@ -109,6 +109,7 @@ parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--eval_mode", default=p["eval_mode"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -246,15 +247,17 @@ for result_filename in p["result_filenames"]:
         # for each scene, organize the estimates per object as each object
         est_per_object = copy.deepcopy(estimate_templates)
 
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
         # Load camera and GT poses for the current scene.
         scene_camera = inout.load_scene_camera(
-            dp_split["scene_camera_tpath"].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
         )
         scene_gt = inout.load_scene_gt(
-            dp_split["scene_gt_tpath"].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
         )
         scene_gt_info = inout.load_scene_gt(
-            dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
         )
 
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
@@ -266,7 +269,6 @@ for result_filename in p["result_filenames"]:
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
             im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
-
             for obj_id, target in im_targets.items():
 
                 # The required number of top estimated poses.
@@ -317,9 +319,11 @@ for result_filename in p["result_filenames"]:
                         est_per_object[obj_id]["gt_visib_fract"].append(
                             scene_gt_info[im_id][gt_id]["visib_fract"]
                         )
-                        est_per_object[obj_id]["cam_K"].append(
-                            scene_camera[im_id]["cam_K"]
-                        )
+                        # BOP24 datasets do not have "cam_K" keys but "cam_model" 
+                        if "can_K" in scene_camera[im_id]:
+                            est_per_object[obj_id]["cam_K"].append(
+                                scene_camera[im_id]["cam_K"]
+                            )
 
                         # Estimated pose.
                         est_per_object[obj_id]["R_e"].append(est["R"])

@@ -514,3 +514,14 @@ def start_disable_output(logfile):
 def stop_disable_output(original_stdout):
     # Restore the original stdout file descriptor
     os.dup2(original_stdout, 1)
+
+
+def get_eval_calc_errors_script_name(use_gpu, error_type, dataset):
+    cpu_script = "eval_calc_errors.py"
+    gpu_script = "eval_calc_errors_gpu.py"
+
+    if use_gpu and error_type in ["mssd", "mspd"]:
+        # mspd not supported for gpus for hot3d dataset
+        if error_type != "mspd" or dataset != 'hot3d':
+            return gpu_script
+    return cpu_script
