@@ -782,3 +782,22 @@ def save_ply2(
             f.write("\n")
 
     f.close()
+
+
+def get_im_targets(im_gt, im_gt_info, visib_gt_min, eval_mode="localization"):
+    im_targets = {}
+    for gt_id, gt in enumerate(im_gt):
+        gt_info = im_gt_info[gt_id]
+        obj_id = gt["obj_id"]
+
+        # for 6D localization: keep only GT objects having visib_fract > p["visib_gt_min"]
+        # for 6D detection: keep all GT objects
+        if gt_info["visib_fract"] < visib_gt_min and eval_mode == "localization":
+            continue
+        
+        if obj_id not in im_targets:
+            im_targets[obj_id] = {
+                "inst_count": 0,
+            }
+        im_targets[obj_id]["inst_count"] += 1
+    return im_targets

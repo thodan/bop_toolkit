@@ -29,6 +29,8 @@ p = {
     # object class in each image.
     # Options: 0 = all, -1 = given by the number of GT poses.
     "n_top": 1,
+    # by default, we consider only objects that are at least 10% visible
+    "visib_gt_min": -1,
     # Pose error function.
     # Options: 'vsd', 'mssd', 'mspd', 'ad', 'adi', 'add', 'cus', 're', 'te, etc.
     "error_type": "vsd",
@@ -76,6 +78,7 @@ p = {
         "{eval_path}", "{result_name}", "{error_sign}", "errors_{scene_id:06d}.json"
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "eval_mode": "localization",  # Options: 'localization', 'detection'.
 }
 ################################################################################
 
@@ -86,6 +89,7 @@ vsd_deltas_str = ",".join(["{}:{}".format(k, v) for k, v in p["vsd_deltas"].item
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_top", default=p["n_top"])
+parser.add_argument("--visib_gt_min", default=p["visib_gt_min"])
 parser.add_argument("--error_type", default=p["error_type"])
 parser.add_argument("--vsd_deltas", default=vsd_deltas_str)
 parser.add_argument("--vsd_taus", default=",".join(map(str, p["vsd_taus"])))
@@ -106,9 +110,11 @@ parser.add_argument("--datasets_path", default=p["datasets_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--eval_mode", default=p["eval_mode"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
+p["visib_gt_min"] = float(args.visib_gt_min)
 p["error_type"] = str(args.error_type)
 p["vsd_deltas"] = {
     str(e.split(":")[0]): float(e.split(":")[1]) for e in args.vsd_deltas.split(",")
@@ -125,6 +131,7 @@ p["datasets_path"] = str(args.datasets_path)
 p["targets_filename"] = str(args.targets_filename)
 p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
+p["eval_mode"] = str(args.eval_mode)
 
 logger.info("-----------")
 logger.info("Parameters:")
@@ -212,10 +219,13 @@ for result_filename in p["result_filenames"]:
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
     targets_org = {}
+    
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
-            target["obj_id"]
-        ] = target
+        if p["eval_mode"] == "localization":
+            assert "inst_count" in target, "inst_count is required for localization mode" 
+            targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[target["obj_id"]] = target
+        else:
+            targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
@@ -275,6 +285,13 @@ for result_filename in p["result_filenames"]:
                 )
                 depth_im = inout.load_depth(depth_path)
                 depth_im *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+
+            # Create im_targets directly from scene_gt and scene_gt_info.
+            im_gt = scene_gt[im_id]
+            im_gt_info = scene_gt_info[im_id]
+            if p["eval_mode"] == "detection":
+                # re-load the im_targets on the fly.
+                im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             for obj_id, target in im_targets.items():
                 # The required number of top estimated poses.

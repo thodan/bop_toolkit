@@ -55,10 +55,10 @@ p = {
     "normalized_by_diameter": ["ad", "add", "adi", "mssd"],
     # Pose errors that will be normalized the image width before thresholding.
     "normalized_by_im_width": ["mspd"],
-    # Minimum visible surface fraction of a valid GT pose.
-    # -1 == k most visible GT poses will be considered, where k is given by
-    # the "inst_count" item loaded from "targets_filename".
+    # by default, we consider only objects that are at least 10% visible
     "visib_gt_min": -1,
+    # Whether to use the visible surface fraction of a valid GT pose in the 6D detection
+    "ignore_object_visible_less_than_visib_gt_min": True,
     # Paths (relative to p['eval_path']) to folders with pose errors calculated
     # using eval_calc_errors.py.
     # Example: 'hodan-iros15_lm-test/error=vsd_ntop=1_delta=15_tau=20_cost=step'
@@ -108,6 +108,11 @@ parser.add_argument(
 )
 parser.add_argument("--visib_gt_min", default=p["visib_gt_min"])
 parser.add_argument(
+    "--ignore_object_visible_less_than_visib_gt_min",
+    action="store_true",
+    default=p["ignore_object_visible_less_than_visib_gt_min"],
+)
+parser.add_argument(
     "--error_dir_paths",
     default=",".join(p["error_dir_paths"]),
     help="Comma-sep. paths to errors from eval_calc_errors.py.",
@@ -138,6 +143,9 @@ p["error_tpath"] = str(args.error_tpath)
 p["out_matches_tpath"] = str(args.out_matches_tpath)
 p["out_scores_tpath"] = str(args.out_scores_tpath)
 p["eval_mode"] = str(args.eval_mode)
+p["ignore_object_visible_less_than_visib_gt_min"] = bool(
+    args.ignore_object_visible_less_than_visib_gt_min
+)
 
 logger.info("-----------")
 logger.info("Parameters:")
@@ -193,9 +201,11 @@ for error_dir_path in p["error_dir_paths"]:
     logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[
-            target["obj_id"]
-        ] = target
+        if p["eval_mode"] == "localization":
+            assert "inst_count" in target, "inst_count is required for localization mode" 
+            targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[target["obj_id"]] = target
+        else:
+            targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Go through the test scenes and match estimated poses to GT poses.
     # ----------------------------------------------------------------------------
@@ -219,6 +229,13 @@ for error_dir_path in p["error_dir_paths"]:
         scene_gt_info_curr = {}
         scene_gt_valid = {}
         for im_id, im_targets in scene_targets.items():
+
+            # Create im_targets directly from scene_gt and scene_gt_info.
+            im_gt = scene_gt[im_id]
+            im_gt_info = scene_gt_info[im_id]
+            if p["eval_mode"] == "detection":
+                im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
+
             scene_gt_curr[im_id] = scene_gt[im_id]
 
             # Determine which GT poses are valid.
@@ -231,7 +248,12 @@ for error_dir_path in p["error_dir_paths"]:
                 for gt_id, gt in enumerate(im_gt):
                     is_target = gt["obj_id"] in im_targets.keys()
                     is_visib = im_gt_info[gt_id]["visib_fract"] >= p["visib_gt_min"]
-                    scene_gt_valid[im_id][gt_id] = is_target and is_visib
+                    is_valid = (
+                        is_target and is_visib
+                        if p["eval_mode"] == "localization"
+                        else is_target
+                    )
+                    scene_gt_valid[im_id][gt_id] = is_valid
             else:
                 # k most visible GT poses are considered valid, where k is given by
                 # the "inst_count" item loaded from "targets_filename".
@@ -255,6 +277,7 @@ for error_dir_path in p["error_dir_paths"]:
         scene_errs_path = p["error_tpath"].format(
             eval_path=p["eval_path"], error_dir_path=error_dir_path, scene_id=scene_id
         )
+
         scene_errs = inout.load_json(scene_errs_path, keys_to_int=True)
 
         # Normalize the errors by the object diameter.
@@ -299,6 +322,9 @@ for error_dir_path in p["error_dir_paths"]:
             estimates,
             n_top,
             visib_gt_min=p["visib_gt_min"],
+            ignore_object_visible_less_than_visib_gt_min=p[
+                "ignore_object_visible_less_than_visib_gt_min"
+            ],
         )
     else:
         raise ValueError("Unknown eval_mode: {}".format(p["eval_mode"]))
