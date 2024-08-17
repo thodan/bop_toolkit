@@ -56,7 +56,7 @@ p = {
     # Pose errors that will be normalized the image width before thresholding.
     "normalized_by_im_width": ["mspd"],
     # by default, we consider only objects that are at least 10% visible
-    "visib_gt_min": 0.1,
+    "visib_gt_min": -1,
     # Whether to use the visible surface fraction of a valid GT pose in the 6D detection
     "ignore_object_visible_less_than_visib_gt_min": True,
     # Paths (relative to p['eval_path']) to folders with pose errors calculated
@@ -201,7 +201,11 @@ for error_dir_path in p["error_dir_paths"]:
     logger.info("Organizing estimation targets...")
     targets_org = {}
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
+        if p["eval_mode"] == "localization":
+            assert "inst_count" in target, "inst_count is required for localization mode" 
+            targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[target["obj_id"]] = target
+        else:
+            targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Go through the test scenes and match estimated poses to GT poses.
     # ----------------------------------------------------------------------------
@@ -224,12 +228,13 @@ for error_dir_path in p["error_dir_paths"]:
         scene_gt_curr = {}
         scene_gt_info_curr = {}
         scene_gt_valid = {}
-        for im_id, _ in scene_targets.items():
+        for im_id, im_targets in scene_targets.items():
 
             # Create im_targets directly from scene_gt and scene_gt_info.
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
-            im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
+            if p["eval_mode"] == "detection":
+                im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             scene_gt_curr[im_id] = scene_gt[im_id]
 
