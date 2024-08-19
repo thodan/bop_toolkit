@@ -57,7 +57,7 @@ p = {
     ],
     # Minimum visible surface fraction of a valid GT pose.
     # by default, we consider only objects that are at least 10% visible
-    "visib_gt_min": 0.1,
+    "visib_gt_min": -1,
     # See misc.get_symmetry_transformations().
     "max_sym_disc_step": 0.01,
     # Type of the renderer (used for the VSD pose error function).

@@ -31,7 +31,7 @@ p = {
     # Options: 0 = all, -1 = given by the number of GT poses.
     "n_top": 1,
     # by default, we consider only objects that are at least 10% visible
-    "visib_gt_min": 0.1,
+    "visib_gt_min": -1,
     # Pose error function.
     # Options: 'vsd', 'mssd', 'mspd', 'ad', 'adi', 'add', 'cus', 're', 'te, etc.
     "error_type": "vsd",
@@ -225,8 +225,13 @@ for result_filename in p["result_filenames"]:
     logger.info("Organizing estimation targets...")
     # targets_org : {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
     targets_org = {}
+    
     for target in targets:
-        targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
+        if p["eval_mode"] == "localization":
+            assert "inst_count" in target, "inst_count is required for localization mode" 
+            targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[target["obj_id"]] = target
+        else:
+            targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
@@ -304,7 +309,9 @@ for result_filename in p["result_filenames"]:
             # Create im_targets directly from scene_gt and scene_gt_info.
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
-            im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
+            if p["eval_mode"] == "detection":
+                # re-load the im_targets on the fly.
+                im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             for obj_id, target in im_targets.items():
                 # The required number of top estimated poses.
