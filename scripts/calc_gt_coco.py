@@ -3,8 +3,8 @@
 
 """Calculates Instance Mask Annotations in Coco Format."""
 
-import numpy as np
 import os
+import argparse
 import datetime
 import json
 
@@ -19,9 +19,9 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "hot3d",
+    "dataset": "tudl",
     # Dataset split. Options: 'train', 'test'.
-    "dataset_split": "trainariasubsample",
+    "dataset_split": "train",
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
@@ -31,11 +31,19 @@ p = {
 }
 ################################################################################
 
-datasets_path = p["datasets_path"]
-dataset_name = p["dataset"]
-split = p["dataset_split"]
-split_type = p["dataset_split_type"]
-bbox_type = p["bbox_type"]
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", default=p["dataset"])
+parser.add_argument("--dataset_split", default=p["dataset_split"])
+parser.add_argument("--dataset_split_type", default=p["dataset_split_type"])
+parser.add_argument("--bbox_type", default=p["bbox_type"])
+parser.add_argument("--datasets_path", default=p["datasets_path"])
+args = parser.parse_args()
+
+datasets_path = str(args.datasets_path)
+dataset_name = str(args.dataset)
+split = str(args.dataset_split)
+split_type = None if args.dataset_split_type is None else str(args.dataset_split_type)
+bbox_type = str(args.bbox_type)
 
 dp_split = dataset_params.get_split_params(
     datasets_path, dataset_name, split, split_type=split_type

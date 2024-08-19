@@ -1,5 +1,12 @@
 # Unit tests of the BOP toolkit
 
+## Test of 2D detection tasks
+```
+python bop_toolkit_lib/tests/eval_bop22_coco_test.py
+```
+If an error occurs due to missing `scene_gt_coco.json`, run:   
+```python scripts/calc_gt_coco.py --dataset ycbv --dataset_split test```
+
 ## Test of 6D localization task with CPU implementation
 ```
 python bop_toolkit_lib/tests/eval_bop19_pose_test.py
