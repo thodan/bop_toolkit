@@ -1,12 +1,11 @@
 import os
-import json
 from pathlib import Path
 import unittest
 import numpy as np
 import torch
 
 from bop_toolkit_lib.config import datasets_path
-from bop_toolkit_lib.dataset_params import get_split_params, get_model_params, get_camera_params
+from bop_toolkit_lib.dataset_params import get_split_params, get_model_params
 from bop_toolkit_lib.inout import load_ply, load_json, load_scene_gt, load_scene_camera
 from bop_toolkit_lib.misc import get_symmetry_transformations
 
@@ -16,8 +15,7 @@ from bop_toolkit_lib import pose_error, pose_error_gpu, pose_error_htt
 from hand_tracking_toolkit.camera import PinholePlaneCameraModel
 
 
-# TODO: check BOP_PATH env is defined
-# TODO: check that DS used for test exists
+assert "BOP_PATH" in os.environ, "BOP_PATH environment variable is not defined"
 DS_NAME = 'ycbv'
 DS_SPLIT = 'test'
 
@@ -78,6 +76,7 @@ class TestPoseErrors(unittest.TestCase):
             raise NotImplementedError
 
     def test_mssd(self):
+        """Compare MSSD implementations: CPU vs batched GPU """
         R_np, t_np, R_ts, t_ts = generate_random_pose_est(self.R_gt, self.t_gt, self.B)
 
         err_np = np.zeros(self.B)
@@ -87,6 +86,7 @@ class TestPoseErrors(unittest.TestCase):
         self.assertTrue(np.allclose(err_ts.numpy(), err_np, atol=1e-6))
 
     def test_mspd(self):
+        """Compare Pinhole MSPD implementations: CPU vs batched GPU vs Hand Tracking Toolkit CameraModel """
         R_np, t_np, R_ts, t_ts = generate_random_pose_est(self.R_gt, self.t_gt, self.B)
 
         err_np = np.zeros(self.B)
@@ -95,7 +95,7 @@ class TestPoseErrors(unittest.TestCase):
         err_ts = pose_error_gpu.mspd_by_batch(R_ts, t_ts, self.R_gt_ts, self.t_gt_ts, self.K_ts, self.pts_ts, self.syms_ts)
         self.assertTrue(np.allclose(err_ts.numpy(), err_np, atol=1e-6))
 
-        # Hand Tracking Dataset model
+        # Hand Tracking Tookit CameraModel API
         err_htt = np.zeros(self.B)
         for i in range(self.B):
             err_htt[i] = pose_error_htt.mspd(R_np[i], t_np[i], self.R_gt, self.t_gt, self.camera, self.pts, self.syms)
