@@ -123,7 +123,7 @@ for scene_id in dp_split["scene_ids"]:
             mask_visib_p = dp_split[tpath_keys["mask_visib_tpath"]].format(
                 scene_id=scene_id, im_id=im_id, gt_id=idx
             )
-            mask_full_p = dp_split[tpath_keys["mask_visib_tpath"]].format(
+            mask_full_p = dp_split[tpath_keys["mask_tpath"]].format(
                 scene_id=scene_id, im_id=im_id, gt_id=idx
             )
 
