@@ -388,12 +388,12 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     elif dataset_name == "hot3d":
         modalities_have_separate_annotations = True 
         p["im_modalities"] = ["rgb","gray1","gray2"]
-        # scene_id >= 1849 -> Aria
-        # scene_id <= 1848 -> Quest3
+        # scene_id <= 1848 -> Quest3  train and test clips
+        # scene_id >= 1849 -> Aria train and test clips
         p["eval_modality"] = lambda scene_id: "rgb" if scene_id >= 1849 else "gray1"
         p["scene_ids"] = {
-            # "trainariasubsample": [1849, 2102],
-            "trainariasubsample": [1901, 2503],  # TODO: replace with actual test split scenes
+            "trainariasubsample": [1901, 2503],  # TODO: To remove
+            "test": list(range(1288, 1849)) + list(range(3365, 3832)),  # test_quest3 + test_aria 
         }[split]
         # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
 
