@@ -178,6 +178,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # ...and only one set of annotation is present in the dataset 
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
     modalities_have_separate_annotations = False 
+    exts = None  # has to be set if modalities_have_separate_annotations is True
 
     supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
 
@@ -468,6 +469,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         )
 
     else:
+        assert exts is not None, "Need to set 'exts' for dataset {}".format()
         for moda in p["im_modalities"]:
             p.update(
                 {
@@ -513,10 +515,10 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
     Define keys corresponding template path defined in get_split_params output.
     
     Definition for scene gt, scene gt info and scene camera.
-    - BOP19: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
-    - BOP24: with separate annotations: "scene_gt_{modality}_tpath", 
-    "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath"
-    modality may be the same for the whole dataset split (defined as a `str`), 
+    - Classic datasets: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
+    - H3 datasets: with separate annotations for modalities, e.g. "scene_gt_{modality}_tpath", 
+    "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath", etc.
+    Modality may be the same for the whole dataset split (defined as a `str`), 
     or vary scene by scene (defined as function or a dictionary)
 
     :param eval_modality: None, str, callable or ditc, defines
@@ -525,21 +527,27 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
     :return: scene tpath keys dictionary
     """
 
-    tpath_keys = ["scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
-                  "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath"]
-    tpath_multi = ["scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
-                   "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath"]
+    tpath_keys = [
+        "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
+        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath"
+    ]
+    tpath_keys_multi = [
+        "scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
+        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath"
+    ]
 
+    assert len(tpath_keys) == len(tpath_keys_multi)
     tpath_keys_dic = {}
-    for i, key in enumerate(tpath_keys):
+    for key, key_multi in zip(tpath_keys, tpath_keys_multi):
         if eval_modality is None:
+            # Classic filenames
             tpath_keys_dic[key] = key
         elif isinstance(eval_modality, str):
-            tpath_keys_dic[key] = tpath_multi[i].format(eval_modality)
+            tpath_keys_dic[key] = key_multi.format(eval_modality)
         elif callable(eval_modality) and scene_id is not None:
-            tpath_keys_dic[key] = tpath_multi[i].format(eval_modality(scene_id))
+            tpath_keys_dic[key] = key_multi.format(eval_modality(scene_id))
         elif isinstance(eval_modality, dict) and scene_id is not None:
-            tpath_keys_dic[key] = tpath_multi[i].format(eval_modality[scene_id])
+            tpath_keys_dic[key] = key_multi.format(eval_modality[scene_id])
         else:
             raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
     
