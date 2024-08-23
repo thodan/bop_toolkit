@@ -9,6 +9,7 @@ import numpy as np
 import imageio
 import png
 import json
+from collections import defaultdict
 
 from bop_toolkit_lib import misc
 
@@ -139,22 +140,54 @@ def load_cam_params(path):
 
 
 def _camera_as_numpy(camera):
+    """Convert fields from scene camera from native python to numpy.
+
+    See docs/bop_datasets_format.md for details.
+    Note: "cam_K" and "cam_model" are mutually exclusive and raise a ValueError.
+
+    :param camera: Dictionnary containing
+    - 'cam_R_w2c': orientation of world frame in camera frame
+    - 'cam_t_w2c': position of world frame in camera frame
+    - 'cam_K': IF BOP19 format, camera pinhole intrinsics parameters
+    - 'cam_model': IF BOP24 format
+    :return: Dictionnary with same keys and flat lists field as numpy arrays 
+    """
+    if "cam_K" in camera and "cam_model" in camera:
+        raise ValueError("Only one of 'cam_K', 'cam_model' field should be present in a scene camera configuration")
     if "cam_K" in camera.keys():
         camera["cam_K"] = np.array(camera["cam_K"], np.float64).reshape((3, 3))
     if "cam_R_w2c" in camera.keys():
         camera["cam_R_w2c"] = np.array(camera["cam_R_w2c"], np.float64).reshape((3, 3))
     if "cam_t_w2c" in camera.keys():
         camera["cam_t_w2c"] = np.array(camera["cam_t_w2c"], np.float64).reshape((3, 1))
+    if "cam_model" in camera:
+        camera["cam_model"]["projection_params"] = np.array(camera["cam_model"]["projection_params"], np.float64)
     return camera
 
 
 def _camera_as_json(camera):
+    """Convert fields from scene camera from numpy to native python.
+
+    See docs/bop_datasets_format.md for details.
+    Note: "cam_K" and "cam_model" are mutually exclusive and raise a ValueError.
+
+    :param camera: Dictionnary containing
+    - 'cam_R_w2c': orientation of world frame in camera frame
+    - 'cam_t_w2c': position of world frame in camera frame
+    - 'cam_K': IF BOP19 format, camera pinhole intrinsics parameters
+    - 'cam_model': IF BOP24 format
+    :return: Dictionnary with same keys and numpy arrays field as flat lists 
+    """
+    if "cam_K" in camera and "cam_model" in camera:
+        raise ValueError("Only one of 'cam_K', 'cam_model' field should be present in a scene camera configuration")
     if "cam_K" in camera.keys():
         camera["cam_K"] = camera["cam_K"].flatten().tolist()
     if "cam_R_w2c" in camera.keys():
         camera["cam_R_w2c"] = camera["cam_R_w2c"].flatten().tolist()
     if "cam_t_w2c" in camera.keys():
         camera["cam_t_w2c"] = camera["cam_t_w2c"].flatten().tolist()
+    if "cam_model" in camera:
+        camera["cam_model"]["projection_params"] = camera["cam_model"]["projection_params"].flatten().tolist() 
     return camera
 
 
@@ -796,8 +829,6 @@ def get_im_targets(im_gt, im_gt_info, visib_gt_min, eval_mode="localization"):
             continue
         
         if obj_id not in im_targets:
-            im_targets[obj_id] = {
-                "inst_count": 0,
-            }
+            im_targets[obj_id] = {"inst_count": 0}
         im_targets[obj_id]["inst_count"] += 1
     return im_targets

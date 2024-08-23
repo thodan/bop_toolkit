@@ -56,7 +56,7 @@ p = {
     "eval_path": config.eval_path,
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
-    "targets_filename": "test_targets_bop19.json",  # TODO: change to "test_targets_bop24.json"
+    "targets_filename": "test_targets_bop24.json",
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
 }
@@ -135,15 +135,12 @@ for result_filename in p["result_filenames"]:
     # Evaluate the pose estimates.
     for error in p["errors"]:
         # Calculate error of the pose estimates.
+        calc_error_script = misc.get_eval_calc_errors_script_name(p["use_gpu"], error["type"], dataset)
         calc_errors_cmd = [
             "python",
             os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
-                (
-                    "eval_calc_errors_gpu.py"
-                    if p["use_gpu"] and error["type"] in ["mssd", "mspd"]
-                    else "eval_calc_errors.py"
-                ),
+                calc_error_script,
             ),
             "--n_top={}".format(error["n_top"]),
             "--visib_gt_min={}".format(p["visib_gt_min"]),

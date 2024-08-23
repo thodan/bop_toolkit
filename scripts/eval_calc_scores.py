@@ -85,6 +85,7 @@ p = {
         "{eval_path}", "{error_dir_path}", "scores_{score_sign}.json"
     ),
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
+    "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
 }
 ################################################################################
 
@@ -153,6 +154,7 @@ for k, v in p.items():
     logger.info("- {}: {}".format(k, v))
 logger.info("-----------")
 
+
 # Calculation of the performance scores.
 # ------------------------------------------------------------------------------
 for error_dir_path in p["error_dir_paths"]:
@@ -195,10 +197,10 @@ for error_dir_path in p["error_dir_paths"]:
     targets = inout.load_json(
         os.path.join(dp_split["base_path"], p["targets_filename"])
     )
-    scene_im_ids = {}
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
+    # targets_org : {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
     targets_org = {}
     for target in targets:
         if p["eval_mode"] == "localization":
@@ -211,22 +213,31 @@ for error_dir_path in p["error_dir_paths"]:
     # ----------------------------------------------------------------------------
     estimates = []
     matches = []  # Stores info about the matching pose estimate for each GT pose.
+    scene_im_widths = {}
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
-            dp_split["scene_gt_tpath"].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
         )
-
         # Load info about the GT poses (e.g. visibility) for the current scene.
         scene_gt_info = inout.load_json(
-            dp_split["scene_gt_info_tpath"].format(scene_id=scene_id), keys_to_int=True
+            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
         )
+        # Load ground truth camera 
+        scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
+
+        # Handle change of image size location between BOP19 and BOP24 dataset formats
+        if "cam_model" in next(iter(scene_camera.items()))[1]:
+            scene_im_widths[scene_id] = scene_camera[0]["cam_model"]["image_width"]
+        else:
+            scene_im_widths[scene_id] = float(dp_split["im_size"][0])
 
         # Keep GT poses only for the selected targets.
         scene_gt_curr = {}
-        scene_gt_info_curr = {}
         scene_gt_valid = {}
         for im_id, im_targets in scene_targets.items():
 
@@ -290,7 +301,7 @@ for error_dir_path in p["error_dir_paths"]:
         # Normalize the errors by the image width.
         if err_type in p["normalized_by_im_width"]:
             for err in scene_errs:
-                factor = 640.0 / float(dp_split["im_size"][0])
+                factor = 640.0 / scene_im_widths[err["scene_id"]]
                 for gt_id in err["errors"].keys():
                     err["errors"][gt_id] = [factor * e for e in err["errors"][gt_id]]
 

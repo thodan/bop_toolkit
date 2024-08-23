@@ -15,6 +15,8 @@ from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
 
+from hand_tracking_toolkit.camera import model_by_name, CameraModel 
+
 logging.basicConfig()
 
 
@@ -109,6 +111,63 @@ def project_pts(pts, K, R, t):
     pts_im = P.dot(pts_h.T)
     pts_im /= pts_im[2, :]
     return pts_im[:2, :].T
+
+
+def project_pts_htt(pts, cam: CameraModel, R, t):
+    """Transform and projects points with Hand Tracking Toolbox CameraModel.
+
+    :param pts: nx3 ndarray with the 3D points.
+    :param cam: HTT CameraModel instance.
+    :param R: 3x3 ndarray with a rotation matrix.
+    :param t: 3x1 ndarray with a translation vector.
+    :return: nx2 ndarray with 2D image coordinates of the projections.
+    """
+
+    pts_w = transform_pts_Rt(pts, R, t)
+    pts_im = cam.eye_to_window(pts_w)
+
+    return pts_im 
+
+
+def create_camera_model(camera: dict):
+    """Create a Hand Tracking Toolkit Camera model from a scene camera.
+    
+
+    """
+    if "cam_K" in camera:        
+        K = camera["cam_K"]            
+        fx, fy = K[0,0], K[1,1]
+        cx, cy = K[0,2], K[1,2]
+        width, height = 1,1
+        model = "PinholePlane"
+        coeffs = ()
+    
+    elif "cam_model" in camera:
+        calib = camera["cam_model"]
+        width = calib["image_width"]
+        height = calib["image_height"]
+        model = calib["projection_model_type"]
+
+        if model == "CameraModelType.FISHEYE624" and len(calib["projection_params"]) == 15:
+            # TODO: Aria data hack
+            f, cx, cy = calib["projection_params"][:3]
+            fx = fy = f
+            coeffs = calib["projection_params"][3:]
+        else:
+            fx, fy, cx, cy = calib["projection_params"][:4]
+            coeffs = calib["projection_params"][4:]
+
+    else:
+        raise ValueError("Scene camera data missing 'cam_K' or 'cam_model' fields")
+
+    cls = model_by_name[model]
+    return cls(
+        width,
+        height,
+        (fx, fy),
+        (cx, cy),
+        coeffs
+    )
 
 
 class Precomputer(object):
@@ -455,3 +514,14 @@ def start_disable_output(logfile):
 def stop_disable_output(original_stdout):
     # Restore the original stdout file descriptor
     os.dup2(original_stdout, 1)
+
+
+def get_eval_calc_errors_script_name(use_gpu, error_type, dataset):
+    cpu_script = "eval_calc_errors.py"
+    gpu_script = "eval_calc_errors_gpu.py"
+
+    if use_gpu and error_type in ["mssd", "mspd"]:
+        # mspd not supported for gpus for hot3d dataset
+        if error_type != "mspd" or dataset != 'hot3d':
+            return gpu_script
+    return cpu_script

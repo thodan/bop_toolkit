@@ -10,6 +10,7 @@ glumpy==1.1.0
 opencv-python>=4.3.0.36
 Pillow>=8.2.0
 git+https://github.com/MartinSmeyer/cocoapi.git@v1.0#subdirectory=PythonAPI
+git+https://github.com/facebookresearch/hand_tracking_toolkit
 vispy>=0.6.5
 webdataset>=0.1.62
 numpy

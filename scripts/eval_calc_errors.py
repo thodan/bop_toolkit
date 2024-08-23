@@ -15,6 +15,7 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_error
+from bop_toolkit_lib import pose_error_htt
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import renderer_batch
 
@@ -162,6 +163,10 @@ for result_filename in p["result_filenames"]:
         p["datasets_path"], dataset, split, split_type
     )
 
+    if p["error_type"] not in dp_split["supported_error_types"]:
+        raise ValueError("""{} error is not among {} """
+                         """supported error types: {}""".format(p["error_type"], dataset, dp_split["supported_error_types"]))
+    
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
 
@@ -218,6 +223,7 @@ for result_filename in p["result_filenames"]:
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
+    # targets_org : {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
     targets_org = {}
     
     for target in targets:
@@ -240,18 +246,23 @@ for result_filename in p["result_filenames"]:
         ).setdefault(est["obj_id"], []).append(est)
 
     for scene_id, scene_targets in targets_org.items():
-        # Load camera and GT poses for the current scene.
-        scene_camera = inout.load_scene_camera(
-            dp_split["scene_camera_tpath"].format(scene_id=scene_id)
-        )
+        logger.info("Processing scene {} of {}...".format(scene_id, dataset))
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
+        # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
-            dp_split["scene_gt_tpath"].format(scene_id=scene_id)
+            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
         )
-        scene_gt_info = inout.load_scene_gt(
-            dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
+        # Load info about the GT poses (e.g. visibility) for the current scene.
+        scene_gt_info = inout.load_json(
+            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
         )
+        # Load ground truth camera 
+        scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
+
         # collect all the images and their targets
         im_meta_datas = []
+        
         for im_ind, (im_id, im_targets) in enumerate(scene_targets.items()):
             im_meta_data = [im_ind, (im_id, im_targets)]
             im_meta_datas.append(im_meta_data)
@@ -274,9 +285,18 @@ for result_filename in p["result_filenames"]:
                     )
                 )
 
-            # Intrinsic camera matrix.
-            K = scene_camera[im_id]["cam_K"]
-
+            # Retrieve camera model for projection/rendering based errors.
+            if p["error_type"] in ["mspd"]:
+                # MSPD is compatible with "cam_K" or "cam_model" scene camera format
+                cam = misc.create_camera_model(scene_camera[im_id])
+            elif p["error_type"] in ['vsd','cus','proj']:
+                # VSD,CUS,PROJ are only compatible with "cam_K"
+                try:
+                    cam = scene_camera[im_id]["cam_K"]
+                except KeyError as e:
+                    logger.error(e)
+                    logger.error("""{} error type is only compatible with camera model """ 
+                                 """defined as 'cam_K' field to: {}""".format(p["error_type"]))
             # Load the depth image if VSD is selected as the pose error function.
             depth_im = None
             if p["error_type"] == "vsd":
@@ -377,7 +397,7 @@ for result_filename in p["result_filenames"]:
                                         R_g,
                                         t_g,
                                         depth_im,
-                                        K,
+                                        cam,
                                         p["vsd_deltas"][dataset],
                                         p["vsd_taus"],
                                         p["vsd_normalized_by_diameter"],
@@ -393,7 +413,7 @@ for result_filename in p["result_filenames"]:
                                         R_g=R_g,
                                         t_g=t_g,
                                         depth_im=depth_im,
-                                        K=K,
+                                        K=cam,
                                         vsd_deltas=p["vsd_deltas"][dataset],
                                         vsd_taus=p["vsd_taus"],
                                         vsd_normalized_by_diameter=p[
@@ -421,12 +441,12 @@ for result_filename in p["result_filenames"]:
 
                         elif p["error_type"] == "mspd":
                             e = [
-                                pose_error.mspd(
+                                pose_error_htt.mspd(
                                     R_e,
                                     t_e,
                                     R_g,
                                     t_g,
-                                    K,
+                                    cam,
                                     models[obj_id]["pts"],
                                     models_sym[obj_id],
                                 )
@@ -478,14 +498,14 @@ for result_filename in p["result_filenames"]:
 
                         elif p["error_type"] == "cus":
                             if sphere_projections_overlap:
-                                e = [pose_error.cus(R_e, t_e, R_g, t_g, K, ren, obj_id)]
+                                e = [pose_error.cus(R_e, t_e, R_g, t_g, cam, ren, obj_id)]
                             else:
                                 e = [1.0]
 
                         elif p["error_type"] == "proj":
                             e = [
                                 pose_error.proj(
-                                    R_e, t_e, R_g, t_g, K, models[obj_id]["pts"]
+                                    R_e, t_e, R_g, t_g, cam, models[obj_id]["pts"]
                                 )
                             ]
 
@@ -502,6 +522,7 @@ for result_filename in p["result_filenames"]:
                             raise ValueError("Unknown pose error function.")
 
                         errs[gt_id] = e
+                        
                     # Save the calculated errors.
                     im_errs.append(
                         {

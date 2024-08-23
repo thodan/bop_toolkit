@@ -87,6 +87,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "ycbv": list(range(1, 22)),
         "hope": list(range(1, 29)),
         "hopev2": list(range(1, 29)),
+        "hot3d": list(range(1, 33)),
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error
@@ -106,6 +107,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "ycbv": [1, 13, 14, 16, 18, 19, 20, 21],
         "hope": [],
         "hopev2": [],
+        "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -171,6 +173,14 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         depth_ext = ".tif"
 
     p["im_modalities"] = ["rgb", "depth"]
+    # for Classic datasets, test modality is implicit... 
+    p["eval_modality"] = None
+    # ...and only one set of annotation is present in the dataset 
+    # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
+    modalities_have_separate_annotations = False 
+    exts = None  # has to be set if modalities_have_separate_annotations is True
+
+    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
 
     # Linemod (LM).
     if dataset_name == "lm":
@@ -360,7 +370,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
     
-    # HOPE.
+    # HOPEV2.
     elif dataset_name == "hopev2":
         p["scene_ids"] = {
             "train": [],
@@ -374,6 +384,31 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
 
+    # HOT3D.
+    elif dataset_name == "hot3d":
+        modalities_have_separate_annotations = True 
+        p["im_modalities"] = ["rgb","gray1","gray2"]
+        # scene_id <= 1848 -> Quest3  train and test clips
+        # scene_id >= 1849 -> Aria train and test clips
+        p["eval_modality"] = lambda scene_id: "rgb" if scene_id >= 1849 else "gray1"
+        p["scene_ids"] = {
+            "test": list(range(1288, 1849)) + list(range(3365, 3832)),  # test_quest3 + test_aria 
+        }[split]
+        # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
+
+        exts = {
+            "rgb": ".jpg",
+            "gray1": ".png",
+            "gray2": ".png",
+        }
+
+        if split == "test":
+            p["depth_range"] = None  # Not calculated yet.
+            p["azimuth_range"] = None  # Not calculated yet.
+            p["elev_range"] = None  # Not calculated yet.
+
+        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+
     else:
         raise ValueError("Unknown BOP dataset ({}).".format(dataset_name))
 
@@ -384,51 +419,138 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["scene_ids"] = list(range(50))
         split_path += "_" + split_type
 
-    p.update(
-        {
-            # Path to the split directory.
-            "split_path": split_path,
-            # Path template to a file with per-image camera parameters.
-            "scene_camera_tpath": join(
-                split_path, "{scene_id:06d}", "scene_camera.json"
-            ),
-            # Path template to a file with GT annotations.
-            "scene_gt_tpath": join(split_path, "{scene_id:06d}", "scene_gt.json"),
-            # Path template to a file with meta information about the GT annotations.
-            "scene_gt_info_tpath": join(
-                split_path, "{scene_id:06d}", "scene_gt_info.json"
-            ),
-            # Path template to a file with the coco GT annotations.
-            "scene_gt_coco_tpath": join(
-                split_path, "{scene_id:06d}", "scene_gt_coco.json"
-            ),
-            # Path template to a gray image.
-            "gray_tpath": join(
-                split_path, "{scene_id:06d}", "gray", "{im_id:06d}" + gray_ext
-            ),
-            # Path template to an RGB image.
-            "rgb_tpath": join(
-                split_path, "{scene_id:06d}", "rgb", "{im_id:06d}" + rgb_ext
-            ),
-            # Path template to a depth image.
-            "depth_tpath": join(
-                split_path, "{scene_id:06d}", "depth", "{im_id:06d}" + depth_ext
-            ),
-            # Path template to a mask of the full object silhouette.
-            "mask_tpath": join(
-                split_path, "{scene_id:06d}", "mask", "{im_id:06d}_{gt_id:06d}.png"
-            ),
-            # Path template to a mask of the visible part of an object silhouette.
-            "mask_visib_tpath": join(
-                split_path,
-                "{scene_id:06d}",
-                "mask_visib",
-                "{im_id:06d}_{gt_id:06d}.png",
-            ),
-        }
-    )
+    # Path to the split directory.
+    p["split_path"] = split_path
+    p["supported_error_types"] = supported_error_types
+    if not modalities_have_separate_annotations:
+        p.update(
+            {
+                # Path template to a gray image.
+                "gray_tpath": join(
+                    split_path, "{scene_id:06d}", "gray", "{im_id:06d}" + gray_ext
+                ),
+                # Path template to an RGB image.
+                "rgb_tpath": join(
+                    split_path, "{scene_id:06d}", "rgb", "{im_id:06d}" + rgb_ext
+                ),
+                # Path template to a depth image.
+                "depth_tpath": join(
+                    split_path, "{scene_id:06d}", "depth", "{im_id:06d}" + depth_ext
+                ),
+                # Path template to a file with per-image camera parameters.
+                "scene_camera_tpath": join(
+                    split_path, "{scene_id:06d}", "scene_camera.json"
+                ),
+                # Path template to a file with GT annotations.
+                "scene_gt_tpath": join(
+                    split_path, "{scene_id:06d}", "scene_gt.json"
+                ),
+                # Path template to a file with meta information about the GT annotations.
+                "scene_gt_info_tpath": join(
+                    split_path, "{scene_id:06d}", "scene_gt_info.json"
+                ),
+                # Path template to a file with the coco GT annotations.
+                "scene_gt_coco_tpath": join(
+                    split_path, "{scene_id:06d}", "scene_gt_coco.json"
+                ),
+                # Path template to a mask of the full object silhouette.
+                "mask_tpath": join(
+                    split_path, "{scene_id:06d}", "mask", "{im_id:06d}_{gt_id:06d}.png"
+                ),
+                # Path template to a mask of the visible part of an object silhouette.
+                "mask_visib_tpath": join(
+                    split_path,
+                    "{scene_id:06d}",
+                    "mask_visib",
+                    "{im_id:06d}_{gt_id:06d}.png",
+                ),
+            }
+        )
+
+    else:
+        assert exts is not None, "Need to set 'exts' for dataset {}".format()
+        for moda in p["im_modalities"]:
+            p.update(
+                {
+                    # Path template to modality image.
+                    "{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", moda, "{im_id:06d}" + exts[moda]
+                    ),
+                    # Path template to a file with per-image camera parameters.
+                    "scene_camera_{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", "scene_camera_{}.json".format(moda)
+                    ),
+                    # Path template to a file with GT annotations.
+                    "scene_gt_{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", "scene_gt_{}.json".format(moda)
+                    ),
+                    # Path template to a file with meta information about the GT annotations.
+                    "scene_gt_info_{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", "scene_gt_info_{}.json".format(moda)
+                    ),
+                    # Path template to a file with the coco GT annotations.
+                    "scene_gt_coco_{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", "scene_gt_coco_{}.json".format(moda)
+                    ),
+                    # Path template to a mask of the full object silhouette.
+                    "mask_{}_tpath".format(moda): join(
+                        split_path, "{scene_id:06d}", "mask_{}".format(moda), "{im_id:06d}_{gt_id:06d}.png"
+                    ),
+                    # Path template to a mask of the visible part of an object silhouette.
+                    "mask_visib_{}_tpath".format(moda): join(
+                        split_path,
+                        "{scene_id:06d}",
+                        "mask_visib_{}".format(moda),
+                        "{im_id:06d}_{gt_id:06d}.png",
+                    ),
+                }
+            )
 
     return p
+
+
+def scene_tpaths_keys(eval_modality, scene_id=None):
+    """
+    Define keys corresponding template path defined in get_split_params output.
+    
+    Definition for scene gt, scene gt info and scene camera.
+    - Classic datasets: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
+    - H3 datasets: with separate annotations for modalities, e.g. "scene_gt_{modality}_tpath", 
+    "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath", etc.
+    Modality may be the same for the whole dataset split (defined as a `str`), 
+    or vary scene by scene (defined as function or a dictionary)
+
+    :param eval_modality: None, str, callable or ditc, defines
+    :param scene_id: None or int, should be specified if eval modality 
+                     changes from scene to scen
+    :return: scene tpath keys dictionary
+    """
+
+    tpath_keys = [
+        "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
+        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath"
+    ]
+    tpath_keys_multi = [
+        "scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
+        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath"
+    ]
+
+    assert len(tpath_keys) == len(tpath_keys_multi)
+    tpath_keys_dic = {}
+    for key, key_multi in zip(tpath_keys, tpath_keys_multi):
+        if eval_modality is None:
+            # Classic filenames
+            tpath_keys_dic[key] = key
+        elif isinstance(eval_modality, str):
+            tpath_keys_dic[key] = key_multi.format(eval_modality)
+        elif callable(eval_modality) and scene_id is not None:
+            tpath_keys_dic[key] = key_multi.format(eval_modality(scene_id))
+        elif isinstance(eval_modality, dict) and scene_id is not None:
+            tpath_keys_dic[key] = key_multi.format(eval_modality[scene_id])
+        else:
+            raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
+    
+    return tpath_keys_dic
 
 
 def get_present_scene_ids(dp_split):

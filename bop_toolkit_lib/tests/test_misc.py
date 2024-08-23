@@ -5,6 +5,8 @@ from bop_toolkit_lib import misc
 from bop_toolkit_lib import misc_torch as misct
 from bop_toolkit_lib import transform
 
+from hand_tracking_toolkit.camera import PinholePlaneCameraModel
+
 
 class TestMisc(unittest.TestCase):
 
@@ -17,7 +19,7 @@ class TestMisc(unittest.TestCase):
 
     def setUp(self) -> None:
         self.Np = 100
-        self.B = 10
+        self.B = 10  # batch of rigid transformations (R,t)
         self.pts = torch.rand(self.Np,3)
 
     def test_transform_pts_Rt(self):
@@ -41,10 +43,14 @@ class TestMisc(unittest.TestCase):
     def test_project_pts(self):
 
         """
-        For this test, we cannot sample poses completely at random since
-        Points close to the camera plane Zc~0 will create numerical issues.
-        Instead, sample camera rotation and translation around
-        a reference pose that looks toward the point cloud.
+        Compare 3 pinhole projection implementations:
+        - misc.project_pts: numpy implementation
+        - misc_torch.project_pts: torch implementation, enables batching accross rigid transformations
+        - misc.project_pts_htt: Hand Tracking Toolkit implementation with CameraModel API
+
+        For this test, camera rotation and translation are sampled
+        a reference pose that looks toward the point cloud to avoid
+        numerical issues for points st Zc <= 0.
         """
         R_ref = np.array([
             0,-1, 0,
@@ -66,15 +72,23 @@ class TestMisc(unittest.TestCase):
             0, fy, cy,
             0,0,1
         ]).reshape((3,3))
-        K_ts = torch.Tensor(K).unsqueeze(0).repeat((self.B,1,1))
 
+        # misc pinhole projection
         proj_np = np.zeros((self.B,self.Np,2))
-
         for i in range(self.B):
             proj_np[i] = misc.project_pts(self.pts, K, R_np[i], t_np[i])
-        proj_ts = misct.project_pts(self.pts, K_ts, R_ts, t_ts)
 
+        # VS misc torch pinhole projection
+        K_ts = torch.Tensor(K).unsqueeze(0).repeat((self.B,1,1))
+        proj_ts = misct.project_pts(self.pts, K_ts, R_ts, t_ts)
         self.assertTrue(np.allclose(proj_ts.numpy(), proj_np, atol=1e-3))
+
+        # VS Hand Tracking Dataset model
+        camera = PinholePlaneCameraModel(width=fx, height=fy, f=(fx,fy), c=(cx,cy), distort_coeffs=())
+        proj_htt = np.zeros((self.B,self.Np,2))
+        for i in range(self.B):
+            proj_htt[i] = misc.project_pts_htt(self.pts, camera, R_np[i], t_np[i])
+        self.assertTrue(np.allclose(proj_htt, proj_np, atol=1e-4))
 
 
 if __name__ == "__main__":

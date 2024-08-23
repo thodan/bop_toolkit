@@ -151,15 +151,12 @@ for result_filename in p["result_filenames"]:
     # Evaluate the pose estimates.
     for error in p["errors"]:
         # Calculate error of the pose estimates.
+        calc_error_script = misc.get_eval_calc_errors_script_name(p["use_gpu"], error["type"], dataset)
         calc_errors_cmd = [
             "python",
             os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
-                (
-                    "eval_calc_errors_torch.py"
-                    if p["use_gpu"] and error["type"] in ["mssd", "mspd"]
-                    else "eval_calc_errors.py"
-                ),
+                calc_error_script,
             ),
             "--n_top={}".format(error["n_top"]),
             "--error_type={}".format(error["type"]),
