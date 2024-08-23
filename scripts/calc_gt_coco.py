@@ -161,3 +161,4 @@ for scene_id in dp_split["scene_ids"]:
 
     with open(coco_gt_path, "w") as output_json_file:
         json.dump(coco_scene_output, output_json_file)
+        misc.log('Saved {}'.format(coco_gt_path))
