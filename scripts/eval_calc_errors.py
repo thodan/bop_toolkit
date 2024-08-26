@@ -15,13 +15,22 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_error
-from bop_toolkit_lib import pose_error_htt
+
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import renderer_batch
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
+
+htt_available = False
+try:
+    from bop_toolkit_lib import pose_error_htt
+    htt_available = True
+except ImportError as e:
+    logger.warn("""Missing hand_tracking_toolkit dependency, 
+                this script will not be compatible with H3 BOP24 datasets
+                """)
 
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
@@ -228,7 +237,7 @@ for result_filename in p["result_filenames"]:
     
     for target in targets:
         if p["eval_mode"] == "localization":
-            assert "inst_count" in target, "inst_count is required for localization mode" 
+            assert "inst_count" in target, "inst_count is required for localization eval_mode" 
             targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[target["obj_id"]] = target
         else:
             targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
@@ -285,18 +294,31 @@ for result_filename in p["result_filenames"]:
                     )
                 )
 
-            # Retrieve camera model for projection/rendering based errors.
+            # Try extracting either a K or a CameraModel from scene camera parameters 
+            K = None
+            cam = None
+            if "cam_K" in scene_camera[im_id]:
+                # Only Classic BOP19 format
+                K = scene_camera[im_id]["cam_K"]
+            elif htt_available:
+                # Works with both Classic BOP19 and H3 BOP24 format
+                cam = pose_error_htt.create_camera_model(scene_camera[im_id])
+                if cam.distortion_model.__name__ == "PinholePlaneCameraModel":
+                    K = cam.uv_to_window_matrix()
+            elif ("cam_model" in scene_camera[im_id]
+                  and scene_camera[im_id]["cam_model"] == "PinholePlaneCameraModel"):
+                # Only H3 BOP24 format
+                calib = scene_camera[im_id]["cam_model"]
+                fx, fy, cx, cy = calib["projection_params"][:4]
+                K = np.array([fx,0, cx,
+                              0, fy,cy,
+                              0, 0, 1]).reshape((3,3))
+
+            if p["error_type"] in ['vsd','cus','proj']:
+                assert K is not None, "Error type {} is not supported for non pinhole cameras".format(p["error_type"])
             if p["error_type"] in ["mspd"]:
-                # MSPD is compatible with "cam_K" or "cam_model" scene camera format
-                cam = misc.create_camera_model(scene_camera[im_id])
-            elif p["error_type"] in ['vsd','cus','proj']:
-                # VSD,CUS,PROJ are only compatible with "cam_K"
-                try:
-                    cam = scene_camera[im_id]["cam_K"]
-                except KeyError as e:
-                    logger.error(e)
-                    logger.error("""{} error type is only compatible with camera model """ 
-                                 """defined as 'cam_K' field to: {}""".format(p["error_type"]))
+                assert (K is not None) or (cam is not None), "Dataset {} requires Handa-Tracking-Toolkit as it is a non Pinhole camera (see bop_toolkit/README.md)".format(dataset)
+
             # Load the depth image if VSD is selected as the pose error function.
             depth_im = None
             if p["error_type"] == "vsd":
@@ -413,7 +435,7 @@ for result_filename in p["result_filenames"]:
                                         R_g=R_g,
                                         t_g=t_g,
                                         depth_im=depth_im,
-                                        K=cam,
+                                        K=K,
                                         vsd_deltas=p["vsd_deltas"][dataset],
                                         vsd_taus=p["vsd_taus"],
                                         vsd_normalized_by_diameter=p[
@@ -440,17 +462,32 @@ for result_filename in p["result_filenames"]:
                                 ]
 
                         elif p["error_type"] == "mspd":
-                            e = [
-                                pose_error_htt.mspd(
-                                    R_e,
-                                    t_e,
-                                    R_g,
-                                    t_g,
-                                    cam,
-                                    models[obj_id]["pts"],
-                                    models_sym[obj_id],
-                                )
-                            ]
+                            if cam is not None:
+                                e = [
+                                    pose_error_htt.mspd(
+                                        R_e,
+                                        t_e,
+                                        R_g,
+                                        t_g,
+                                        cam,
+                                        models[obj_id]["pts"],
+                                        models_sym[obj_id],
+                                    )
+                                ]
+                            elif K is not None:
+                                e = [
+                                    pose_error.mspd(
+                                        R_e,
+                                        t_e,
+                                        R_g,
+                                        t_g,
+                                        K,
+                                        models[obj_id]["pts"],
+                                        models_sym[obj_id],
+                                    )
+                                ]
+                            else:
+                                raise ValueError("Either 'K' or 'cam_model' should be defined at this point")
 
                         elif p["error_type"] in ["ad", "add", "adi"]:
                             if not spheres_overlap:
