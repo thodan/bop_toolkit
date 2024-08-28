@@ -88,6 +88,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hope": list(range(1, 29)),
         "hopev2": list(range(1, 29)),
         "hot3d": list(range(1, 33)),
+        "handal": list(range(1, 40)),
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error
@@ -108,6 +109,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hope": [],
         "hopev2": [],
         "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
+        "handal": [26, 35, 36, 37, 38, 39, 40],
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -378,6 +380,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "test": list(range(1, 48)),
         }[split]
         p["im_size"] = (1920, 1080)
+
+        if split == "test":
+            p["depth_range"] = None  # Not calculated yet.
+            p["azimuth_range"] = None  # Not calculated yet.
+            p["elev_range"] = None  # Not calculated yet.
+
+    # HANDAL.
+    elif dataset_name == "handal":
+        p["scene_ids"] = {
+            "train": [],
+            "val": list(range(1, 11)),
+            "test": list(range(1, 61)),
+        }[split]
+        p["im_size"] = (1920, 1440)
 
         if split == "test":
             p["depth_range"] = None  # Not calculated yet.
