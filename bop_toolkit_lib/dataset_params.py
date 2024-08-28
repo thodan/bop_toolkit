@@ -391,7 +391,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["scene_ids"] = {
             "train": [],
             "val": list(range(1, 11)),
-            "test": list(range(1, 61)),
+            "test": list(range(11, 72)),
         }[split]
         p["im_size"] = (1920, 1440)
 
