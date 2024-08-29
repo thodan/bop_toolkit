@@ -29,7 +29,8 @@ try:
     htt_available = True
 except ImportError as e:
     logger.warn("""Missing hand_tracking_toolkit dependency, 
-                this script will not be compatible with H3 BOP24 datasets
+                mandatory if you are running evaluation on HOT3d. 
+                Refer to the README.md for installation instructions.
                 """)
 
 # PARAMETERS (can be overwritten by the command line arguments below).
