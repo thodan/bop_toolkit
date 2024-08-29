@@ -420,7 +420,7 @@ for result_filename in p["result_filenames"]:
                                         R_g,
                                         t_g,
                                         depth_im,
-                                        cam,
+                                        K,
                                         p["vsd_deltas"][dataset],
                                         p["vsd_taus"],
                                         p["vsd_normalized_by_diameter"],
@@ -536,14 +536,14 @@ for result_filename in p["result_filenames"]:
 
                         elif p["error_type"] == "cus":
                             if sphere_projections_overlap:
-                                e = [pose_error.cus(R_e, t_e, R_g, t_g, cam, ren, obj_id)]
+                                e = [pose_error.cus(R_e, t_e, R_g, t_g, K, ren, obj_id)]
                             else:
                                 e = [1.0]
 
                         elif p["error_type"] == "proj":
                             e = [
                                 pose_error.proj(
-                                    R_e, t_e, R_g, t_g, cam, models[obj_id]["pts"]
+                                    R_e, t_e, R_g, t_g, K, models[obj_id]["pts"]
                                 )
                             ]
 
