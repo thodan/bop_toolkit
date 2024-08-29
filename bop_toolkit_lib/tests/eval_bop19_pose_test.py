@@ -83,7 +83,9 @@ for dataset_method_name, file_name in tqdm(
         "--result_filenames",
         file_name,
         "--num_worker",
-        str(p["num_workers"])
+        str(p["num_workers"]),
+        "--targets_filename",
+        p["targets_filename"],
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
