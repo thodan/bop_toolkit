@@ -100,7 +100,7 @@ EXPECTED_OUTPUT = {
 for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
-    output_file_name = f"{OUTPUT_DIR}/eval_bop24_pose_test_{dataset_method_name}.txt"
+    log_file_path = f"{OUTPUT_DIR}/eval_bop24_pose_test_{dataset_method_name}.txt"
     command = [
         "python",
         "scripts/eval_bop24_pose.py",
@@ -113,14 +113,14 @@ for dataset_method_name, file_name in tqdm(
         "--result_filenames",
         file_name,
         "--num_worker",
-        p["num_workers"],
+        str(p["num_workers"]),
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
     command_ = " ".join(command)
     print(f"Executing: {command_}")
     start_time = time.time()
-    with open(output_file_name, "a") as output_file:
+    with open(log_file_path, "a") as output_file:
         subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT)
     end_time = time.time()
     print(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")

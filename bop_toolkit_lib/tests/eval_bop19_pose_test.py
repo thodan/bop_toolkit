@@ -37,8 +37,6 @@ INPUT_DIR = "./bop_toolkit_lib/tests/data/"
 OUTPUT_DIR = "./bop_toolkit_lib/tests/logs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-log_file_tpath = "{}/eval_bop19_pose_test_{}.txt"
-
 
 # Define the dataset dictionary
 FILE_DICTIONARY = {
@@ -66,11 +64,13 @@ EXPECTED_OUTPUT = {
     },
 }
 
+assert FILE_DICTIONARY.keys() == EXPECTED_OUTPUT.keys()
+
 # Loop through each entry in the dictionary and execute the command
 for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
-    log_file_path = log_file_tpath.format(OUTPUT_DIR, dataset_method_name)
+    log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
     command = [
         "python",
         "scripts/eval_bop19_pose.py",
@@ -83,7 +83,7 @@ for dataset_method_name, file_name in tqdm(
         "--result_filenames",
         file_name,
         "--num_worker",
-        "{}".format(p["num_workers"])
+        str(p["num_workers"])
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
@@ -96,7 +96,7 @@ print("Script executed successfully.")
 
 # Check scores for each dataset
 for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
-    log_file_path = log_file_tpath.format(OUTPUT_DIR, dataset_method_name)
+    log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
 
     # Read the content of the log file
     with open(log_file_path, "r") as log_file:
