@@ -49,9 +49,16 @@ for scene_id in tqdm(dp_split["scene_ids"]):
     else: # hot3d
         eval_modality = dp_split["eval_modality"](scene_id)
         # Load info about the GT poses (e.g. visibility) for the current scene.
-        scene_gt_info = inout.load_json(
-            dp_split[f"scene_gt_info_{eval_modality}_tpath"].format(scene_id=scene_id), keys_to_int=True
-        )
+        scene_gt_info_path = dp_split[f"scene_gt_info_{eval_modality}_tpath"].format(scene_id=scene_id)
+
+        # Few scenes of HOT3D dataset are missing
+        try:
+            scene_gt_info = inout.load_json(
+                scene_gt_info_path, keys_to_int=True
+            )
+        except FileNotFoundError:
+            print(f"File not found: {scene_gt_info_path}")
+            
     num_images += len(scene_gt_info)
     for im_id in scene_gt_info:
         im_gt_info = scene_gt_info[im_id]
