@@ -61,11 +61,11 @@ for scene_id in tqdm(dp_split["scene_ids"]):
         except FileNotFoundError:
             print(f"File not found: {scene_gt_info_path}")
 
-    num_images += len(scene_gt_info)
     for im_id in scene_gt_info:
         # In case of HOT3D and only_keyframes, we only consider keyframes for counting instances
         if dataset_name == "hot3d" and p["only_keyframes"] and (im_id not in [14, 29, 44, 59, 74, 89, 104, 119, 134, 149]):
             continue
+        num_images += 1
         im_gt_info = scene_gt_info[im_id]
         for gt_info in im_gt_info:
             if gt_info["visib_fract"] >= min_visib_gt:
