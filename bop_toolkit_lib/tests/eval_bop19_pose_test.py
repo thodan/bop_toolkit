@@ -15,6 +15,7 @@ p = {
     "targets_filename": "test_targets_bop19.json",
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "tolerance": 1e-4,  # tolerance between expected scores and evaluated ones.
 }
 
 parser = argparse.ArgumentParser()
@@ -22,12 +23,14 @@ parser.add_argument("--renderer_type", default=p["renderer_type"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
+parser.add_argument("--tolerance", default=p["tolerance"], type=float)
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
 p["targets_filename"] = str(args.targets_filename)
 p["num_workers"] = int(args.num_workers)
 p["use_gpu"] = bool(args.use_gpu)
+p["tolerance"] = float(args.tolerance)
 
 
 # Define the input directory
@@ -116,7 +119,7 @@ for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying...")
     for key, expected_value in EXPECTED_OUTPUT[dataset_method_name].items():
         actual_value = scores.get(key)
         if actual_value is not None:
-            if actual_value == expected_value:
+            if abs(actual_value - expected_value) < p["tolerance"]:
                 print(f"{dataset_method_name}: {key}: {actual_value} - PASSED")
             else:
                 print(
