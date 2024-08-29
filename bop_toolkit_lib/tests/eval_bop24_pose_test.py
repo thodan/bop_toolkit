@@ -7,10 +7,31 @@ import numpy as np
 from tqdm import tqdm
 import argparse
 from bop_toolkit_lib import inout
+from bop_toolkit_lib import config
+
+
+# PARAMETERS (some can be overwritten by the command line arguments below).
+################################################################################
+p = {
+    "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
+    "targets_filename": "test_targets_bop19.json",
+    "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
+    "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+}
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--renderer_type", default=p["renderer_type"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 parser.add_argument("--num_false_positives", default=0, type=int)
 args = parser.parse_args()
+
+p["renderer_type"] = str(args.renderer_type)
+p["targets_filename"] = str(args.targets_filename)
+p["num_workers"] = int(args.num_workers)
+p["use_gpu"] = bool(args.use_gpu)
+
 
 # Define the input directory
 INPUT_DIR = "./bop_toolkit_lib/tests/data/"
@@ -83,7 +104,8 @@ for dataset_method_name, file_name in tqdm(
     command = [
         "python",
         "scripts/eval_bop24_pose.py",
-        "--renderer_type=vispy",
+        "--renderer_type",
+        p["renderer_type"],
         "--results_path",
         INPUT_DIR,
         "--eval_path",
@@ -91,8 +113,10 @@ for dataset_method_name, file_name in tqdm(
         "--result_filenames",
         file_name,
         "--num_worker",
-        "10",
+        p["num_workers"],
     ]
+    if p["use_gpu"]:
+        command.append("--use_gpu")
     command_ = " ".join(command)
     print(f"Executing: {command_}")
     start_time = time.time()

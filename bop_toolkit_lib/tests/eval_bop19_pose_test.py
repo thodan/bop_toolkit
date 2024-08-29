@@ -1,8 +1,34 @@
 #!/usr/bin/env python
-import subprocess
 import os
 import re
+import subprocess
+import argparse
 from tqdm import tqdm
+
+from bop_toolkit_lib import config
+
+
+# PARAMETERS (some can be overwritten by the command line arguments below).
+################################################################################
+p = {
+    "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
+    "targets_filename": "test_targets_bop19.json",
+    "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
+    "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+}
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--renderer_type", default=p["renderer_type"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
+args = parser.parse_args()
+
+p["renderer_type"] = str(args.renderer_type)
+p["targets_filename"] = str(args.targets_filename)
+p["num_workers"] = int(args.num_workers)
+p["use_gpu"] = bool(args.use_gpu)
+
 
 # Define the input directory
 INPUT_DIR = "./bop_toolkit_lib/tests/data/"
@@ -11,13 +37,10 @@ INPUT_DIR = "./bop_toolkit_lib/tests/data/"
 OUTPUT_DIR = "./bop_toolkit_lib/tests/logs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+log_file_tpath = "{}/eval_bop19_pose_test_{}.txt"
+
+
 # Define the dataset dictionary
-# FILE_DICTIONARY = {
-#     "lmo_megaPose": "cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv",
-#     "lmo_gt": "gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv",
-#     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
-#     "tless_gt": "gt-pbrreal-rgb-mmodel_tless-test_tless.csv",
-# }
 FILE_DICTIONARY = {
     "lmo_megaPose": "cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv",
     "icbin_megaPose": "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv",
@@ -27,6 +50,7 @@ FILE_DICTIONARY = {
 }
 
 # Note that the expected output of unittests using GT in case of 6D localization can be different than 1.0 due to matching stage
+# TODO: split in EXPECTED_OUTPUT_CPU and EXPECTED_OUTPUT_GPU to merge the test files
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
         "bop19_average_recall_vsd": 0.3976885813148789,
@@ -46,11 +70,12 @@ EXPECTED_OUTPUT = {
 for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
-    output_file_name = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
+    log_file_path = log_file_tpath.format(OUTPUT_DIR, dataset_method_name)
     command = [
         "python",
         "scripts/eval_bop19_pose.py",
-        "--renderer_type=vispy",
+        "--renderer_type",
+        p["renderer_type"],
         "--results_path",
         INPUT_DIR,
         "--eval_path",
@@ -58,18 +83,20 @@ for dataset_method_name, file_name in tqdm(
         "--result_filenames",
         file_name,
         "--num_worker",
-        "10",
+        "{}".format(p["num_workers"])
     ]
+    if p["use_gpu"]:
+        command.append("--use_gpu")
     command_ = " ".join(command)
     print(f"Executing: {command_}")
-    with open(output_file_name, "a") as output_file:
+    with open(log_file_path, "a") as output_file:
         subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT)
 print("Script executed successfully.")
 
 
 # Check scores for each dataset
 for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
-    log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
+    log_file_path = log_file_tpath.format(OUTPUT_DIR, dataset_method_name)
 
     # Read the content of the log file
     with open(log_file_path, "r") as log_file:
