@@ -3,6 +3,7 @@ import numpy as np
 import unittest
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import misc_torch as misct
+from bop_toolkit_lib import pose_error_htt
 from bop_toolkit_lib import transform
 
 from hand_tracking_toolkit.camera import PinholePlaneCameraModel
@@ -87,7 +88,7 @@ class TestMisc(unittest.TestCase):
         camera = PinholePlaneCameraModel(width=fx, height=fy, f=(fx,fy), c=(cx,cy), distort_coeffs=())
         proj_htt = np.zeros((self.B,self.Np,2))
         for i in range(self.B):
-            proj_htt[i] = misc.project_pts_htt(self.pts, camera, R_np[i], t_np[i])
+            proj_htt[i] = pose_error_htt.project_pts_htt(self.pts, camera, R_np[i], t_np[i])
         self.assertTrue(np.allclose(proj_htt, proj_np, atol=1e-4))
 
 

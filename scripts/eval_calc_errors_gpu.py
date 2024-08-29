@@ -8,7 +8,6 @@ import time
 import argparse
 import copy
 import numpy as np
-import torch
 
 
 from bop_toolkit_lib import config
@@ -20,6 +19,12 @@ from bop_toolkit_lib import pose_error_gpu
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
+
+try:
+    import torch
+except ImportError as e:
+    logger.error('torch is required for gpu based evaluation (see bop_toolkit/README.md)')
+    raise e
 
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################

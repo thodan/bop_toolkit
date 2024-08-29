@@ -1,7 +1,62 @@
 import numpy as np
-from bop_toolkit_lib.misc import project_pts_htt 
-from hand_tracking_toolkit.camera import CameraModel
+from bop_toolkit_lib.misc import transform_pts_Rt
+from hand_tracking_toolkit.camera import model_by_name, CameraModel 
 
+
+def create_camera_model(camera: dict):
+    """
+    Create a Hand Tracking Toolkit Camera model from a scene camera.
+    """
+    if "cam_K" in camera:        
+        K = camera["cam_K"]            
+        fx, fy = K[0,0], K[1,1]
+        cx, cy = K[0,2], K[1,2]
+        width, height = 1,1
+        model = "PinholePlane"
+        coeffs = ()
+    
+    elif "cam_model" in camera:
+        calib = camera["cam_model"]
+        width = calib["image_width"]
+        height = calib["image_height"]
+        model = calib["projection_model_type"]
+
+        if model == "CameraModelType.FISHEYE624" and len(calib["projection_params"]) == 15:
+            # TODO: Aria data hack
+            f, cx, cy = calib["projection_params"][:3]
+            fx = fy = f
+            coeffs = calib["projection_params"][3:]
+        else:
+            fx, fy, cx, cy = calib["projection_params"][:4]
+            coeffs = calib["projection_params"][4:]
+
+    else:
+        raise ValueError("Scene camera data missing 'cam_K' or 'cam_model' fields")
+
+    cls = model_by_name[model]
+    return cls(
+        width,
+        height,
+        (fx, fy),
+        (cx, cy),
+        coeffs
+    )
+
+
+def project_pts_htt(pts, cam: CameraModel, R, t):
+    """Transform and projects points with Hand Tracking Toolbox CameraModel.
+
+    :param pts: nx3 ndarray with the 3D points.
+    :param cam: HTT CameraModel instance.
+    :param R: 3x3 ndarray with a rotation matrix.
+    :param t: 3x1 ndarray with a translation vector.
+    :return: nx2 ndarray with 2D image coordinates of the projections.
+    """
+
+    pts_w = transform_pts_Rt(pts, R, t)
+    pts_im = cam.eye_to_window(pts_w)
+
+    return pts_im 
 
 
 def mspd(R_est, t_est, R_gt, t_gt, cam: CameraModel, pts, syms):
