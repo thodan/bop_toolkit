@@ -12,7 +12,7 @@ from bop_toolkit_lib import inout
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "tless",
+    "dataset": "lmo",
     # Dataset split. Options: 'train', 'test'.
     "dataset_split": "test",
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
@@ -20,7 +20,7 @@ p = {
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
     # Minimum visibility of the GT poses to include them in the output.
-    "min_visib_gt": 0.0,
+    "min_visib_gt": 0.1,
 }
 ################################################################################
 
@@ -77,6 +77,6 @@ for scene_id in dp_split["scene_ids"]:
                 )
             )
 
-path = f"./bop_toolkit_lib/tests/data/unittest-minVisib{int(min_visib_gt*100)}_{dataset_name}-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv"
+path = f"./bop_toolkit_lib/tests/data/gt-pbrreal-rgb-mmodel_{dataset_name}-{split}_{dataset_name}.csv.csv"
 with open(path, "w") as f:
     f.write("\n".join(lines))
