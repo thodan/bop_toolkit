@@ -331,7 +331,8 @@ for result_filename in p["result_filenames"]:
                             scene_gt_info[im_id][gt_id]["visib_fract"]
                         )
                         # BOP24 datasets do not have "cam_K" keys but "cam_model" 
-                        if "can_K" in scene_camera[im_id]:
+                        # TODO: handle the case of H3 dataset which are pinhole but have "cam_model" key (like HANDAL)
+                        if "cam_K" in scene_camera[im_id]:
                             est_per_object[obj_id]["cam_K"].append(
                                 scene_camera[im_id]["cam_K"]
                             )
