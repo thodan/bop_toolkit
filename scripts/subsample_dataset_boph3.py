@@ -23,7 +23,7 @@ p = {
     "split": "test",
     "split_type": None,
     # Save file name with a list of targets to consider
-    "targets_filename": "test_targets_bop19.json",
+    "targets_filename": "test_targets_bop24.json",
     # Min visib_fraction to consider the GT poses.
     "min_visib_gt": 0.1,
 }
@@ -89,7 +89,7 @@ for scene_id in tqdm(dp_split["scene_ids"]):
         raise ValueError("Invalid dataset name.")
     total_num_instances += num_instances
     for im_id in selected_im_ids:
-        test_list.append({"scene_id": scene_id, "im_id": im_id})
+        test_list.append({"scene_id": scene_id, "im_id": int(im_id)})
 
 num_total_scenes = len(dp_split["scene_ids"])
 print(f"Missing {len(missing_scenes)}/{num_total_scenes} scenes")
