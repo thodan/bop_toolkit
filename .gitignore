@@ -93,3 +93,5 @@ ENV/
 scripts_internal/
 bop_toolkit_lib/config_internal.py
 .vscode/ 
+._.
+._*
