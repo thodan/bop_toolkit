@@ -50,10 +50,10 @@ p = {
     "vis_rgb_resolve_visib": True,
     # Indicates whether to save images of depth differences.
     "vis_depth_diff": True,
-    # Whether to use the original model color.
-    "vis_orig_color": False,
     # ---------------------------------------------------------------------------------
 
+    # Whether to use the original model color.
+    "vis_orig_color": True,
     # Type of the renderer (used for the VSD pose error function).
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     # Folder containing the BOP datasets.
@@ -74,6 +74,11 @@ p = {
 }
 ################################################################################
 
+# if HOT3D dataset is used, next parameters are set
+if p["dataset"] == "hot3d":
+    p["vis_rgb"] = True
+    p["vis_rgb_resolve_visib"] = False
+    p["vis_depth_diff"] = False
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
@@ -106,7 +111,7 @@ if p["scene_ids"]:
 # Rendering mode.
 # if classical BOP define render modalities
 # new H3 does not include depth images, so this is irrelevant
-if not dp_split["BOP_H3_format"]:
+if not p['dataset'] == "hot3d":
     renderer_modalities = []
     if p["vis_rgb"]:
         renderer_modalities.append("rgb")
@@ -190,7 +195,7 @@ for scene_id in scene_ids:
         gt_poses = []
         for gt_id in gt_ids_curr:
             gt = scene_gt[im_id][gt_id]
-            # if all values are -1 then skip
+            # skip fully occluded masks - all values are -1
             if all(val == -1 for val in gt["cam_t_m2c"]):
                 continue
             gt_poses.append(

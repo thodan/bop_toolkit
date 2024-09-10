@@ -15,7 +15,7 @@ from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
 
-from hand_tracking_toolkit.camera import model_by_name, CameraModel 
+from hand_tracking_toolkit.camera import model_by_name, CameraModel
 
 logging.basicConfig()
 
