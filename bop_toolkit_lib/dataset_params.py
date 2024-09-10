@@ -406,16 +406,23 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = ["rgb","gray1","gray2"]
         # scene_id <= 1848 -> Quest3  train and test clips
         # scene_id >= 1849 -> Aria train and test clips
-        p["eval_modality"] = lambda scene_id: "rgb" if scene_id >= 1849 else "gray1"
+        p["quest3_eval_modality"] = "rgb"
+        p["aria_eval_modality"] = "gray1"
+        p["eval_modality"] = lambda scene_id: p["quest3_eval_modality"] if scene_id >= 1849 else p["aria_eval_modality"]
+        p["quest3_scene_ids"] = list(range(1, 1849))
+        p["aria_scene_ids"] = list(range(1849, 3832))
         p["scene_ids"] = {
-            "test": list(range(1288, 1849)) + list(range(3365, 3832)),  # test_quest3 + test_aria 
+            "test": p["quest3_scene_ids"] + p["aria_scene_ids"],  # test_quest3 + test_aria
+            "train_quest3": range(1,2), # TODO
+            "train_aria": range(1,2),  # TODO
         }[split]
-        # p["im_size"] = (1920, 1080)  # Aria != Quest, not applicable
+        p["quest3_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
+        p["aria_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
 
         exts = {
             "rgb": ".jpg",
-            "gray1": ".png",
-            "gray2": ".png",
+            "gray1": ".jpg",
+            "gray2": "jpg",
         }
 
         if split == "test":

@@ -1,7 +1,10 @@
 # Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
 # Center for Machine Perception, Czech Technical University in Prague
 
-"""Visualizes object models in the ground-truth poses."""
+"""
+Visualizes object models in the ground-truth poses.
+The script visualize datasets in the classical BOP format as well as H3 datasets (HOT3D).
+"""
 
 import os
 import numpy as np
@@ -11,6 +14,7 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import renderer
+from bop_toolkit_lib import renderer_htt
 from bop_toolkit_lib import visualization
 
 
@@ -33,6 +37,10 @@ p = {
     "scene_ids": [],
     "im_ids": [],
     "gt_ids": [],
+
+    # ---------------------------------------------------------------------------------
+    # Next parameters apply only to BOP classical datasets (not H3 Datasets)
+    # ---------------------
     # Indicates whether to render RGB images.
     "vis_rgb": True,
     # Indicates whether to resolve visibility in the rendered RGB images (using
@@ -44,6 +52,8 @@ p = {
     "vis_depth_diff": True,
     # Whether to use the original model color.
     "vis_orig_color": False,
+    # ---------------------------------------------------------------------------------
+
     # Type of the renderer (used for the VSD pose error function).
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     # Folder containing the BOP datasets.
@@ -94,18 +104,28 @@ if p["scene_ids"]:
     scene_ids_curr = set(scene_ids_curr).intersection(p["scene_ids"])
 
 # Rendering mode.
-renderer_modalities = []
-if p["vis_rgb"]:
-    renderer_modalities.append("rgb")
-if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-    renderer_modalities.append("depth")
-renderer_mode = "+".join(renderer_modalities)
+# if classical BOP define render modalities
+# new H3 does not include depth images, so this is irrelevant
+if not dp_split["BOP_H3_format"]:
+    renderer_modalities = []
+    if p["vis_rgb"]:
+        renderer_modalities.append("rgb")
+    if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+        renderer_modalities.append("depth")
+    renderer_mode = "+".join(renderer_modalities)
 
 # Create a renderer.
-width, height = dp_split["im_size"]
-ren = renderer.create_renderer(
-    width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
-)
+# if H3 dataset, create separate renderers for Quest3 and Aria
+if p["dataset"] == "hot3d":
+    quest3_im_size = dp_split["quest3_im_size"][dp_split["quest3_eval_modality"]]
+    aria_im_size = dp_split["aria_im_size"][dp_split["aria_eval_modality"]]
+    quest3_ren = renderer_htt.RendererHtt(quest3_im_size, p["renderer_type"], shading="flat")
+    aria_ren = renderer_htt.RendererHtt(aria_im_size, p["renderer_type"], shading="flat")
+else:  # classical BOP format
+    width, height = dp_split["im_size"]
+    ren = renderer.create_renderer(
+        width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
+    )
 
 # Load object models.
 models = {}
@@ -115,16 +135,29 @@ for obj_id in dp_model["obj_ids"]:
     model_color = None
     if not p["vis_orig_color"]:
         model_color = tuple(colors[(obj_id - 1) % len(colors)])
-    ren.add_object(obj_id, model_path, surf_color=model_color)
+    if p["dataset"] == "hot3d":
+        quest3_ren.add_object(obj_id, model_path, surf_color=model_color)
+        aria_ren.add_object(obj_id, model_path, surf_color=model_color)
+    else:
+        ren.add_object(obj_id, model_path, surf_color=model_color)
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
+    if p["dataset"] == "hot3d":
+        scene_moda = dp_split["eval_modality"](scene_id)
+        # find which renderer to use (quest3 or aria)
+        if scene_id in dp_split["quest3_scene_ids"]:
+            ren = quest3_ren
+        elif scene_id in dp_split["aria_scene_ids"]:
+            ren = aria_ren
+    else:
+        scene_moda = None
     # Load scene info and ground-truth poses.
     scene_camera = inout.load_scene_camera(
-        dp_split["scene_camera_tpath"].format(scene_id=scene_id)
+        dp_split["scene_camera{0}_tpath".format(f"_{scene_moda}" if scene_moda else "")].format(scene_id=scene_id)
     )
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
-
+    scene_gt = inout.load_scene_gt(
+        dp_split["scene_gt{0}_tpath".format(f"_{scene_moda}" if scene_moda else "")].format(scene_id=scene_id))
     # List of considered images.
     if scene_im_ids is not None:
         im_ids = scene_im_ids[scene_id]
@@ -142,7 +175,11 @@ for scene_id in scene_ids:
                 )
             )
 
-        K = scene_camera[im_id]["cam_K"]
+        if p['dataset'] == 'hot3d':
+            cam = misc.create_camera_model(scene_camera[im_id])
+        # TODO might delete if-else here
+        else:
+            cam = scene_camera[im_id]["cam_K"]
 
         # List of considered ground-truth poses.
         gt_ids_curr = range(len(scene_gt[im_id]))
@@ -153,6 +190,9 @@ for scene_id in scene_ids:
         gt_poses = []
         for gt_id in gt_ids_curr:
             gt = scene_gt[im_id][gt_id]
+            # if all values are -1 then skip
+            if all(val == -1 for val in gt["cam_t_m2c"]):
+                continue
             gt_poses.append(
                 {
                     "obj_id": gt["obj_id"],
@@ -168,27 +208,34 @@ for scene_id in scene_ids:
                 }
             )
 
-        # Load the color and depth images and prepare images for rendering.
-        rgb = None
-        if p["vis_rgb"]:
-            if "rgb" in dp_split["im_modalities"] or p["dataset_split_type"] == "pbr":
-                rgb = inout.load_im(
-                    dp_split["rgb_tpath"].format(scene_id=scene_id, im_id=im_id)
-                )[:, :, :3]
-            elif "gray" in dp_split["im_modalities"]:
-                gray = inout.load_im(
-                    dp_split["gray_tpath"].format(scene_id=scene_id, im_id=im_id)
-                )
-                rgb = np.dstack([gray, gray, gray])
-            else:
-                raise ValueError("RGB nor gray images are available.")
+        if p["dataset"] == "hot3d":
+            # load the image of the eval modality
+            rgb = inout.load_im(
+                dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
+            )
+        else:
+            # Load the color and depth images and prepare images for rendering.
+            rgb = None
+            if p["vis_rgb"]:
+                if "rgb" in dp_split["im_modalities"] or p["dataset_split_type"] == "pbr":
+                    rgb = inout.load_im(
+                        dp_split["rgb_tpath"].format(scene_id=scene_id, im_id=im_id)
+                    )[:, :, :3]
+                elif "gray" in dp_split["im_modalities"]:
+                    gray = inout.load_im(
+                        dp_split["gray_tpath"].format(scene_id=scene_id, im_id=im_id)
+                    )
+                    rgb = np.dstack([gray, gray, gray])
+                else:
+                    raise ValueError("RGB nor gray images are available.")
 
         depth = None
-        if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-            depth = inout.load_depth(
-                dp_split["depth_tpath"].format(scene_id=scene_id, im_id=im_id)
-            )
-            depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+        if p["dataset"] != "hot3d":
+            if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+                depth = inout.load_depth(
+                    dp_split["depth_tpath"].format(scene_id=scene_id, im_id=im_id)
+                )
+                depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
         # Path to the output RGB visualization.
         vis_rgb_path = None
@@ -203,19 +250,20 @@ for scene_id in scene_ids:
 
         # Path to the output depth difference visualization.
         vis_depth_diff_path = None
-        if p["vis_depth_diff"]:
-            vis_depth_diff_path = p["vis_depth_diff_tpath"].format(
-                vis_path=p["vis_path"],
-                dataset=p["dataset"],
-                split=p["dataset_split"],
-                scene_id=scene_id,
-                im_id=im_id,
-            )
+        if p["dataset"] != "hot3d":
+            if p["vis_depth_diff"]:
+                vis_depth_diff_path = p["vis_depth_diff_tpath"].format(
+                    vis_path=p["vis_path"],
+                    dataset=p["dataset"],
+                    split=p["dataset_split"],
+                    scene_id=scene_id,
+                    im_id=im_id,
+                )
 
         # Visualization.
         visualization.vis_object_poses(
             poses=gt_poses,
-            K=K,
+            K=cam,
             renderer=ren,
             rgb=rgb,
             depth=depth,

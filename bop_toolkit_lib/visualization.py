@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
+from hand_tracking_toolkit.camera import CameraModel
+
 
 def draw_rect(im, rect, color=(1.0, 1.0, 1.0)):
     """Draws a rectangle on an image.
@@ -120,8 +122,6 @@ def vis_object_poses(
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
-    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-
     # Indicators of visualization types.
     vis_rgb = vis_rgb_path is not None
     vis_depth_diff = vis_depth_diff_path is not None
@@ -155,9 +155,15 @@ def vis_object_poses(
     # Render the pose estimates one by one.
     for pose in poses:
         # Rendering.
-        ren_out = renderer.render_object(
-            pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
-        )
+        if isinstance(K, CameraModel):
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], K
+            )
+        else:
+            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
+            )
 
         m_rgb = None
         if vis_rgb:
