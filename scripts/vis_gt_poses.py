@@ -3,7 +3,7 @@
 
 """
 Visualizes object models in the ground-truth poses.
-The script visualize datasets in the classical BOP format as well as H3 datasets (HOT3D).
+The script visualize datasets in the classical BOP19 format as well as the HOT3D dataset in H3 BOP24 format.
 """
 
 import os
@@ -14,9 +14,21 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import renderer
-from bop_toolkit_lib import renderer_htt
 from bop_toolkit_lib import visualization
 
+# Get the base name of the file without the .py extension
+file_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = misc.get_logger(file_name)
+
+htt_available = False
+try:
+    from bop_toolkit_lib import renderer_htt
+    htt_available = True
+except ImportError as e:
+    logger.warn("""Missing hand_tracking_toolkit dependency,
+                mandatory if you are running evaluation on HOT3d.
+                Refer to the README.md for installation instructions.
+                """)
 
 # PARAMETERS.
 ################################################################################
@@ -39,7 +51,7 @@ p = {
     "gt_ids": [],
 
     # ---------------------------------------------------------------------------------
-    # Next parameters apply only to BOP classical datasets (not H3 Datasets)
+    # Next parameters apply only to classical BOP19 datasets (not the H3 BOP24 format)
     # ---------------------
     # Indicates whether to render RGB images.
     "vis_rgb": True,
@@ -73,6 +85,9 @@ p = {
     ),
 }
 ################################################################################
+
+if p["dataset"] == "hot3d" and not htt_available:
+    raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
 
 # if HOT3D dataset is used, next parameters are set
 if p["dataset"] == "hot3d":
@@ -109,8 +124,8 @@ if p["scene_ids"]:
     scene_ids_curr = set(scene_ids_curr).intersection(p["scene_ids"])
 
 # Rendering mode.
-# if classical BOP define render modalities
-# new H3 does not include depth images, so this is irrelevant
+# if classical BOP19 format define render modalities
+# The H3 BOP24 format for HOT3D does not include depth images, so this is irrelevant
 if not p['dataset'] == "hot3d":
     renderer_modalities = []
     if p["vis_rgb"]:
@@ -120,7 +135,7 @@ if not p['dataset'] == "hot3d":
     renderer_mode = "+".join(renderer_modalities)
 
 # Create a renderer.
-# if H3 dataset, create separate renderers for Quest3 and Aria
+# if HOT3D dataset, create separate renderers for Quest3 and Aria with different image sizes
 if p["dataset"] == "hot3d":
     quest3_im_size = dp_split["quest3_im_size"][dp_split["quest3_eval_modality"]]
     aria_im_size = dp_split["aria_im_size"][dp_split["aria_eval_modality"]]
@@ -148,21 +163,16 @@ for obj_id in dp_model["obj_ids"]:
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
-    if p["dataset"] == "hot3d":
-        scene_moda = dp_split["eval_modality"](scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+    if p["dataset"] == "hot3d":  # for other dataset the renderer does not change
         # find which renderer to use (quest3 or aria)
-        if scene_id in dp_split["quest3_scene_ids"]:
+        if scene_id in dp_split["test_quest3_scene_ids"]:
             ren = quest3_ren
-        elif scene_id in dp_split["aria_scene_ids"]:
+        elif scene_id in dp_split["test_aria_scene_ids"]:
             ren = aria_ren
-    else:
-        scene_moda = None
     # Load scene info and ground-truth poses.
-    scene_camera = inout.load_scene_camera(
-        dp_split["scene_camera{0}_tpath".format(f"_{scene_moda}" if scene_moda else "")].format(scene_id=scene_id)
-    )
-    scene_gt = inout.load_scene_gt(
-        dp_split["scene_gt{0}_tpath".format(f"_{scene_moda}" if scene_moda else "")].format(scene_id=scene_id))
+    scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
+    scene_gt = inout.load_scene_gt(dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id))
     # List of considered images.
     if scene_im_ids is not None:
         im_ids = scene_im_ids[scene_id]
@@ -218,6 +228,9 @@ for scene_id in scene_ids:
             rgb = inout.load_im(
                 dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
             )
+            # if image is grayscale (quest3), convert it to 3 channels
+            if rgb.ndim == 2:
+                rgb = np.dstack([rgb, rgb, rgb])
         else:
             # Load the color and depth images and prepare images for rendering.
             rgb = None

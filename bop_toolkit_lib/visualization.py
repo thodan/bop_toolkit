@@ -12,7 +12,19 @@ from PIL import Image, ImageDraw, ImageFont
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
-from hand_tracking_toolkit.camera import CameraModel
+# Get the base name of the file without the .py extension
+file_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = misc.get_logger(file_name)
+
+htt_available = False
+try:
+    from hand_tracking_toolkit.camera import CameraModel
+    htt_available = True
+except ImportError as e:
+    logger.warn("""Missing hand_tracking_toolkit dependency,
+                mandatory if you are running evaluation on HOT3d.
+                Refer to the README.md for installation instructions.
+                """)
 
 
 def draw_rect(im, rect, color=(1.0, 1.0, 1.0)):
@@ -122,6 +134,13 @@ def vis_object_poses(
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
+    # check if CameraModel is used and if hand_tracking_toolkit is available
+    if isinstance(K, CameraModel) and not htt_available:
+        raise ValueError(
+            "CameraModel is used but hand_tracking_toolkit is not available."
+        )
+
+
     # Indicators of visualization types.
     vis_rgb = vis_rgb_path is not None
     vis_depth_diff = vis_depth_diff_path is not None
