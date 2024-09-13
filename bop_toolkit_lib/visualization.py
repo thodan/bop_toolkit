@@ -134,12 +134,6 @@ def vis_object_poses(
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
-    # check if CameraModel is used and if hand_tracking_toolkit is available
-    if isinstance(K, CameraModel) and not htt_available:
-        raise ValueError(
-            "CameraModel is used but hand_tracking_toolkit is not available."
-        )
-
 
     # Indicators of visualization types.
     vis_rgb = vis_rgb_path is not None
@@ -175,6 +169,11 @@ def vis_object_poses(
     for pose in poses:
         # Rendering.
         if isinstance(K, CameraModel):
+            # hand_tracking_toolkit is used for rendering.
+            if not htt_available:
+                raise ValueError(
+                    "CameraModel is used but hand_tracking_toolkit is not available."
+                )
             ren_out = renderer.render_object(
                 pose["obj_id"], pose["R"], pose["t"], K
             )
