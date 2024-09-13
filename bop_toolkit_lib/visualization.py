@@ -168,20 +168,17 @@ def vis_object_poses(
     # Render the pose estimates one by one.
     for pose in poses:
         # Rendering.
-        if isinstance(K, CameraModel):
-            # hand_tracking_toolkit is used for rendering.
-            if not htt_available:
-                raise ValueError(
-                    "CameraModel is used but hand_tracking_toolkit is not available."
-                )
+        if htt_available and isinstance(K, CameraModel): # hand_tracking_toolkit is used for rendering.
             ren_out = renderer.render_object(
                 pose["obj_id"], pose["R"], pose["t"], K
             )
-        else:
+        elif isinstance(K, np.ndarray) and K.shape == (3, 3):  # pinhole camera model is used for rendering.
             fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
             ren_out = renderer.render_object(
                 pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
             )
+        else:
+            raise ValueError("Camera model 'K' type {} should be either CameraModel or np.ndarray".format(type(K)))
 
         m_rgb = None
         if vis_rgb:
