@@ -398,11 +398,15 @@ def check_bop_results(path, version="bop19"):
     return check_passed, check_msg
 
 
-def check_coco_results(path, version="bop22", ann_type="segm"):
+def check_coco_results(path, version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
     """Checks if the format of extended COCO results is correct.
 
-    :param result_filenames: Path to a file with coco estimates.
+    :param path: Path to a file with coco estimates.
     :param version: Version of the results.
+    :param ann_type: type of annotation expected in the file.
+        "bbox" -> bounding boxes
+        "segm" -> segmentation mask
+    :param enforce_no_segm_if_bbox: prevent the presence of segmentation mask in the file if ann_type is "bbox"
     :return: True if the format is correct, False if it is not correct.
     """
 
@@ -428,6 +432,9 @@ def check_coco_results(path, version="bop22", ann_type="segm"):
                 assert isinstance(result["image_id"], int)
                 assert isinstance(result["category_id"], int)
                 assert isinstance(result["score"], float)
+                if enforce_no_segm_if_bbox:
+                    assert not (ann_type == "bbox" and "segmentation" in result), \
+                           "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
                 if "bbox" in result:
                     assert isinstance(result["bbox"], list)
                 if "segmentation" in result and ann_type == "segm":
