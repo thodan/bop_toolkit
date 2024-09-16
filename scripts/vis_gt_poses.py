@@ -166,9 +166,9 @@ for scene_id in scene_ids:
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
     if p["dataset"] == "hot3d":  # for other dataset the renderer does not change
         # find which renderer to use (quest3 or aria)
-        if scene_id in dp_split["test_quest3_scene_ids"]:
+        if scene_id in dp_split["test_quest3_scene_ids"] or scene_id in dp_split["train_quest3_scene_ids"]:
             ren = quest3_ren
-        elif scene_id in dp_split["test_aria_scene_ids"]:
+        elif scene_id in dp_split["test_aria_scene_ids"] or scene_id in dp_split["train_aria_scene_ids"]:
             ren = aria_ren
     # Load scene info and ground-truth poses.
     scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
