@@ -13,6 +13,7 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
+from bop_toolkit_lib import pose_error_htt
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import visualization
 
@@ -191,7 +192,7 @@ for scene_id in scene_ids:
             )
 
         if p['dataset'] == 'hot3d':
-            cam = misc.create_camera_model(scene_camera[im_id])
+            cam = pose_error_htt.create_camera_model(scene_camera[im_id])
         # TODO might delete if-else here
         else:
             cam = scene_camera[im_id]["cam_K"]
