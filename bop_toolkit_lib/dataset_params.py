@@ -404,11 +404,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     elif dataset_name == "hot3d":
         modalities_have_separate_annotations = True 
         p["im_modalities"] = ["rgb","gray1","gray2"]
-        # scene_id <= 1848 -> Quest3  train and test clips
-        # scene_id >= 1849 -> Aria train and test clips
-        p["quest3_eval_modality"] = "rgb"
-        p["aria_eval_modality"] = "gray1"
-        p["eval_modality"] = lambda scene_id: p["quest3_eval_modality"] if scene_id >= 1849 else p["aria_eval_modality"]
         p["test_quest3_scene_ids"] = list(range(1288, 1849))
         p["test_aria_scene_ids"] = list(range(3365, 3832))
         p["train_quest3_scene_ids"] = list(range(0, 1288))
@@ -417,8 +412,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "test": p["test_quest3_scene_ids"] + p["test_aria_scene_ids"],  # test_quest3 + test_aria
             "train": p["train_quest3_scene_ids"] + p["train_aria_scene_ids"],  # train_quest3 + train_aria
         }[split]
-        p["quest3_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
-        p["aria_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
+        p["quest3_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
+        p["aria_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
+
+        p["quest3_eval_modality"] = "gray1"
+        p["aria_eval_modality"] = "rgb"
+        def hot3d_eval_modality(scene_id):
+            if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
+                return p["quest3_eval_modality"]
+            elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
+                return p["aria_eval_modality"]
+            else:
+                raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
+
+        p["eval_modality"] = hot3d_eval_modality
 
         exts = {
             "rgb": ".jpg",
