@@ -412,8 +412,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "test": p["test_quest3_scene_ids"] + p["test_aria_scene_ids"],  # test_quest3 + test_aria
             "train": p["train_quest3_scene_ids"] + p["train_aria_scene_ids"],  # train_quest3 + train_aria
         }[split]
-        p["quest3_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
-        p["aria_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
+        p["quest3_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
+        p["aria_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
 
         p["quest3_eval_modality"] = "gray1"
         p["aria_eval_modality"] = "rgb"
