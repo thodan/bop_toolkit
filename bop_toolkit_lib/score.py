@@ -289,7 +289,7 @@ def calc_pose_detection_scores(
 
             # Double check the size of GT is correct
             num_gts = len([m for m in obj_matches if m["valid"] and m["gt_visib_fract"] >= visib_gt_min])
-            assert np.sum(true_positives) + np.sum(false_negatives) + np.sum(false_negatives_ignore) == num_gts, f"TP={np.sum(true_positives)}, FN={np.sum(false_negatives)}, FN_ignore={np.sum(false_negatives_ignore)}, num_gts={num_gts}"
+            assert np.sum(true_positives) + np.sum(false_negatives) == num_gts, f"TP={np.sum(true_positives)}, FN={np.sum(false_negatives)}, num_gts={num_gts}"
 
         # remove the false positives that are ignored
         keep_idx = np.logical_and(np.invert(false_positives_ignore), np.invert(false_negatives_ignore))
