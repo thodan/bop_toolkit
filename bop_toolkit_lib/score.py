@@ -181,7 +181,7 @@ def calc_pose_detection_scores(
     visib_gt_min,
     ignore_object_visible_less_than_visib_gt_min,
     do_print=True,
-    double_check_size=True,
+    double_check_size=False,
 ):
     """Calculates performance scores for the 6D object detection task.
 
