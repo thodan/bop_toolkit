@@ -181,6 +181,7 @@ def calc_pose_detection_scores(
     visib_gt_min,
     ignore_object_visible_less_than_visib_gt_min,
     do_print=True,
+    double_check_size=True,
 ):
     """Calculates performance scores for the 6D object detection task.
 
@@ -230,34 +231,71 @@ def calc_pose_detection_scores(
     # Then calculate the average precision for each object.
     scores_per_object = {}
     num_instances_per_object = {}
+    total_num_false_positives_ignore = 0
+    total_num_false_negatives_ignore = 0
     for obj_id, obj_tar in obj_tars.items():
         obj_matches = [m for m in matches if m["obj_id"] == obj_id]
 
         # Sorting the predictions by confidences score and calculate TP, FP.
         sorted_obj_matches = sorted(obj_matches, key=lambda x: x["score"], reverse=True)
+
+        # There are four types of matches:
+        # True Positive: A correct detection with GT having visib_gt_fract >= visib_gt_min.
         true_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
+
+        # False Positive: A detection that has no matching GT having visib_gt_fract >= visib_gt_min.
         false_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
+
+        # False Negative: A GT having visib_gt_fract >= visib_gt_min, has no matching detection.
+        false_negatives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
+
+        # False Positive Ignore: A detection that has no matching GT having visib_gt_fract < visib_gt_min.
         false_positives_ignore = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
+
+        # False Negative Ignore: A GT having visib_gt_fract < visib_gt_min, has no matching detection.
+        false_negatives_ignore = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
+
         for i, m in enumerate(sorted_obj_matches):
-            if m["valid"] and m["est_id"] != -1 and m["gt_visib_fract"] >= visib_gt_min:
-                true_positives[i] = True
-            else:
-                if (
-                    m["gt_visib_fract"] < visib_gt_min
-                    and m["gt_visib_fract"] != -1
-                    and ignore_object_visible_less_than_visib_gt_min
-                ):
-                    gt_visib_fract = m["gt_visib_fract"]
-                    false_positives_ignore[i] = True
-                    misc.log(
-                        f"Ignoring false positive (visib_gt_fract = {gt_visib_fract:.3f})"
-                    )
+            # valid is object_id in target list, and visib_gt_fract >= visib_gt_min
+            # est_id is when there is a match
+
+            # If the GT is in target list
+            if m["valid"]: 
+                # and there is a match
+                if m["est_id"] != -1: 
+                    # and the GT is visible enough, then it is a true positive
+                    if m["gt_visib_fract"] >= visib_gt_min:
+                        true_positives[i] = True
+                    # if not, then it is a false negative except when: 
+                    # 1. ignore_object_visible_less_than_visib_gt_min is True 
+                    # 2. the GT is not visible enough
+                    elif m["gt_visib_fract"] < visib_gt_min and ignore_object_visible_less_than_visib_gt_min: # ignore object visible less than visib_gt_min
+                        false_positives_ignore[i] = True
+                    else:
+                        false_negatives[i] = True
+                # If there is no match, then it is a false negative, except when GT is not visible enough
+                elif m["gt_visib_fract"] < visib_gt_min:
+                    false_negatives_ignore[i] = True
                 else:
-                    false_positives[i] = True
+                    false_negatives[i] = True
+            else:
+                # If the GT is not in target list, then it is a false positive
+                false_positives[i] = True
+        
+        if double_check_size:
+            # Double check the size of prediction is correct
+            num_dets = len([m for m in obj_matches if m["est_id"] != -1])
+            assert np.sum(true_positives) + np.sum(false_positives) + np.sum(false_positives_ignore) == num_dets, f"TP={np.sum(true_positives)}, FP={np.sum(false_positives)}, FP_ignore={np.sum(false_positives_ignore)}, num_dets={num_dets}"
+
+            # Double check the size of GT is correct
+            num_gts = len([m for m in obj_matches if m["valid"] and m["gt_visib_fract"] >= visib_gt_min])
+            assert np.sum(true_positives) + np.sum(false_negatives) + np.sum(false_negatives_ignore) == num_gts, f"TP={np.sum(true_positives)}, FN={np.sum(false_negatives)}, FN_ignore={np.sum(false_negatives_ignore)}, num_gts={num_gts}"
+
         # remove the false positives that are ignored
-        true_positives = true_positives[np.invert(false_positives_ignore)]
-        false_positives = false_positives[np.invert(false_positives_ignore)]
-        obj_tar = obj_tar - np.sum(false_positives_ignore)
+        keep_idx = np.logical_and(np.invert(false_positives_ignore), np.invert(false_negatives_ignore))
+        true_positives = true_positives[keep_idx]
+        false_positives = false_positives[keep_idx]
+        obj_tar = obj_tar - np.sum(false_positives_ignore) - np.sum(false_negatives_ignore)
 
         cum_true_positives = np.cumsum(true_positives)
         cum_false_positives = np.cumsum(false_positives)
@@ -274,6 +312,13 @@ def calc_pose_detection_scores(
                 misc.log(
                     f"Number of false positives ignored: {np.sum(false_positives_ignore)}"
                 )
+            if np.sum(false_negatives_ignore) > 0:
+                misc.log(
+                    f"Number of false negatives ignored: {np.sum(false_negatives_ignore)}"
+                )
+        total_num_false_positives_ignore += np.sum(false_positives_ignore)
+        total_num_false_negatives_ignore += np.sum(false_negatives_ignore)
+
     # Final scores.
     scores = {
         "gt_count": len(matches),
@@ -287,6 +332,8 @@ def calc_pose_detection_scores(
         misc.log("Estimates count:    {:d}".format(scores["num_estimates"]))
         misc.log("GT count:           {:d}".format(scores["gt_count"]))
         misc.log("Target count:       {:d}".format(scores["targets_count"]))
+        misc.log("Total number of false positives ignored: {:d}".format(total_num_false_positives_ignore))
+        misc.log("Total number of false negatives ignored: {:d}".format(total_num_false_negatives_ignore))
         misc.log("")
 
     return scores
