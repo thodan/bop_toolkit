@@ -406,8 +406,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = ["rgb","gray1","gray2"]
         # scene_id <= 1848 -> Quest3  train and test clips
         # scene_id >= 1849 -> Aria train and test clips
-        p["quest3_eval_modality"] = "rgb"
-        p["aria_eval_modality"] = "gray1"
+        p["quest3_eval_modality"] = "gray1"
+        p["aria_eval_modality"] = "rgb"
         p["eval_modality"] = lambda scene_id: p["quest3_eval_modality"] if scene_id >= 1849 else p["aria_eval_modality"]
         p["test_quest3_scene_ids"] = list(range(1288, 1849))
         p["test_aria_scene_ids"] = list(range(3365, 3832))
