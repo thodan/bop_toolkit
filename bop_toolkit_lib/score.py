@@ -274,7 +274,7 @@ def calc_pose_detection_scores(
                     else:
                         false_negatives[i] = True
                 # If there is no match, then it is a false negative, except when GT is not visible enough
-                elif m["gt_visib_fract"] < visib_gt_min:
+                elif m["gt_visib_fract"]!= -1 and m["gt_visib_fract"] < visib_gt_min:
                     false_negatives_ignore[i] = True
                 else:
                     false_negatives[i] = True
