@@ -238,6 +238,7 @@ for result_filename in p["result_filenames"]:
                     if num_instances_per_object[obj_id] > 0:
                         mAP_scores_per_object.setdefault(obj_id, []).append(scores[obj_id])
                     else:
+                        mAP_scores_per_object.setdefault(obj_id, []).append(0)
                         num_object_ids_ignored.append(obj_id)
                         logger.warning(
                             f"Object {obj_id} not found in the dataset. Skipping object {obj_id} in mAP calculation."
@@ -252,7 +253,7 @@ for result_filename in p["result_filenames"]:
             mAP_over_correct_ths = []
             for obj_id in mAP_scores_per_object:
                 # make sure that the object is not ignored
-                assert obj_id not in num_object_ids_ignored
+                # assert obj_id not in num_object_ids_ignored
 
                 mAP_over_correct_th = np.mean(mAP_scores_per_object[obj_id])
                 logger.info(
