@@ -12,6 +12,20 @@ from PIL import Image, ImageDraw, ImageFont
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
+# Get the base name of the file without the .py extension
+file_name = os.path.splitext(os.path.basename(__file__))[0]
+logger = misc.get_logger(file_name)
+
+htt_available = False
+try:
+    from hand_tracking_toolkit.camera import CameraModel
+    htt_available = True
+except ImportError as e:
+    logger.warn("""Missing hand_tracking_toolkit dependency,
+                mandatory if you are running evaluation on HOT3d.
+                Refer to the README.md for installation instructions.
+                """)
+
 
 def draw_rect(im, rect, color=(1.0, 1.0, 1.0)):
     """Draws a rectangle on an image.
@@ -120,7 +134,6 @@ def vis_object_poses(
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
-    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
 
     # Indicators of visualization types.
     vis_rgb = vis_rgb_path is not None
@@ -155,9 +168,17 @@ def vis_object_poses(
     # Render the pose estimates one by one.
     for pose in poses:
         # Rendering.
-        ren_out = renderer.render_object(
-            pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
-        )
+        if htt_available and isinstance(K, CameraModel): # hand_tracking_toolkit is used for rendering.
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], K
+            )
+        elif isinstance(K, np.ndarray) and K.shape == (3, 3):  # pinhole camera model is used for rendering.
+            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
+            )
+        else:
+            raise ValueError("Camera model 'K' type {} should be either CameraModel or np.ndarray".format(type(K)))
 
         m_rgb = None
         if vis_rgb:

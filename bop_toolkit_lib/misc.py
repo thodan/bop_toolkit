@@ -111,7 +111,6 @@ def project_pts(pts, K, R, t):
     return pts_im[:2, :].T
 
 
-
 class Precomputer(object):
     """Caches pre_Xs, pre_Ys for a 30% speedup of depth_im_to_dist_im()"""
 

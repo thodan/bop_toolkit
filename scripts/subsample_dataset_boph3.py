@@ -82,8 +82,8 @@ for scene_id in tqdm(dp_split["scene_ids"]):
         assert gt_available, "Missing image ids in the scene_gt or scene_gt_info."
     elif p["dataset_name"] == "handal":
         avail_im_ids = sorted(list(scene_gt.keys()))
-        # select with frame_rate = 0.5, i.e. every 2 frames
-        selected_im_ids = [im_id for idx, im_id in enumerate(avail_im_ids) if idx % 2 == 0]
+        # select with frame_rate = 0.125, i.e. every 8 frames
+        selected_im_ids = [im_id for idx, im_id in enumerate(avail_im_ids) if idx % 8 == 0]
         _, num_instances = check_scene_gt(scene_gt, scene_gt_info, selected_im_ids)
     else:
         raise ValueError("Invalid dataset name.")

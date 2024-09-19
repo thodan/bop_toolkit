@@ -238,6 +238,7 @@ for error_dir_path in p["error_dir_paths"]:
 
         # Keep GT poses only for the selected targets.
         scene_gt_curr = {}
+        scene_gt_curr_info = {}
         scene_gt_valid = {}
         for im_id, im_targets in scene_targets.items():
 
@@ -248,7 +249,7 @@ for error_dir_path in p["error_dir_paths"]:
                 im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             scene_gt_curr[im_id] = scene_gt[im_id]
-
+            scene_gt_curr_info[im_id] = scene_gt_info[im_id]
             # Determine which GT poses are valid.
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
@@ -309,6 +310,7 @@ for error_dir_path in p["error_dir_paths"]:
         matches += pose_matching.match_poses_scene(
             scene_id,
             scene_gt_curr,
+            scene_gt_curr_info,
             scene_gt_valid,
             scene_errs,
             p["correct_th"][err_type],
