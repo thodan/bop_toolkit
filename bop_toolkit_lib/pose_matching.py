@@ -91,7 +91,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
 
 
 def match_poses_scene(
-    scene_id, scene_gt, scene_gt_valid, scene_errs, correct_th, n_top
+    scene_id, scene_gt, scene_gt_info, scene_gt_valid, scene_errs, correct_th, n_top
 ):
     """Matches the estimated poses to the ground-truth poses in one scene.
 
@@ -124,6 +124,7 @@ def match_poses_scene(
         im_matches = []
 
         for gt_id, gt in enumerate(im_gts):
+            
             im_matches.append(
                 {
                     "scene_id": scene_id,
@@ -135,7 +136,7 @@ def match_poses_scene(
                     "error": -1,
                     "error_norm": -1,
                     "valid": scene_gt_valid[im_id][gt_id],
-                    "gt_visib_fract": -1, # initialize for each gt valid as -1
+                    "gt_visib_fract": scene_gt_info[im_id][gt_id]["visib_fract"], 
                 }
             )
 
@@ -157,7 +158,7 @@ def match_poses_scene(
                     g["score"] = m["score"]
                     g["error"] = m["error"]
                     g["error_norm"] = m["error_norm"]
-                    g["gt_visib_fract"] = m["gt_visib_fract"] # update gt_visib_fract
+                    g["gt_visib_fract"] = m["gt_visib_fract"]
 
         scene_matches += im_matches
 
