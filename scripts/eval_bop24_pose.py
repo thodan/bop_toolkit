@@ -231,7 +231,7 @@ for result_filename in p["result_filenames"]:
                 logger.info("Loading calculated scores from: {}".format(scores_path))
                 scores = inout.load_json(scores_path)["scores"]
                 num_instances_per_object = inout.load_json(scores_path)[
-                    "num_instances_per_object"
+                    "num_targets_per_object"
                 ]
 
                 for obj_id in scores:
