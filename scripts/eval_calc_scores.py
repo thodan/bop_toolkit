@@ -255,15 +255,19 @@ for error_dir_path in p["error_dir_paths"]:
             im_gt_info = scene_gt_info[im_id]
             scene_gt_valid[im_id] = [True] * len(im_gt)
             if p["visib_gt_min"] >= 0:
-                # All GT poses visible from at least 100 * p['visib_gt_min'] percent
-                # are considered valid.
                 for gt_id, gt in enumerate(im_gt):
                     is_target = gt["obj_id"] in im_targets.keys()
                     is_visib = im_gt_info[gt_id]["visib_fract"] >= p["visib_gt_min"]
+
+                    # For 6D localization: a GT is valid is when it is in target file + visible from at least 100 * p['visib_gt_min'] percent
+                    is_valid_localization = is_target and is_visib
+                    # For 6D detection: a GT is valid is when it is in target file since we want to consider all for the flag ignore_object_visible_less_than_visib_gt_min
+                    is_valid_detection = is_target
+                    
                     is_valid = (
-                        is_target and is_visib
+                        is_valid_localization
                         if p["eval_mode"] == "localization"
-                        else is_target
+                        else is_valid_detection
                     )
                     scene_gt_valid[im_id][gt_id] = is_valid
             else:

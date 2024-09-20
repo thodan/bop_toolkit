@@ -238,19 +238,18 @@ def calc_pose_detection_scores(
         # Sorting the predictions by confidences score and calculate TP, FP.
         sorted_obj_matches = sorted(obj_matches, key=lambda x: x["score"], reverse=True)
 
-        # There are four types of matches:
-        # True Positive: A correct detection with GT having visib_gt_fract >= visib_gt_min.
-        true_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        # False Positive: A detection that has no matching GT having visib_gt_fract >= visib_gt_min.
-        false_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        # False Negative: A GT having visib_gt_fract >= visib_gt_min, has no matching detection.
-        false_negatives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        # False Positive Ignore: A detection that has no matching GT having visib_gt_fract < visib_gt_min.
-        false_ignore = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
+        # There are five types of detections:
+        detection_type_names = ["true_positive", "false_positive", "false_positive_ignore", "false_negative", "false_negative_ignore"]
+        detection_types = {name: np.zeros(len(sorted_obj_matches), dtype=np.bool_) for name in detection_type_names}
+        # Case 1. true_positive: A detection matched with GT having visib_gt_fract >= visib_gt_min: m["est_id"] != -1 and m["valid"] and m["gt_visib_fract"] >= visib_gt_min 
+        # Case 2. false_positive_ignore: A detection matched GT having visib_gt_fract < visib_gt_min: m["est_id"] != -1 and m["valid"] and m["gt_visib_fract"] < visib_gt_min 
+        # Case 3. false_positive: A detection that has no matching with any GT: m["est_id"] == -1 and not m["valid"]
+        # Case 4. false_negative_ignore: A GT has visib_gt_fract < visib_gt_min and has no matching detection: m["valid"] and m["gt_visib_fract"] < visib_gt_min
+        # Case 5. false_negative: A GT has visib_gt_fract >= visib_gt_min and has no matching detection: m["valid"] and m["gt_visib_fract"] >= visib_gt_min
+        # Number of GT is all matches has m["valid"] so num_gt = Case 1 + Case 2 + Case 4 + Case 5
+    
+        # After classify the input detection into five classes, all detections in false_positive_ignore and false_negative_ignore will be ignored
+        num_warning_when_not_use_ignore_object_visible_less_than_visib_gt_min = 0
         for i, m in enumerate(sorted_obj_matches):
             # valid is object_id in target list
             # est_id != -1 is when there is a match, -1 otherwise
@@ -259,40 +258,46 @@ def calc_pose_detection_scores(
             if m["est_id"] != -1: 
                 if m["valid"]:
                     if m["gt_visib_fract"] >= visib_gt_min:
-                        true_positives[i] = True
+                        # Case 1 (true positive): m["est_id"] != -1 and m["valid"] and m["gt_visib_fract"] >= visib_gt_min 
+                        detection_types["true_positive"][i] = True
                     elif m["gt_visib_fract"] < visib_gt_min and ignore_object_visible_less_than_visib_gt_min:
-                        false_ignore[i] = True
+                        # Case 2 (false positive to be ignored): m["est_id"] != -1 and m["valid"] and m["gt_visib_fract"] < visib_gt_min 
+                        detection_types["false_positive_ignore"][i] = True
                     else:
-                        print("Warning: not using ignore_object_visible_less_than_visib_gt_min")
+                        num_warning_when_not_use_ignore_object_visible_less_than_visib_gt_min += 1
+                        print("WARNING: not using ignore_object_visible_less_than_visib_gt_min")
                 else:
-                    # est_id != -1 and valid is always together.
-                    print(f"Warning: not using valid {m}")
-            # Case 2: Detection is not a match and it is a valid GT.
+                    raise Exception('This should not happen, detection should match with valid GT, match_info={m}')
             elif m["valid"]:
                 if m["gt_visib_fract"] >= visib_gt_min:
-                    false_negatives[i] = True
+                    # Case 5 (false negative): m["valid"] and m["gt_visib_fract"] >= visib_gt_min
+                    detection_types["false_negative"][i] = True
                 elif m["gt_visib_fract"] < visib_gt_min:
-                    false_ignore[i] = True
-            # Case 3: Detection is not a match and it is not a valid GT.
+                    # Case 4 (false negative to be ignored): m["valid"] and m["gt_visib_fract"] < visib_gt_min
+                    detection_types["false_negative_ignore"][i] = True
             else:
-                false_positives[i] = True
+                # Case 3 (false_positive): m["est_id"] == -1 and not m["valid"]
+                detection_types["false_positive"][i] = True
     
         if double_check_size:
-            # Double check the size of GT is correct
+            # Double check whether the size of GT is correct
             num_gts = len([m for m in obj_matches if m["valid"]])
-            assert np.sum(true_positives) + np.sum(false_negatives) + np.sum(false_ignore) == num_gts, f"TP={np.sum(true_positives)}, FN={np.sum(false_negatives)}, num_gts={num_gts}"
+            assert num_gts == np.sum(detection_types["true_positive"]) + np.sum(detection_types["false_positive_ignore"]) + np.sum(detection_types["false_negative_ignore"]) + np.sum(detection_types["false_negative"])
 
-        # remove the false positives that are ignored
-        keep_idx = np.invert(false_ignore)
-        true_positives = true_positives[keep_idx]
-        false_positives = false_positives[keep_idx]
-        obj_tar = obj_tar - np.sum(false_ignore)
+        # remove the detections that should be ignored
+        ignored_idex = np.logical_or(detection_types["false_negative_ignore"], detection_types["false_positive_ignore"])
+        keep_idx = np.invert(ignored_idex)
+        true_positives = detection_types["true_positive"][keep_idx]
+        false_positives = detection_types["false_positive"][keep_idx]
 
+        # Recall
+        # Update the number of GT for reccall
+        obj_tar = obj_tar - np.sum(detection_types["false_negative_ignore"])
+        recall = cum_true_positives / int(obj_tar)
+
+        # Precision
         cum_true_positives = np.cumsum(true_positives)
         cum_false_positives = np.cumsum(false_positives)
-
-        # Recall, Precision.
-        recall = cum_true_positives / int(obj_tar)
         precision = cum_true_positives / (cum_true_positives + cum_false_positives)
         precision[np.isnan(precision)] = 0
 
@@ -301,11 +306,11 @@ def calc_pose_detection_scores(
         num_instances_per_object[obj_id] = int(obj_tar)
         if do_print:
             misc.log("Object {:d} AP: {:.4f}".format(obj_id, ap))
-            if np.sum(false_ignore) > 0:
+            if np.sum(ignored_idex) > 0:
                 misc.log(
-                    f"Number of false ignored: {np.sum(false_ignore)}"
+                    f"Number of false ignored: {np.sum(ignored_idex)}"
                 )
-        total_num_false_ignore += np.sum(false_ignore)
+        total_num_false_ignore += np.sum(ignored_idex)
 
     # Final scores.
     scores = {
