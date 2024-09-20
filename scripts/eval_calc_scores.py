@@ -245,6 +245,10 @@ for error_dir_path in p["error_dir_paths"]:
             # Create im_targets directly from scene_gt and scene_gt_info.
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
+            # We need to re-define the target file for 6D detection tasks because:
+            # 1. For BOP-Classic, the function of calculating object visibility has been changed, we cannot create the exact same number of `visib_count` as in target_filename _bop19.json from GT
+            # so our unit tests with using prediction created from GT fails, and cannot get 100%. Re-loading the target objects from GT make sures the score will be 100%
+            # 2. We want to consider all GT, not only GT>visib_gt_min since we want to ignore estimation matches with GT < visib_gt_min.  
             if p["eval_mode"] == "detection":
                 im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
@@ -254,40 +258,32 @@ for error_dir_path in p["error_dir_paths"]:
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
             scene_gt_valid[im_id] = [True] * len(im_gt)
-            if p["visib_gt_min"] >= 0:
-                for gt_id, gt in enumerate(im_gt):
-                    is_target = gt["obj_id"] in im_targets.keys()
-                    is_visib = im_gt_info[gt_id]["visib_fract"] >= p["visib_gt_min"]
-
-                    # For 6D localization: a GT is valid is when it is in target file + visible from at least 100 * p['visib_gt_min'] percent
-                    is_valid_localization = is_target and is_visib
-                    # For 6D detection: a GT is valid is when it is in target file since we want to consider all for the flag ignore_object_visible_less_than_visib_gt_min
-                    is_valid_detection = is_target
-                    
-                    is_valid = (
-                        is_valid_localization
-                        if p["eval_mode"] == "localization"
-                        else is_valid_detection
+            # For 6D detection, we consider all GT are valid, scene_gt_valid = True
+            # For 6D localization, a GT is valid when it's in target_file and its visiblity > visib_gt_min
+            if p["eval_mode"] == "localization":
+                if p["visib_gt_min"] >= 0:
+                    for gt_id, gt in enumerate(im_gt):
+                        is_target = gt["obj_id"] in im_targets.keys()
+                        is_visib = im_gt_info[gt_id]["visib_fract"] >= p["visib_gt_min"]
+                        scene_gt_valid[im_id][gt_id] = is_target and is_visib
+                else:
+                    # k most visible GT poses are considered valid, where k is given by
+                    # the "inst_count" item loaded from "targets_filename".
+                    gt_ids_sorted = sorted(
+                        range(len(im_gt)),
+                        key=lambda gt_id: im_gt_info[gt_id]["visib_fract"],
+                        reverse=True,
                     )
-                    scene_gt_valid[im_id][gt_id] = is_valid
-            else:
-                # k most visible GT poses are considered valid, where k is given by
-                # the "inst_count" item loaded from "targets_filename".
-                gt_ids_sorted = sorted(
-                    range(len(im_gt)),
-                    key=lambda gt_id: im_gt_info[gt_id]["visib_fract"],
-                    reverse=True,
-                )
-                to_add = {
-                    obj_id: trg["inst_count"] for obj_id, trg in im_targets.items()
-                }
-                for gt_id in gt_ids_sorted:
-                    obj_id = im_gt[gt_id]["obj_id"]
-                    if obj_id in to_add.keys() and to_add[obj_id] > 0:
-                        scene_gt_valid[im_id][gt_id] = True
-                        to_add[obj_id] -= 1
-                    else:
-                        scene_gt_valid[im_id][gt_id] = False
+                    to_add = {
+                        obj_id: trg["inst_count"] for obj_id, trg in im_targets.items()
+                    }
+                    for gt_id in gt_ids_sorted:
+                        obj_id = im_gt[gt_id]["obj_id"]
+                        if obj_id in to_add.keys() and to_add[obj_id] > 0:
+                            scene_gt_valid[im_id][gt_id] = True
+                            to_add[obj_id] -= 1
+                        else:
+                            scene_gt_valid[im_id][gt_id] = False
 
         # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
         scene_errs_path = p["error_tpath"].format(
