@@ -333,11 +333,7 @@ for error_dir_path in p["error_dir_paths"]:
             dp_model["obj_ids"],
             matches,
             estimates,
-            n_top,
             visib_gt_min=p["visib_gt_min"],
-            ignore_object_visible_less_than_visib_gt_min=p[
-                "ignore_object_visible_less_than_visib_gt_min"
-            ],
         )
     else:
         raise ValueError("Unknown eval_mode: {}".format(p["eval_mode"]))
