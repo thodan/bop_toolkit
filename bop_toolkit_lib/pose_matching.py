@@ -158,7 +158,6 @@ def match_poses_scene(
                     g["score"] = m["score"]
                     g["error"] = m["error"]
                     g["error_norm"] = m["error_norm"]
-                    g["gt_visib_fract"] = m["gt_visib_fract"]
 
         scene_matches += im_matches
 
