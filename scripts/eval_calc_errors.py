@@ -383,6 +383,7 @@ for result_filename in p["result_filenames"]:
                     t_e = est["t"]
 
                     errs = {}  # Errors w.r.t. GT poses of the same object class.
+                    gt_visib_fracts = {}
                     for gt_id, gt in enumerate(scene_gt[im_id]):
                         if gt["obj_id"] != obj_id:
                             continue
@@ -563,6 +564,7 @@ for result_filename in p["result_filenames"]:
                             raise ValueError("Unknown pose error function.")
 
                         errs[gt_id] = e
+                        gt_visib_fracts[gt_id] = gt_visib_fract
                         
                     # Save the calculated errors.
                     im_errs.append(
@@ -573,7 +575,7 @@ for result_filename in p["result_filenames"]:
                             "score": est["score"],
                             "errors": errs,
                             "scene_id": scene_id,
-                            "gt_visib_fract": gt_visib_fract,
+                            "gt_visib_fracts": gt_visib_fracts,
                         }
                     )
                 assert (

@@ -207,6 +207,7 @@ def calc_pose_detection_scores(
     # Calculate per-object detection scores.
     scores_per_object = {}
     num_targets_per_object = {}
+    total_num_ignored_obj_gts = 0
     for obj_id in obj_ids:
 
         # Per-GT info about GT-to-detection matching (`len(obj_matches)` is the number
@@ -301,7 +302,9 @@ def calc_pose_detection_scores(
             num_ignored_obj_gts = np.sum(ignored_mask)
             if num_ignored_obj_gts > 0:
                 misc.log(f"Number of ignored GTs: {num_ignored_obj_gts}")
-
+        total_num_ignored_obj_gts += num_ignored_obj_gts
+    
+    misc.log("Total number of ignored GT {:d}".format(total_num_ignored_obj_gts))
     return {
         "scores": scores_per_object,
         "num_targets_per_object": num_targets_per_object,
