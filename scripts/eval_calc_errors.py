@@ -333,7 +333,10 @@ for result_filename in p["result_filenames"]:
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
             if p["eval_mode"] == "detection":
-                # re-load the im_targets on the fly.
+                # We need to re-define the target file for 6D detection tasks because:
+                # 1. For BOP-Classic, the function of calculating object visibility has been changed, we cannot create the exact same number of `visib_count` as in target_filename _bop19.json from GT
+                # so our unit tests with using prediction created from GT fails, and cannot get 100%. Re-loading the target objects from GT make sures the score will be 100%
+                # 2. We want to consider all GT, not only GT>visib_gt_min since we want to ignore estimation matches with GT < visib_gt_min.  
                 im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             for obj_id, target in im_targets.items():
