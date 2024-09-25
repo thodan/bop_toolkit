@@ -280,7 +280,10 @@ def calc_pose_detection_scores(
         # Cumulative sums (this can be done as we sorted the matches at the beginning).
         true_positive_cumsum = np.cumsum(true_positive_mask)
         false_positive_cumsum = valid_obj_dets_count - true_positive_cumsum
-        assert np.min(false_positive_cumsum) >= 0
+        # this assert is only valid in the case that this obj is associated with
+        # at least one gt target (np.min fails on length 0 arrays)
+        if len(false_positive_cumsum) > 0:
+            assert np.min(false_positive_cumsum) >= 0
 
         # The number of target object instances (i.e. valid GT annotations).
         num_obj_targets = np.sum(true_positive_mask) + np.sum(false_negative_mask)
