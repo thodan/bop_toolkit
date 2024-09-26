@@ -7,6 +7,7 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 import os
+import argparse
 
 # PARAMETERS.
 ################################################################################
@@ -26,14 +27,25 @@ p = {
 }
 ################################################################################
 
-datasets_path = p["datasets_path"]
-dataset_name = p["dataset"]
-split = p["dataset_split"]
-split_type = p["dataset_split_type"]
-min_visib_gt = p["min_visib_gt"]
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", default=p["dataset"])
+parser.add_argument("--dataset_split", default=p["dataset_split"])
+parser.add_argument("--dataset_split_type", default=p["dataset_split_type"])
+parser.add_argument("--datasets_path", default=p["datasets_path"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+args = parser.parse_args()
+
+p["dataset"] = args.dataset
+p["dataset_split"] = args.dataset_split
+p["dataset_split_type"] = args.dataset_split_type
+p["datasets_path"] = args.datasets_path
+p["targets_filename"] = args.targets_filename
+
+
 
 dp_split = dataset_params.get_split_params(
-    datasets_path, dataset_name, split, split_type=split_type
+    p["datasets_path"], p["dataset"], p["dataset_split"], split_type=p["dataset_split_type"]
 )
 # Load the targets to consider.
 targets = inout.load_json(
@@ -59,7 +71,7 @@ for scene_id, scene_targets in targets_org.items():
             obj_gt = im_gt[idx_obj]
             obj_gt_info = im_gt_info[idx_obj]
 
-            if obj_gt_info["visib_fract"] < min_visib_gt:
+            if obj_gt_info["visib_fract"] < p["min_visib_gt"]:
                 print(
                     f"Skipping object {obj_gt['obj_id']} in scene {scene_id}, image {im_id}"
                 )
@@ -83,7 +95,7 @@ for scene_id, scene_targets in targets_org.items():
             )
             total_number_instances += 1
 
-path = f"./bop_toolkit_lib/tests/data/gt-pbrreal-rgb-mmodel_{dataset_name}-{split}_{dataset_name}.csv"
+path = f"./bop_toolkit_lib/tests/data/gt-pbrreal-rgb-mmodel_{p['dataset']}-{p['dataset_split']}_{p['dataset']}.csv"
 with open(path, "w") as f:
     f.write("\n".join(lines))
 print(f"Generated {total_number_instances} instances to {path}")
