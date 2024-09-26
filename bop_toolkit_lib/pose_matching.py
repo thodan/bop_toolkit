@@ -55,6 +55,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
         best_gt_id = -1
         best_error = list(error_ths)
         for gt_id, error in e["errors"].items():
+            gt_visib_fract = e["gt_visib_fracts"][gt_id]
             # If the mask of valid GT poses is not provided, consider all valid.
             is_valid = not gt_valid_mask or gt_valid_mask[gt_id]
 
@@ -65,6 +66,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
                 if np.all([error[i] < best_error[i] for i in range(error_num_elems)]):
                     best_gt_id = gt_id
                     best_error = error
+                    gt_visib_fract_of_best_gt_id = gt_visib_fract
 
         if best_gt_id >= 0:
             # Mark the GT pose as matched.
@@ -83,7 +85,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
                     "score": e["score"],
                     "error": best_error,
                     "error_norm": best_errors_normed,
-                    "gt_visib_fract": e["gt_visib_fract"],
+                    "gt_visib_fract": gt_visib_fract_of_best_gt_id,
                 }
             )
 
@@ -158,7 +160,6 @@ def match_poses_scene(
                     g["score"] = m["score"]
                     g["error"] = m["error"]
                     g["error_norm"] = m["error_norm"]
-                    g["gt_visib_fract"] = m["gt_visib_fract"]
 
         scene_matches += im_matches
 

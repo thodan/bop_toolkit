@@ -87,8 +87,8 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "ycbv": list(range(1, 22)),
         "hope": list(range(1, 29)),
         "hopev2": list(range(1, 29)),
-        "hot3d": list(range(1, 33)),
-        "handal": list(range(1, 40)),
+        "hot3d": list(range(1, 34)),
+        "handal": list(range(1, 41)),
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error

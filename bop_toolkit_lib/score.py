@@ -177,153 +177,141 @@ def calc_pose_detection_scores(
     obj_ids,
     matches,
     errs,
-    n_top,
     visib_gt_min,
-    ignore_object_visible_less_than_visib_gt_min,
     do_print=True,
-    double_check_size=False,
 ):
-    """Calculates performance scores for the 6D object detection task.
-
-    References:
-    Hodan et al., BOP: Benchmark for 6D Object Pose Estimation, ECCV'18.
-    Hodan et al., On Evaluation of 6D Object Pose Estimation, ECCVW'16.
+    """Calculates accuracy scores for the 6D object detection task.
 
     :param scene_ids: ID's of considered scenes.
     :param obj_ids: ID's of considered objects.
-    :param matches: Info about matching pose estimates to ground-truth poses
+    :param matches: List of per-GT dictionary with info about GT-to-detection matching.
       (see pose_matching.py for details).
-    :param scene_errs: List of dictionaries with:
+    :param errs: List of per-detection dictionary with the following items:
       - 'im_id': Image ID.
       - 'obj_id': Object ID.
       - 'est_id': ID of the pose estimate.
       - 'score': Confidence score of the pose estimate.
       - 'errors': Dictionary mapping ground-truth ID's to errors of the pose
           estimate w.r.t. the ground-truth poses.
-    :param n_top: Number of top pose estimates to consider per test target.
-    :param visib_gt_min: Min visiblity for GT. Default: 0.1
-    :param ignore_object_visible_less_than_visib_gt_min: Whether ignore objects visible less than visib_gt_min. Default: True
+    :param visib_gt_min: GT annotations visible from less than this threshold are ignored.
+        from less than visib_gt_min.
     :param do_print: Whether to print the scores to the standard output.
-    :return: Dictionary with the evaluation scores.
+    :return: Dictionary with the per-object AP scores.
     """
+
     # Count the number of visible object instances in each image.
-    insts = {i: {j: defaultdict(lambda: 0) for j in scene_ids} for i in obj_ids}
-    for m in matches:
-        if m["valid"]:
-            insts[m["obj_id"]][m["scene_id"]][m["im_id"]] += 1
+    insts = {obj_id: {scene_id: defaultdict(lambda: 0) for scene_id in scene_ids} for obj_id in obj_ids}
+    for match in matches:
+        insts[match["obj_id"]][match["scene_id"]][match["im_id"]] += 1
 
-    tars = 0  # Total number of targets.
-    obj_tars = {i: 0 for i in obj_ids}  # Targets per object.
-    scene_tars = {i: 0 for i in scene_ids}  # Targets per scene.
-    for obj_id, obj_insts in insts.items():
-        for scene_id, scene_insts in obj_insts.items():
-            # Count the number of targets for the current object in the current scene.
-            if n_top > 0:
-                count = sum(np.minimum(n_top, list(scene_insts.values())))
-            else:
-                count = sum(list(scene_insts.values()))
-
-            tars += count
-            obj_tars[obj_id] += count
-            scene_tars[scene_id] += count
-
-    # For each object, sort the pose estimates by confidence score.
-    # Then calculate the average precision for each object.
+    # Calculate per-object detection scores.
     scores_per_object = {}
-    num_instances_per_object = {}
-    total_num_false_ignore = 0
-    for obj_id, obj_tar in obj_tars.items():
-        obj_matches = [m for m in matches if m["obj_id"] == obj_id]
+    num_targets_per_object = {}
+    total_num_ignored_obj_gts = 0
+    for obj_id in obj_ids:
 
-        # Sorting the predictions by confidences score and calculate TP, FP.
+        # Per-GT info about GT-to-detection matching (`len(obj_matches)` is the number
+        # of GT annotations of the current object).
+        obj_matches = [match for match in matches if match["obj_id"] == obj_id]
+
+        # Number of GT annotations for the current object ID.
+        num_obj_gts = len(obj_matches)
+
+        # Sort matches of the current object by confidence scores (necessary for
+        # calculating precion-recall curve).
         sorted_obj_matches = sorted(obj_matches, key=lambda x: x["score"], reverse=True)
 
-        # There are four types of matches:
-        # True Positive: A correct detection with GT having visib_gt_fract >= visib_gt_min.
-        true_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        # False Positive: A detection that has no matching GT having visib_gt_fract >= visib_gt_min.
-        false_positives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        # False Negative: A GT having visib_gt_fract >= visib_gt_min, has no matching detection.
-        false_negatives = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        # False Positive Ignore: A detection that has no matching GT having visib_gt_fract < visib_gt_min.
-        false_ignore = np.zeros(len(sorted_obj_matches), dtype=np.bool_)
-
-        for i, m in enumerate(sorted_obj_matches):
-            # valid is object_id in target list
-            # est_id != -1 is when there is a match, -1 otherwise
-
-            # Case 1: Detection is a match.
-            if m["est_id"] != -1: 
-                if m["valid"]:
-                    if m["gt_visib_fract"] >= visib_gt_min:
-                        true_positives[i] = True
-                    elif m["gt_visib_fract"] < visib_gt_min and ignore_object_visible_less_than_visib_gt_min:
-                        false_ignore[i] = True
-                    else:
-                        print("Warning: not using ignore_object_visible_less_than_visib_gt_min")
-                else:
-                    # est_id != -1 and valid is always together.
-                    print(f"Warning: not using valid {m}")
-            # Case 2: Detection is not a match and it is a valid GT.
-            elif m["valid"]:
-                if m["gt_visib_fract"] >= visib_gt_min:
-                    false_negatives[i] = True
-                elif m["gt_visib_fract"] < visib_gt_min:
-                    false_ignore[i] = True
-            # Case 3: Detection is not a match and it is not a valid GT.
-            else:
-                false_positives[i] = True
+        # There are five types of detections (pose estimates):
+        #
+        # 1. True positive: A detection matched with a GT having visib_gt_fract >= visib_gt_min. 
+        # 2. Ignored true positive: A detection matched with a GT having visib_gt_fract < visib_gt_min. 
+        # 3. False negative: A GT with visib_gt_fract >= visib_gt_min and no matching detection.
+        # 4. Ignored false negative: A GT with visib_gt_fract < visib_gt_min and no matching detection.
+        # 5. False positive: A detection not matched with any GT.
+        #
+        # Types 1--4 are identified based on variable `sorted_obj_matches` which stores information
+        # about GT-to-detection matching. Type 5 cannot be identified from this variable as these are
+        # all wrong detections that are not associated with any GT.
+        #
+        # Binary indicators of detection types:
+        true_positive_mask = np.zeros(num_obj_gts, dtype=np.bool_)
+        ignored_true_positive_mask = np.zeros(num_obj_gts, dtype=np.bool_)
+        false_negative_mask = np.zeros(num_obj_gts, dtype=np.bool_)
+        ignored_false_negative_mask = np.zeros(num_obj_gts, dtype=np.bool_)
     
-        if double_check_size:
-            # Double check the size of GT is correct
-            num_gts = len([m for m in obj_matches if m["valid"]])
-            assert np.sum(true_positives) + np.sum(false_negatives) + np.sum(false_ignore) == num_gts, f"TP={np.sum(true_positives)}, FN={np.sum(false_negatives)}, num_gts={num_gts}"
+        for match_id, match in enumerate(sorted_obj_matches):
 
-        # remove the false positives that are ignored
-        keep_idx = np.invert(false_ignore)
-        true_positives = true_positives[keep_idx]
-        false_positives = false_positives[keep_idx]
-        obj_tar = obj_tar - np.sum(false_ignore)
+            # Whether the current GT is matched with a detection.
+            is_gt_matched_with_detection = match["est_id"] != -1
 
-        cum_true_positives = np.cumsum(true_positives)
-        cum_false_positives = np.cumsum(false_positives)
+            if is_gt_matched_with_detection: 
+                if match["gt_visib_fract"] >= visib_gt_min:
+                    true_positive_mask[match_id] = True
+                else:
+                    ignored_true_positive_mask[match_id] = True
+            else:
+                if match["gt_visib_fract"] >= visib_gt_min:
+                    false_negative_mask[match_id] = True
+                else:
+                    ignored_false_negative_mask[match_id] = True
+    
+        # Make sure each GT was labeled.
+        assert num_obj_gts == (
+            np.sum(true_positive_mask) +
+            np.sum(ignored_true_positive_mask) +
+            np.sum(false_negative_mask) +
+            np.sum(ignored_false_negative_mask)
+        )
 
-        # Recall, Precision.
-        recall = cum_true_positives / int(obj_tar)
-        precision = cum_true_positives / (cum_true_positives + cum_false_positives)
-        precision[np.isnan(precision)] = 0
+        # Consider only valid true positive and false negative detections (valid = not associated
+        # with any ignored GT).
+        ignored_mask = np.logical_or(ignored_true_positive_mask, ignored_false_negative_mask)
+        kept_mask = np.invert(ignored_mask)
+        true_positive_mask = true_positive_mask[kept_mask]
+        false_negative_mask = false_negative_mask[kept_mask]
 
-        ap = calc_ap(recall, precision, coco_interpolation=True)
-        scores_per_object[obj_id] = ap
-        num_instances_per_object[obj_id] = int(obj_tar)
+        # Number of valid detections for the current object.
+        obj_dets_count = len([err for err in errs if err["obj_id"] == obj_id])
+
+        # Number of valid detections (valid = not associated with any ignored GT).
+        valid_obj_dets_count = obj_dets_count - np.sum(ignored_true_positive_mask)
+        assert valid_obj_dets_count >= 0
+
+        # Cumulative sums (this can be done as we sorted the matches at the beginning).
+        true_positive_cumsum = np.cumsum(true_positive_mask)
+        false_positive_cumsum = valid_obj_dets_count - true_positive_cumsum
+        # this assert is only valid in the case that this obj is associated with
+        # at least one gt target (np.min fails on length 0 arrays)
+        if len(false_positive_cumsum) > 0:
+            assert np.min(false_positive_cumsum) >= 0
+
+        # The number of target object instances (i.e. valid GT annotations).
+        num_obj_targets = np.sum(true_positive_mask) + np.sum(false_negative_mask)
+        num_targets_per_object[obj_id] = int(num_obj_targets)
+
+        # Calculate recall values.
+        recalls = true_positive_cumsum / float(num_obj_targets)
+
+        # Calculate precision values.
+        precisions = true_positive_cumsum / (true_positive_cumsum + false_positive_cumsum)
+        precisions[np.isinf(precisions)] = 0.0
+
+        # Calculate AP (Average Precision).
+        obj_ap = calc_ap(recalls, precisions, coco_interpolation=True)
+        scores_per_object[obj_id] = obj_ap
+
         if do_print:
-            misc.log("Object {:d} AP: {:.4f}".format(obj_id, ap))
-            if np.sum(false_ignore) > 0:
-                misc.log(
-                    f"Number of false ignored: {np.sum(false_ignore)}"
-                )
-        total_num_false_ignore += np.sum(false_ignore)
-
-    # Final scores.
-    scores = {
-        "gt_count": len(matches),
-        "targets_count": int(tars),
-        "num_estimates": len(errs),
+            misc.log(f"Object {obj_id:d} AP: {obj_ap:.4f}")
+            num_ignored_obj_gts = np.sum(ignored_mask)
+            if num_ignored_obj_gts > 0:
+                misc.log(f"Number of ignored GTs: {num_ignored_obj_gts}")
+        total_num_ignored_obj_gts += num_ignored_obj_gts
+    
+    misc.log("Total number of ignored GT {:d}".format(total_num_ignored_obj_gts))
+    return {
         "scores": scores_per_object,
-        "num_instances_per_object": num_instances_per_object,
+        "num_targets_per_object": num_targets_per_object,
     }
-    if do_print:
-        misc.log("")
-        misc.log("Estimates count:    {:d}".format(scores["num_estimates"]))
-        misc.log("GT count:           {:d}".format(scores["gt_count"]))
-        misc.log("Target count:       {:d}".format(scores["targets_count"]))
-        misc.log("Total number of false ignored: {:d}".format(total_num_false_ignore))
-        misc.log("")
-
-    return scores
 
 
 if __name__ == "__main__":

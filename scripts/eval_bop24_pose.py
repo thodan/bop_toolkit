@@ -231,9 +231,8 @@ for result_filename in p["result_filenames"]:
                 logger.info("Loading calculated scores from: {}".format(scores_path))
                 scores = inout.load_json(scores_path)["scores"]
                 num_instances_per_object = inout.load_json(scores_path)[
-                    "num_instances_per_object"
+                    "num_targets_per_object"
                 ]
-
                 for obj_id in scores:
                     if num_instances_per_object[obj_id] > 0:
                         mAP_scores_per_object.setdefault(obj_id, []).append(scores[obj_id])
@@ -252,8 +251,10 @@ for result_filename in p["result_filenames"]:
                 )
             mAP_over_correct_ths = []
             for obj_id in mAP_scores_per_object:
-                # make sure that the object is not ignored
-                # assert obj_id not in num_object_ids_ignored
+                # if the object has zero instance, it means it was not among the targets
+                # and should not be considered for final AP computation
+                if num_instances_per_object[obj_id] == 0:
+                    continue
 
                 mAP_over_correct_th = np.mean(mAP_scores_per_object[obj_id])
                 logger.info(
