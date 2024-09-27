@@ -295,6 +295,7 @@ def calc_pose_detection_scores(
         # Calculate precision values.
         precisions = true_positive_cumsum / (true_positive_cumsum + false_positive_cumsum)
         precisions[np.isinf(precisions)] = 0.0
+        precisions[np.isnan(precisions)] = 0.0
 
         # Calculate AP (Average Precision).
         obj_ap = calc_ap(recalls, precisions, coco_interpolation=True)
