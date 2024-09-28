@@ -276,7 +276,7 @@ def save_scene_gt(path, scene_gt):
     save_json(path, scene_gt)
 
 
-def load_bop_results(path, version="bop19"):
+def load_bop_results(path, version="bop19", max_num_estimates_per_image=None):
     """Loads 6D object pose estimates from a file.
 
     :param path: Path to a file with pose estimates.
@@ -321,6 +321,24 @@ def load_bop_results(path, version="bop19"):
     else:
         raise ValueError("Unknown version of BOP results.")
 
+    # Keep only the top max_num_estimates_per_image estimates for each image.
+    if max_num_estimates_per_image is not None:
+        # Group the results by image
+        im_results = defaultdict(list)
+        for res in results:
+            im_signature = (res["scene_id"], res["im_id"])
+            im_results[im_signature].append(res)
+        # Keep only the top n_top estimates for each image
+        filtered_results = []
+        num_ignored_estimates = 0
+        for im_signature in im_results.keys():
+            im_results[im_signature] = sorted(
+                im_results[im_signature], key=lambda x:x["score"], reverse=True
+            )
+            num_ignored_estimates += max(0, len(im_results[im_signature]) - max_num_estimates_per_image)
+            filtered_results.extend(im_results[im_signature][:max_num_estimates_per_image])
+        results = filtered_results
+        misc.log("Ignored {} estimates.".format(num_ignored_estimates))
     return results
 
 

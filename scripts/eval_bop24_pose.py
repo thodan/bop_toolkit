@@ -59,6 +59,7 @@ p = {
     "targets_filename": "test_targets_bop24.json",
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
+    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image.
 }
 ################################################################################
 
@@ -106,7 +107,7 @@ for result_filename in p["result_filenames"]:
 
     # Calculate the average estimation time per image.
     ests = inout.load_bop_results(
-        os.path.join(p["results_path"], result_filename), version="bop19"
+        os.path.join(p["results_path"], result_filename), version="bop19", max_num_estimates_per_image=p["max_num_estimates_per_image"]
     )
     times = {}
     times_available = True
