@@ -196,8 +196,7 @@ for error_dir_path in p["error_dir_paths"]:
 
     # Load the estimation targets to consider.
     targets = inout.load_json(
-        os.path.join(dp_split["base_path"], p["targets_filename"]), max_num_estimates_per_image=p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None)
-    )
+        os.path.join(dp_split["base_path"], p["targets_filename"]))
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
