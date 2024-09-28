@@ -90,6 +90,7 @@ p = {
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
+    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
 }
 ################################################################################
 
@@ -245,7 +246,7 @@ for result_filename in p["result_filenames"]:
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
-    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename))
+    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None)
 
     # Organize the pose estimates by scene, image and object.
     logger.info("Organizing pose estimates...")

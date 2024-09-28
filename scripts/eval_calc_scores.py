@@ -86,6 +86,7 @@ p = {
     ),
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
     "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
+    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
 }
 ################################################################################
 
@@ -195,7 +196,7 @@ for error_dir_path in p["error_dir_paths"]:
 
     # Load the estimation targets to consider.
     targets = inout.load_json(
-        os.path.join(dp_split["base_path"], p["targets_filename"])
+        os.path.join(dp_split["base_path"], p["targets_filename"]), max_num_estimates_per_image=p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None)
     )
 
     # Organize the targets by scene, image and object.
