@@ -333,7 +333,7 @@ def load_bop_results(path, version="bop19", max_num_estimates_per_image=None):
         num_ignored_estimates = 0
         for im_signature in im_results.keys():
             im_results[im_signature] = sorted(
-                im_results[im_signature], key=lambda x: -x["score"]
+                im_results[im_signature], key=lambda x:x["score"], reverse=True
             )
             num_ignored_estimates += max(0, len(im_results[im_signature]) - max_num_estimates_per_image)
             filtered_results.extend(im_results[im_signature][:max_num_estimates_per_image])
