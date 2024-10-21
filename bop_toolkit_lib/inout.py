@@ -4,6 +4,7 @@
 """I/O functions."""
 
 import os
+import gzip
 import struct
 import numpy as np
 import imageio
@@ -68,51 +69,65 @@ def save_depth(path, im):
 def load_json(path, keys_to_int=False):
     """Loads content of a JSON file.
 
-    :param path: Path to the JSON file.
+    :param path: Path to the JSON file. If '.gz' extension, opens with gzip.
     :return: Content of the loaded JSON file.
     """
 
     # Keys to integers.
     def convert_keys_to_int(x):
         return {int(k) if k.lstrip("-").isdigit() else k: v for k, v in x.items()}
+    
+    # Open+decompress with gzip if '.gz' file extension
+    if path[-3:] == '.gz':
+        f = gzip.open(path, "rt", encoding="utf8")
+    else:
+        f = open(path, "r")
+    if keys_to_int:
+        content = json.load(f, object_hook=lambda x: convert_keys_to_int(x))
+    else:
+        content = json.load(f)
 
-    with open(path, "r") as f:
-        if keys_to_int:
-            content = json.load(f, object_hook=lambda x: convert_keys_to_int(x))
-        else:
-            content = json.load(f)
+    f.close()
 
     return content
 
 
-def save_json(path, content):
+def save_json(path, content, compress=False):
     """Saves the provided content to a JSON file.
 
     :param path: Path to the output JSON file.
     :param content: Dictionary/list to save.
+    :param compress: Saves as a gzip archive, appends '.gz' extension to filepath.
     """
-    with open(path, "w") as f:
-        if isinstance(content, dict):
-            f.write("{\n")
-            content_sorted = sorted(content.items(), key=lambda x: x[0])
-            for elem_id, (k, v) in enumerate(content_sorted):
-                f.write('  "{}": {}'.format(k, json.dumps(v, sort_keys=True)))
-                if elem_id != len(content) - 1:
-                    f.write(",")
-                f.write("\n")
-            f.write("}")
+    if compress:
+        path += '.gz'
+        f = gzip.open(path, "wt", encoding="utf8")
+    else:
+        f = open(path, "w")
 
-        elif isinstance(content, list):
-            f.write("[\n")
-            for elem_id, elem in enumerate(content):
-                f.write("  {}".format(json.dumps(elem, sort_keys=True)))
-                if elem_id != len(content) - 1:
-                    f.write(",")
-                f.write("\n")
-            f.write("]")
+    if isinstance(content, dict):
+        f.write("{\n")
+        content_sorted = sorted(content.items(), key=lambda x: x[0])
+        for elem_id, (k, v) in enumerate(content_sorted):
+            f.write('  "{}": {}'.format(k, json.dumps(v, sort_keys=True)))
+            if elem_id != len(content) - 1:
+                f.write(",")
+            f.write("\n")
+        f.write("}")
 
-        else:
-            json.dump(content, f, sort_keys=True)
+    elif isinstance(content, list):
+        f.write("[\n")
+        for elem_id, elem in enumerate(content):
+            f.write("  {}".format(json.dumps(elem, sort_keys=True)))
+            if elem_id != len(content) - 1:
+                f.write(",")
+            f.write("\n")
+        f.write("]")
+
+    else:
+        json.dump(content, f, sort_keys=True)
+
+    f.close()
 
 
 def load_cam_params(path):
@@ -419,7 +434,7 @@ def check_bop_results(path, version="bop19"):
 def check_coco_results(path, version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
     """Checks if the format of extended COCO results is correct.
 
-    :param path: Path to a file with coco estimates.
+    :param path: Path to a file with coco estimates. If '.gz' extension, opens with gzip.
     :param version: Version of the results.
     :param ann_type: type of annotation expected in the file.
         "bbox" -> bounding boxes
@@ -470,7 +485,7 @@ def check_coco_results(path, version="bop22", ann_type="segm", enforce_no_segm_i
     return check_passed, check_msg
 
 
-def save_coco_results(path, results, version="bop22"):
+def save_coco_results(path, results, version="bop22", compress=False):
     """Saves detections/instance segmentations for each scene in coco format.
 
     "bbox" should be [x,y,w,h] in pixels
@@ -498,7 +513,7 @@ def save_coco_results(path, results, version="bop22"):
                     "time": res["run_time"] if "run_time" in res else -1,
                 }
             )
-        save_json(path, coco_results)
+        save_json(path, coco_results, compress)
     else:
         raise ValueError("Unknown version of BOP detection results.")
 
