@@ -8,7 +8,7 @@ class TestInout(unittest.TestCase):
 
     def setUp(self) -> None:
         self.csv_6d_path = 'bop_toolkit_lib/tests/data/cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv'
-        self.json_coco_path = 'bop_toolkit_lib/tests/data/gdrnppdet-pbrreal_ycbv-test_abe6c5f1-cb26-4bbd-addc-bb76dd722a96.json'
+        self.json_coco_path = 'bop_toolkit_lib/tests/data/zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528.json'
 
     def test_coco_json(self):
         """
@@ -52,8 +52,8 @@ class TestInout(unittest.TestCase):
         # inout.check_coco_results(json_coco_gz_path)
 
         # cleanup
-        # os.remove(json_coco_bis_path)
-        # os.remove(json_coco_gz_path)
+        os.remove(json_coco_bis_path)
+        os.remove(json_coco_gz_path)
 
 
 
