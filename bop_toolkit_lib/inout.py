@@ -69,7 +69,7 @@ def save_depth(path, im):
 def load_json(path, keys_to_int=False):
     """Loads content of a JSON file.
 
-    :param path: Path to the JSON file. If '.gz' extension, opens with gzip.
+    :param path: Path to the JSON file. If ".json.gz" extension, opens with gzip.
     :return: Content of the loaded JSON file.
     """
 
@@ -77,8 +77,8 @@ def load_json(path, keys_to_int=False):
     def convert_keys_to_int(x):
         return {int(k) if k.lstrip("-").isdigit() else k: v for k, v in x.items()}
     
-    # Open+decompress with gzip if '.gz' file extension
-    if path[-3:] == '.gz':
+    # Open+decompress with gzip if ".json.gz" file extension
+    if path.endswith('.json.gz'):
         f = gzip.open(path, "rt", encoding="utf8")
     else:
         f = open(path, "r")
@@ -97,10 +97,10 @@ def save_json(path, content, compress=False):
 
     :param path: Path to the output JSON file.
     :param content: Dictionary/list to save.
-    :param compress: Saves as a gzip archive, appends '.gz' extension to filepath.
+    :param compress: Saves as a gzip archive, appends ".gz" extension to filepath.
     """
     if compress:
-        path += '.gz'
+        path += ".gz"
         f = gzip.open(path, "wt", encoding="utf8")
     else:
         f = open(path, "w")
@@ -434,7 +434,7 @@ def check_bop_results(path, version="bop19"):
 def check_coco_results(path, version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
     """Checks if the format of extended COCO results is correct.
 
-    :param path: Path to a file with coco estimates. If '.gz' extension, opens with gzip.
+    :param path: Path to a file with coco estimates. If ".json.gz" extension, opens with gzip.
     :param version: Version of the results.
     :param ann_type: type of annotation expected in the file.
         "bbox" -> bounding boxes
