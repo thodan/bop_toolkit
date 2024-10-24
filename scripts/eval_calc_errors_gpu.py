@@ -330,7 +330,7 @@ for result_filename in p["result_filenames"]:
                         est_per_object[obj_id]["gt_visib_fract"].append(
                             scene_gt_info[im_id][gt_id]["visib_fract"]
                         )
-                        # BOP24 datasets do not have "cam_K" keys but "cam_model" 
+                        # BOP24 datasets do not have "cam_K" keys but "cam_model"
                         # TODO: handle the case of H3 dataset which are pinhole but have "cam_model" key (like HANDAL)
                         if "cam_K" in scene_camera[im_id]:
                             est_per_object[obj_id]["cam_K"].append(
@@ -398,10 +398,11 @@ for result_filename in p["result_filenames"]:
                         "obj_id": obj_id,
                         "est_id": est_id,
                         "score": score,
-                        "gt_visib_fract": gt_visib_fract,
+                        "gt_visib_fracts": {},
                         "errors": {},
                     }
                 scene_errs[key_name]["errors"][gt_id] = [errors[i]]
+                scene_errs[key_name]["gt_visib_fracts"][gt_id] = [gt_visib_fract]
 
         scene_errs = [v for k, v in scene_errs.items()]
         del est_per_object
