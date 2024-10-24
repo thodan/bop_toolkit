@@ -32,7 +32,7 @@ bop_renderer_path = r"/path/to/bop_renderer/build"
 meshlab_server_path = r"/path/to/meshlabserver.exe"
 
 # Number of workers for the parallel evaluation of pose errors.
-num_workers = 10
+num_workers = 20
 
 # use torch to calculate the errors
 use_gpu = False
