@@ -190,7 +190,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (600.90, 1102.35)
+            p["depth_range"] = (600.90, 1102.35)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (0, 0.5 * math.pi)
 
@@ -200,7 +200,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (346.31, 1499.84)
+            p["depth_range"] = (346.31, 1499.84)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (0, 0.5 * math.pi)
 
@@ -236,7 +236,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         # The following holds for Primesense, but is similar for the other sensors.
         if split == "test":
-            p["depth_range"] = (649.89, 940.04)
+            p["depth_range"] = (649.89, 940.04)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -249,7 +249,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (851.29, 2016.14)
+            p["depth_range"] = (569.88, 1995.27)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.4363, 0.5 * math.pi)  # (-25, 90) [deg].
 
@@ -259,7 +259,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (499.57, 1246.07)
+            p["depth_range"] = (499.57, 1246.07)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -269,7 +269,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (594.41, 739.12)
+            p["depth_range"] = (594.41, 739.12)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -279,7 +279,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (509.12, 1120.41)
+            p["depth_range"] = (509.12, 1120.41)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (0, 0.5 * math.pi)
 
@@ -289,7 +289,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (454.56, 1076.29)
+            p["depth_range"] = (454.56, 1076.29)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-1.0297, 0.5 * math.pi)  # (-59, 90) [deg].
 
@@ -301,7 +301,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = ["gray", "depth"]
 
         if split == "test":
-            p["depth_range"] = (638.38, 775.97)
+            p["depth_range"] = (638.38, 775.97)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -333,7 +333,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         # The following holds for Primesense, but is similar for Kinect.
         if split == "test":
-            p["depth_range"] = (438.24, 1416.97)
+            p["depth_range"] = (438.24, 1416.97)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -354,7 +354,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (612.92, 1243.59)
+            p["depth_range"] = (612.92, 1243.59)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-1.2788, 1.1291)  # (-73.27, 64.69) [deg].
 
