@@ -496,7 +496,6 @@ def save_coco_results(path, results, version="bop22", compress=False):
     :param version: Version of the results.
     """
 
-    # See docs/bop_challenge_2022.md for details.
     if version == "bop22":
         coco_results = []
         for res in results:
