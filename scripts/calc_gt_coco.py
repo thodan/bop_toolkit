@@ -94,7 +94,7 @@ for scene_id in dp_split["scene_ids"]:
         coco_gt_path = coco_gt_path.replace("scene_gt_coco", "scene_gt_coco_modal")
     misc.log(
         "Calculating Coco Annotations - dataset: {} ({}, {}), scene: {}".format(
-            p["dataset"], p["dataset_split"], p["dataset_split_type"], scene_id
+            dataset_name, split, split_type, scene_id
         )
     )
 
