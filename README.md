@@ -95,6 +95,8 @@ python scripts/eval_bop22_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESU
 --result_filenames: Comma-separated filenames with per-dataset coco results (place them under your `results_path` defined in your [config.py](bop_toolkit_lib/config.py)).  
 --ann_type: 'bbox' to evaluate amodal bounding boxes. 'segm' to evaluate segmentation masks.
 
+You need to prepare the `scene_gt_coco.json` files before evaluating detection / instance segmentation. See [Convert BOP to COCO format](#Convert-BOP-to-COCO-format).
+
 ## Convert BOP to COCO format
 
 ```
