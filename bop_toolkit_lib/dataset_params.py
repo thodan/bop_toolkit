@@ -89,6 +89,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": list(range(1, 29)),
         "hot3d": list(range(1, 34)),
         "handal": list(range(1, 41)),
+        "robi": list(range(1, 8)),
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error
@@ -110,6 +111,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": [],
         "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
         "handal": [26, 35, 36, 37, 38, 39, 40],
+        "robi": [1, 2, 4, 7],
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -175,9 +177,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         depth_ext = ".tif"
 
     p["im_modalities"] = ["rgb", "depth"]
-    # for Classic datasets, test modality is implicit... 
+    # for Classic datasets, test modality is implicit...
     p["eval_modality"] = None
-    # ...and only one set of annotation is present in the dataset 
+    # ...and only one set of annotation is present in the dataset
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
     modalities_have_separate_annotations = False 
     exts = None  # has to be set if modalities_have_separate_annotations is True
@@ -371,7 +373,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["depth_range"] = None  # Not calculated yet.
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
-    
+
     # HOPEV2.
     elif dataset_name == "hopev2":
         p["scene_ids"] = {
@@ -440,13 +442,28 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
 
+    elif dataset_name[:4] == "robi":
+        rgb_ext = ".png"
+        # easy to mask mistake, use get_present_scene_ids instead
+        base_path = join(datasets_path, dataset_name)
+        split_path = join(base_path, split)
+        if split_type is not None:
+            split_path += "_" + split_type
+        p["split_path"] = split_path
+        p["scene_ids"] = get_present_scene_ids(dp_split=p)
+        p["im_size"] = {
+            "realsense": (1280, 720),
+            "ensenso": (1280, 1024),
+        }.get(split_type, (1280, 1024))
+        if split_type in ["realsense", "ensenso"]:
+            rgb_ext = ".bmp"
     else:
         raise ValueError("Unknown BOP dataset ({}).".format(dataset_name))
 
     base_path = join(datasets_path, dataset_name)
     split_path = join(base_path, split)
     if split_type is not None:
-        if split_type == "pbr":
+        if split_type == "pbr" and dataset_name not in ["robi"]:
             p["scene_ids"] = list(range(50))
         split_path += "_" + split_type
 
