@@ -35,11 +35,11 @@ except ImportError as e:
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "ipd",
     # Dataset split. Options: 'train', 'val', 'test'.
-    "dataset_split": "test",
+    "dataset_split": "train",
     # Dataset split type. None = default. See dataset_params.py for options.
-    "dataset_split_type": None,
+    "dataset_split_type": "pbr",
     # File with a list of estimation targets used to determine the set of images
     # for which the GT poses will be visualized. The file is assumed to be stored
     # in the dataset folder. None = all images.
@@ -91,7 +91,7 @@ if p["dataset"] == "hot3d" and not htt_available:
     raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
 
 # if HOT3D dataset is used, next parameters are set
-if p["dataset"] == "hot3d":
+if p["dataset"] in ["hot3d", "ipd"]:
     p["vis_rgb"] = True
     p["vis_rgb_resolve_visib"] = False
     p["vis_depth_diff"] = False
@@ -147,6 +147,7 @@ else:  # classical BOP format
     ren = renderer.create_renderer(
         width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
     )
+    # ren = renderer_htt.RendererHtt(dp_split["im_size"], p["renderer_type"], shading="flat")
 
 # Load object models.
 models = {}
@@ -224,7 +225,7 @@ for scene_id in scene_ids:
                 }
             )
 
-        if p["dataset"] == "hot3d":
+        if p["dataset"] in ["hot3d", "ipd"]:
             # load the image of the eval modality
             rgb = inout.load_im(
                 dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
@@ -249,12 +250,24 @@ for scene_id in scene_ids:
                     raise ValueError("RGB nor gray images are available.")
 
         depth = None
-        if p["dataset"] != "hot3d":
+        if p["dataset"] not in ["hot3d"]:
             if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-                depth = inout.load_depth(
+                if p["dataset"] == "ipd":
+                    depth = inout.load_depth(
+                        dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
+                    )
+                else:
+                    depth = inout.load_depth(
                     dp_split["depth_tpath"].format(scene_id=scene_id, im_id=im_id)
-                )
+                    )
+
+ 
                 depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+
+                # if depth.ndim == 2:
+                #     depth = np.dstack([depth, depth, depth])
+                # breakpoint()
+                depth = depth[:,:,0]
 
         # Path to the output RGB visualization.
         vis_rgb_path = None
