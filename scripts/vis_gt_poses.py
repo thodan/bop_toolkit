@@ -37,9 +37,9 @@ p = {
     # See dataset_params.py for options.
     "dataset": "ipd",
     # Dataset split. Options: 'train', 'val', 'test'.
-    "dataset_split": "train",
+    "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
-    "dataset_split_type": "pbr",
+    "dataset_split_type": None,
     # File with a list of estimation targets used to determine the set of images
     # for which the GT poses will be visualized. The file is assumed to be stored
     # in the dataset folder. None = all images.
@@ -50,6 +50,7 @@ p = {
     "scene_ids": [],
     "im_ids": [],
     "gt_ids": [],
+    "sensor": 'photoneo',
 
     # ---------------------------------------------------------------------------------
     # Next parameters apply only to classical BOP19 datasets (not the H3 BOP24 format)
@@ -91,7 +92,7 @@ if p["dataset"] == "hot3d" and not htt_available:
     raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
 
 # if HOT3D dataset is used, next parameters are set
-if p["dataset"] in ["hot3d", "ipd"]:
+if p["dataset"] in ["hot3d"]:
     p["vis_rgb"] = True
     p["vis_rgb_resolve_visib"] = False
     p["vis_depth_diff"] = False
@@ -228,7 +229,9 @@ for scene_id in scene_ids:
         if p["dataset"] in ["hot3d", "ipd"]:
             # load the image of the eval modality
             rgb = inout.load_im(
-                dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
+                    # dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
+
+                dp_split["rgb_{}_tpath".format(p["sensor"])].format(scene_id=scene_id, im_id=im_id)
             )
             # if image is grayscale (quest3), convert it to 3 channels
             if rgb.ndim == 2:
@@ -254,7 +257,7 @@ for scene_id in scene_ids:
             if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
                 if p["dataset"] == "ipd":
                     depth = inout.load_depth(
-                        dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
+                        dp_split["depth_{}_tpath".format(p["sensor"])].format(scene_id=scene_id, im_id=im_id)
                     )
                 else:
                     depth = inout.load_depth(
@@ -267,7 +270,7 @@ for scene_id in scene_ids:
                 # if depth.ndim == 2:
                 #     depth = np.dstack([depth, depth, depth])
                 # breakpoint()
-                depth = depth[:,:,0]
+                # depth = depth[:,:,0]
 
         # Path to the output RGB visualization.
         vis_rgb_path = None
