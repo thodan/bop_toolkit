@@ -455,7 +455,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             }[split]
             # p["im_size"] = (2400, 2400)
             # p["im_size"] = (1936, 1216)
-            p["im_size"] = (2064, 1544)
+            
+            p["photoneo_im_size"] = (2064, 1544)
+            p["im_size"] = p["photoneo_im_size"]
             
 
 
@@ -463,16 +465,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 return "rgb_photoneo"
 
             p["eval_modality"] = ipd_eval_modality
-            # def hot3d_eval_modality(scene_id):
-            #     if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
-            #         return p["quest3_eval_modality"]
-            #     elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
-            #         return p["aria_eval_modality"]
-            #     else:
-            #         raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
-
-            # p["eval_modality"] = hot3d_eval_modality
-
+            
             exts = {
                 "rgb_photoneo": ".png",
                 "depth_photoneo": ".png",
@@ -488,20 +481,31 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     elif dataset_name == "xyz":
         modalities_have_separate_annotations = True 
-        p["im_modalities"] = ["rgb_cam2", "depth_cam2"]
-        p["test_scene_ids"] = list(range(1,2))
+        p["im_modalities"] = ["gray_photoneo", "depth_photoneo", "gray_xyz", "depth_xyz", "rgb_realsense", "depth_realsense"]
+        p["test_scene_ids"] = list(range(1,87))
         # p["test_aria_scene_ids"] = list(range(3365, 3832))
         p["scene_ids"] = {
             "test": p["test_scene_ids"],  # test_quest3 + test_aria
             "train": p["test_scene_ids"],  # train_quest3 + train_aria
-            "train_pbr": p["test_scene_ids"],  # train_quest3 + train_aria
+            "train_pbr": list(range(50)),  # train_quest3 + train_aria
         }[split]
-        p["im_size"] = (2400, 2400)
 
-        def ipd_eval_modality(scene_id):
-            return "rgb_cam2"
+        # These are probably mixed up in the real data!
+        p["photoneo_im_size"] = (1440, 1080)
+        p["realsense_im_size"] = (1280, 720)
+        p["xyz_im_size"] = (2064, 1544)
+        # pbr im size
+        p["im_size"] = p["photoneo_im_size"]
 
-        p["eval_modality"] = ipd_eval_modality
+        def xyz_eval_modality(scene_id):
+            return "gray_xyz"
+
+        p["eval_modality"] = xyz_eval_modality
+
+        if "pbr" == split_type:
+            # The PBR data is in classical BOP format without sensor names.
+            p["eval_modality"] = None
+            modalities_have_separate_annotations = False
         # def hot3d_eval_modality(scene_id):
         #     if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
         #         return p["quest3_eval_modality"]
@@ -513,9 +517,14 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         # p["eval_modality"] = hot3d_eval_modality
 
         exts = {
-            "rgb_cam2": ".jpg",
-            "depth_cam2": ".png",
+            "gray_photoneo": ".png",
+            "depth_photoneo": ".png",
+            "gray_xyz": ".png",
+            "depth_xyz": ".png",
+            "rgb_realsense": ".png",
+            "depth_realsense": ".png",
         }
+        rgb_ext = ".png"
 
         if split == "test":
             p["depth_range"] = None  # Not calculated yet.
@@ -651,11 +660,13 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
 
     tpath_keys = [
         "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
-        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath"
+        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath", 
+        "gray_tpath", "depth_tpath"
     ]
     tpath_keys_multi = [
         "scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
-        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath"
+        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath", "{}_tpath", 
+        "{}_tpath", "depth_{}_tpath"
     ]
 
     assert len(tpath_keys) == len(tpath_keys_multi)
@@ -672,7 +683,8 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
             tpath_keys_dic[key] = key_multi.format(eval_modality[scene_id])
         else:
             raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
-    
+    # TODO: Find a nicer solution. e.g. split modality and sensor throughout the bop toolkit.
+    tpath_keys_dic["depth_tpath"] = tpath_keys_dic["depth_tpath"][tpath_keys_dic["depth_tpath"].find("_")+1:]
     return tpath_keys_dic
 
 
