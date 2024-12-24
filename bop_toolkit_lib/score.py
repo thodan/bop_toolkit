@@ -66,7 +66,7 @@ def calc_recall(tp_count, targets_count):
         return tp_count / float(targets_count)
 
 
-def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
+def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True, weights = [1.0]*10):
     """Calculates performance scores for the 6D object localization task.
 
     References:
@@ -87,6 +87,12 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
         if m["valid"]:
             insts[m["obj_id"]][m["scene_id"]][m["im_id"]] += 1
 
+    # gather weights of each matching
+    insts_w = {i: {j: defaultdict(lambda: []) for j in scene_ids} for i in obj_ids}
+    for m in matches:
+        if m["valid"]:
+            insts_w[m["obj_id"]][m["scene_id"]][m["im_id"]].append(weights[min(9,int(m['gt_visib_fract']*10))])
+
     # Count the number of targets = object instances to be found.
     # For SiSo, there is either zero or one target in each image - there is just
     # one even if there are more instances of the object of interest.
@@ -105,6 +111,24 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
             obj_tars[obj_id] += count
             scene_tars[scene_id] += count
 
+    # Count the number of targets = object instances to be found.
+    # For SiSo, there is either zero or one target in each image - there is just
+    # one even if there are more instances of the object of interest.
+    tars_w = 0  # Total number of targets.
+    obj_tars_w = {i: 0 for i in obj_ids}  # Targets per object.
+    scene_tars_w = {i: 0 for i in scene_ids}  # Targets per scene.
+    for obj_id, obj_insts in insts_w.items():
+        for scene_id, scene_insts in obj_insts.items():
+            # Count the number of targets for the current object in the current scene.
+            if n_top > 0:
+                w = sum([list(np.sort(sublist)[-n_top:]) for sublist in scene_insts.values()])
+            else:
+                w = sum([item for sublist in scene_insts.values() for item in sublist])
+
+            tars_w += w
+            obj_tars_w[obj_id] += w
+            scene_tars_w[scene_id] += w
+
     # Count the number of true positives.
     tps = 0  # Total number of true positives.
     obj_tps = {i: 0 for i in obj_ids}  # True positives per object.
@@ -115,8 +139,22 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
             obj_tps[m["obj_id"]] += 1
             scene_tps[m["scene_id"]] += 1
 
+    # Count the number of true positives.
+    tps_w = 0  # Total number of true positives.
+    obj_tps_w = {i: 0 for i in obj_ids}  # True positives per object.
+    scene_tps_w = {i: 0 for i in scene_ids}  # True positives per scene.
+    for m in matches:
+        if m["valid"] and m["est_id"] != -1:
+            w = weights[min(9,int(m['gt_visib_fract']*10))]
+            tps_w += w
+            obj_tps_w[m["obj_id"]] += w
+            scene_tps_w[m["scene_id"]] += w
+
     # Total recall.
     recall = calc_recall(tps, tars)
+
+    # Total recall.
+    recall_w = calc_recall(tps_w, tars_w)
 
     # Recall per object.
     obj_recalls = {}
@@ -124,21 +162,45 @@ def calc_localization_scores(scene_ids, obj_ids, matches, n_top, do_print=True):
         obj_recalls[i] = calc_recall(obj_tps[i], obj_tars[i])
     mean_obj_recall = float(np.mean(list(obj_recalls.values())).squeeze())
 
+    # Recall per object.
+    obj_recalls_w = {}
+    for i in obj_ids:
+        obj_recalls_w[i] = calc_recall(obj_tps_w[i], obj_tars_w[i])
+    mean_obj_recall_w = float(np.mean(list(obj_recalls_w.values())).squeeze())
+
     # Recall per scene.
     scene_recalls = {}
     for i in scene_ids:
         scene_recalls[i] = float(calc_recall(scene_tps[i], scene_tars[i]))
     mean_scene_recall = float(np.mean(list(scene_recalls.values())).squeeze())
 
+    # Recall per scene.
+    scene_recalls_w = {}
+    for i in scene_ids:
+        scene_recalls_w[i] = float(calc_recall(scene_tps_w[i], scene_tars_w[i]))
+    mean_scene_recall_w = float(np.mean(list(scene_recalls_w.values())).squeeze())
+
+    # # # Final scores.
+    # scores = {
+    #     "recall": float(recall),
+    #     "obj_recalls": obj_recalls,
+    #     "mean_obj_recall": float(mean_obj_recall),
+    #     "scene_recalls": scene_recalls,
+    #     "mean_scene_recall": float(mean_scene_recall),
+    #     "gt_count": len(matches),
+    #     "targets_count": int(tars),
+    #     "tp_count": int(tps),
+    # }
+
     # Final scores.
     scores = {
-        "recall": float(recall),
-        "obj_recalls": obj_recalls,
-        "mean_obj_recall": float(mean_obj_recall),
-        "scene_recalls": scene_recalls,
-        "mean_scene_recall": float(mean_scene_recall),
+        "recall": float(recall_w),
+        "obj_recalls": obj_recalls_w,
+        "mean_obj_recall": float(mean_obj_recall_w),
+        "scene_recalls": scene_recalls_w,
+        "mean_scene_recall": float(mean_scene_recall_w),
         "gt_count": len(matches),
-        "targets_count": int(tars),
+        "targets_count": int(tps),
         "tp_count": int(tps),
     }
 
