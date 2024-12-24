@@ -78,6 +78,7 @@ p = {
     "targets_filename": "test_targets_bop19.json",
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
+    "debias": False, # to debias scores using dataset visibility weights
 }
 ################################################################################
 
@@ -96,6 +97,7 @@ parser.add_argument("--eval_path", default=p["eval_path"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
+parser.add_argument("--debias", action='store_true')
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
@@ -104,6 +106,7 @@ p["results_path"] = str(args.results_path)
 p["eval_path"] = str(args.eval_path)
 p["targets_filename"] = str(args.targets_filename)
 p["num_workers"] = int(args.num_workers)
+p["debias"] = bool(args.debias)
 
 eval_time_start = time.time()
 # Evaluation.
@@ -226,6 +229,12 @@ for result_filename in p["result_filenames"]:
                         error["type"], ",".join(map(str, correct_th))
                     )
                 ]
+                
+                if p["debias"]:
+                     calc_scores_cmd += [
+                        "--debias"
+                     ]
+
                 calc_scores_cmds.append(calc_scores_cmd)
 
         if p["num_workers"] == 1:

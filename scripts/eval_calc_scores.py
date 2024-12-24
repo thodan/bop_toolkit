@@ -31,6 +31,8 @@ from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_matching
 from bop_toolkit_lib import score
 
+import numpy as np
+
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
@@ -87,6 +89,7 @@ p = {
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
     "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
     "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
+    "debias": False, # to debias scores using dataset visibility weights
 }
 ################################################################################
 
@@ -126,6 +129,7 @@ parser.add_argument("--error_tpath", default=p["error_tpath"])
 parser.add_argument("--out_matches_tpath", default=p["out_matches_tpath"])
 parser.add_argument("--out_scores_tpath", default=p["out_scores_tpath"])
 parser.add_argument("--eval_mode", default=p["eval_mode"])
+parser.add_argument("--debias", action='store_true')
 # Process the command line arguments.
 args = parser.parse_args()
 
@@ -146,8 +150,8 @@ p["out_matches_tpath"] = str(args.out_matches_tpath)
 p["out_scores_tpath"] = str(args.out_scores_tpath)
 p["eval_mode"] = str(args.eval_mode)
 p["ignore_object_visible_less_than_visib_gt_min"] = bool(
-    args.ignore_object_visible_less_than_visib_gt_min
-)
+    args.ignore_object_visible_less_than_visib_gt_min)
+p["debias"] = bool(args.debias)
 
 logger.info("-----------")
 logger.info("Parameters:")
@@ -321,9 +325,17 @@ for error_dir_path in p["error_dir_paths"]:
     # Calculate the performance scores.
     # ----------------------------------------------------------------------------
     # 6D object localization scores (SiSo if n_top = 1).
+    if p["debias"]:
+        debias_weights = list(np.load(f"{dp_split['split_path']}/debias_weights.npy"))
+    else:
+        debias_weights = [1.0]*10
     if p["eval_mode"] == "localization":
         scores = score.calc_localization_scores(
-            dp_split["scene_ids"], dp_model["obj_ids"], matches, n_top
+            dp_split["scene_ids"],
+            dp_model["obj_ids"],
+            matches,
+            n_top,
+            weights=debias_weights,
         )
     elif p["eval_mode"] == "detection":
         scores = score.calc_pose_detection_scores(
