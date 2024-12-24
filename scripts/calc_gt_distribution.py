@@ -11,12 +11,23 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
+def debiasing_weights(visib_fracts):
+    num_bins = 10
+    bins = np.linspace(0, 1, num_bins + 1)
+    bin_indices = np.digitize(visib_fracts, bins) - 1
+    bin_indices = np.clip(bin_indices, 0, num_bins - 1)
+    biased_counts = np.bincount(bin_indices, minlength=num_bins)
+    biased_prob = biased_counts / biased_counts.sum()
+    uniform_prob = np.full_like(biased_prob, 1 / num_bins)
+    biased_prob = np.maximum(biased_prob, 1e-10)
+    bin_weights = uniform_prob / biased_prob
+    return bin_weights
 
 # PARAMETERS.
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "lmo",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -121,3 +132,6 @@ plt.hist(visib_fracts, bins=100)
 plt.title("Visibility fraction")
 
 plt.show()
+
+weights = debiasing_weights(visib_fracts)
+np.save(f"{dp_split['split_path']}/debias_weights.npy", weights)
