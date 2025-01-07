@@ -44,6 +44,10 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
         if cam_type is None:
             cam_type = "uw"
         cam_filename = "camera_{}.json".format(cam_type)
+    
+    # H3 format datasets do not have a single camera file, raise an exception 
+    elif dataset_name in ['hot3d']:
+        raise ValueError("BOP dataset {} does not have a global camera file.".format(dataset_name))
 
     else:
         cam_filename = "camera.json"
