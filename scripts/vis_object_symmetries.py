@@ -48,13 +48,12 @@ model_type = None  # None = default.
 if p["dataset"] == "tless":
     model_type = "cad"
 dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
-dp_camera = dataset_params.get_camera_params(p["datasets_path"], p["dataset"])
 
-K = dp_camera["K"]
-fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+# Use reasonable camera intrinsics default for rendering (copied from T-LESS)
+width, height = 1280, 1024
+fx, fy, cx, cy = 1075, 1073, 641, 507
 
 # Create a renderer.
-width, height = dp_camera["im_size"]
 ren = renderer.create_renderer(
     width, height, p["renderer_type"], mode="rgb", shading="flat"
 )
