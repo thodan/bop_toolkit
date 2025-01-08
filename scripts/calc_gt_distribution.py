@@ -2,6 +2,7 @@
 # Center for Machine Perception, Czech Technical University in Prague
 
 """Calculates distribution of GT poses."""
+import os
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,13 +17,16 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "hot3d",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
+    # Modality used to compute. Options: depends on the dataset, see. 
+    # None default value will use the eval_modality of the dataset.
+    "modality": None, 
 }
 ################################################################################
 
@@ -38,7 +42,12 @@ azimuths = []
 elevs = []
 visib_fracts = []
 ims_count = 0
+if p["modality"] is None:
+    p["modality"] = dp_split["eval_modality"]
+
 for scene_id in scene_ids:
+    tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], scene_id)
+
     misc.log(
         "Processing - dataset: {} ({}, {}), scene: {}".format(
             p["dataset"], p["dataset_split"], p["dataset_split_type"], scene_id
@@ -46,16 +55,25 @@ for scene_id in scene_ids:
     )
 
     # Load GT poses.
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
+    try:
+        scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
+        if not os.path.exists(scene_gt_path):
+            misc.log("Path {} does not exist".format(scene_gt_path))
+            continue
+    except:
+        misc.log("Path {} does not exist, check the 'modality' parameters".format(scene_gt_path))
+        continue
 
+    scene_gt = inout.load_scene_gt(scene_gt_path)
+    
     # Load info about the GT poses.
     scene_gt_info = inout.load_json(
-        dp_split["scene_gt_info_tpath"].format(scene_id=scene_id), keys_to_int=True
+        dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
     )
 
     ims_count += len(scene_gt)
 
-    for im_id in scene_gt.keys():
+    for im_id in scene_gt:
         for gt_id, im_gt in enumerate(scene_gt[im_id]):
             # Object distance.
             dist = np.linalg.norm(im_gt["cam_t_m2c"])
@@ -86,6 +104,10 @@ misc.log(
     "Stats of the GT poses in dataset {} {}:".format(p["dataset"], p["dataset_split"])
 )
 misc.log("Number of images: " + str(ims_count))
+
+if ims_count == 0:
+    misc.log("No ground truth found.")
+    exit()
 
 misc.log("Min dist: {}".format(np.min(dists)))
 misc.log("Max dist: {}".format(np.max(dists)))
