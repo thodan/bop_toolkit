@@ -423,7 +423,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["aria_eval_modality"] = "rgb"
         def hot3d_eval_modality(scene_id):
             if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
-                return p["aria_eval_modality"]
+                return p["quest3_eval_modality"]
             elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
                 return p["aria_eval_modality"]
             else:
@@ -506,15 +506,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             # The PBR data is in classical BOP format without sensor names.
             p["eval_modality"] = None
             modalities_have_separate_annotations = False
-        # def hot3d_eval_modality(scene_id):
-        #     if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
-        #         return p["quest3_eval_modality"]
-        #     elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
-        #         return p["aria_eval_modality"]
-        #     else:
-        #         raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
-
-        # p["eval_modality"] = hot3d_eval_modality
 
         exts = {
             "gray_photoneo": ".png",
