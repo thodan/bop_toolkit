@@ -35,7 +35,7 @@ except ImportError as e:
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "xyz",
+    "dataset": "ipd",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -53,7 +53,7 @@ p = {
     # Which sensor to visualize. By default it uses the evaluation modality set
     # in dataset_params.py. Set to None for rendering PBR images or BOP core datasets.
     # Set to sensor for new BOP core sets, e.g. "photoneo".
-    "sensor": "xyz",
+    "sensor": "",
 
     # ---------------------------------------------------------------------------------
     # Next parameters apply only to classical BOP19 datasets (not the H3 BOP24 format)
@@ -278,7 +278,6 @@ for scene_id in scene_ids:
                     dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
                 )
                 depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
-                breakpoint()
 
                 # if depth.ndim == 2:
                 #     depth = np.dstack([depth, depth, depth])

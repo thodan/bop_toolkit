@@ -684,7 +684,9 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
         else:
             raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
     # TODO: Find a nicer solution. e.g. split modality and sensor throughout the bop toolkit.
-    tpath_keys_dic["depth_tpath"] = tpath_keys_dic["depth_tpath"][tpath_keys_dic["depth_tpath"].find("_")+1:]
+    parts = tpath_keys_dic["depth_tpath"].split("_")
+    parts.pop(1)
+    tpath_keys_dic["depth_tpath"] = "_".join(parts)
     return tpath_keys_dic
 
 
