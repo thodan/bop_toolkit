@@ -55,16 +55,20 @@ else:
 # List of considered scenes.
 scene_ids_curr = dp_split["scene_ids"]
 
+
 test_targets = []
 for scene_id in scene_ids_curr:
     misc.log("Processing scene: {}".format(scene_id))
 
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
+
     # Load the ground-truth poses.
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
+    scene_gt = inout.load_scene_gt(dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id))
 
     # Load meta info about the ground-truth poses.
     scene_gt_info = inout.load_scene_gt(
-        dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
+        dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
     )
 
     # List of considered images.
@@ -93,18 +97,10 @@ for scene_id in scene_ids_curr:
                 }
             )
 
-# test_targets_lines = []
-# for test_target in test_targets:
-#   test_targets_lines.append(
-#     '- {{scene_id: {}, im_id: {}, obj_id: {}, inst_count: {}}}'.format(
-#       test_target['scene_id'], test_target['im_id'], test_target['obj_id'],
-#       test_target['inst_count']))
-
 # Save the test targets,
 test_targets_path = os.path.join(dp_split["base_path"], p["test_targets_filename"])
-# with open(test_targets_path, 'w') as f:
-#   f.write('\n'.join(test_targets_lines))
 
+misc.log("Saving {}".format(test_targets_path))
 inout.save_json(test_targets_path, test_targets)
 
 misc.log("Done.")
