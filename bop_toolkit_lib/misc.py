@@ -131,7 +131,6 @@ class Precomputer(object):
         :return: hxw ndarray (Xs/depth_im, Ys/depth_im)
         """
         if depth_im.shape != Precomputer.depth_im_shape:
-            Precomputer.depth_im_shape = depth_im.shape
             Precomputer.xs, Precomputer.ys = np.meshgrid(
                 np.arange(depth_im.shape[1]), np.arange(depth_im.shape[0])
             )
@@ -143,6 +142,7 @@ class Precomputer(object):
             Precomputer.pre_Xs = (Precomputer.xs - K[0, 2]) / np.float64(K[0, 0])
             Precomputer.pre_Ys = (Precomputer.ys - K[1, 2]) / np.float64(K[1, 1])
 
+        Precomputer.depth_im_shape = depth_im.shape
         return Precomputer.pre_Xs, Precomputer.pre_Ys
 
 
