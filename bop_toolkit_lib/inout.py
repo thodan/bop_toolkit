@@ -6,6 +6,7 @@
 import os
 import gzip
 import struct
+import cv2
 import numpy as np
 import imageio
 import png
@@ -15,13 +16,35 @@ from collections import defaultdict
 from bop_toolkit_lib import misc
 
 
-def load_im(path):
+def load_im(path, convert_hdr=True):
     """Loads an image from a file.
 
     :param path: Path to the image file to load.
+    :param convert_hdr (bool): 
+        Whether to convert HDR images to LDR. Defaults to True.
+        If False, HDR images will be returned as is.
+        https://github.com/carynbear/ipd/blob/02eb1ad1e66e3a48324c48b4cca563a551dc6771/src/intrinsic_ipd/reader.py#L460
     :return: ndarray with the loaded image.
     """
-    im = imageio.imread(path)
+    if not os.path.exists(path):
+        raise ValueError(f"{path} does not exist.")
+    if convert_hdr:
+        # From       
+        im = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if len(im.shape)==2:
+            im = cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)
+        else:
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        
+        if np.max(im) > 255:
+            # Convert HDR to LDR
+            gamma = 2.2
+            tonemap = cv2.createTonemap(gamma)
+            im = tonemap.process(im.astype(np.float32))
+            im = cv2.normalize(im, None, alpha = 0, beta = 255, norm_type = cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+    else:
+        im = imageio.imread(path)
+
     return im
 
 
