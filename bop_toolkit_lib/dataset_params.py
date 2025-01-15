@@ -445,7 +445,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
     elif dataset_name == "ipd":
             modalities_have_separate_annotations = True 
-            p["im_modalities"] = ["rgb_photoneo", "depth_photoneo"]
+            p["im_modalities"] = ["rgb_photoneo", "depth_photoneo", "rgb_basler_hr3"]
             p["test_scene_ids"] = list(range(0,1))
             # p["test_aria_scene_ids"] = list(range(3365, 3832))
             p["scene_ids"] = {
@@ -457,6 +457,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             # p["im_size"] = (1936, 1216)
             
             p["photoneo_im_size"] = (2064, 1544)
+            p["basler_hr3_im_size"] = (2592, 1944)
             p["im_size"] = p["photoneo_im_size"]
             
             def ipd_eval_modality(scene_id):
@@ -466,6 +467,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             
             exts = {
                 "rgb_photoneo": ".png",
+                "rgb_basler_hr3": ".png",
                 "depth_photoneo": ".png",
             }
 
