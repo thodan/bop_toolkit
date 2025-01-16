@@ -35,7 +35,7 @@ except ImportError as e:
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "ipd",
+    "dataset": "xyzibd",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -151,9 +151,9 @@ if p["dataset"] == "hot3d":
     aria_im_size = dp_split["aria_im_size"][dp_split["aria_eval_modality"]]
     quest3_ren = renderer_htt.RendererHtt(quest3_im_size, p["renderer_type"], shading="flat")
     aria_ren = renderer_htt.RendererHtt(aria_im_size, p["renderer_type"], shading="flat")
-elif p["sensor"]:  # classical BOP format
-    width, height = dp_split["{}_im_size".format(p["sensor"])]
-else:
+elif type(dp_split["im_size"]) == dict:  
+    width, height = dp_split["im_size"][p["sensor"]]
+else: # classical BOP format
     width, height = dp_split["im_size"]
     
 ren = renderer.create_renderer(
@@ -241,7 +241,7 @@ for scene_id in scene_ids:
                 }
             )
 
-        if p["dataset"] in ["hot3d", "ipd", "xyz"]:
+        if p["dataset"] in ["hot3d", "ipd", "xyzibd"]:
             # load the image of the eval modality
             
             img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
@@ -278,11 +278,6 @@ for scene_id in scene_ids:
                     dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
                 )
                 depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
-
-                # if depth.ndim == 2:
-                #     depth = np.dstack([depth, depth, depth])
-                # breakpoint()
-                # depth = depth[:,:,0]
 
         # Path to the output RGB visualization.
         vis_rgb_path = None

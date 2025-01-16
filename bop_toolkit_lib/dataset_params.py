@@ -89,8 +89,8 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": list(range(1, 29)),
         "hot3d": list(range(1, 34)),
         "handal": list(range(1, 41)),
-        "ipd": list(range(0,21)),
-        "xyz": list(range(1,18))
+        "ipd": list(range(0, 21)),
+        "xyzibd": [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error
@@ -113,7 +113,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
         "handal": [26, 35, 36, 37, 38, 39, 40],
         "ipd": [],
-        "xyz": []
+        "xyzibd": [1, 2, 5, 8, 9, 11, 12, 16, 17]
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -451,10 +451,15 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["scene_ids"] = {
                 "test": p["test_scene_ids"],  # test_quest3 + test_aria
                 "train": p["test_scene_ids"],  # train_quest3 + train_aria
-                "train_pbr": p["test_scene_ids"],  # train_quest3 + train_aria
+                "train_pbr": list(range(50)),  # train_quest3 + train_aria
             }[split]
-            # p["im_size"] = (2400, 2400)
-            # p["im_size"] = (1936, 1216)
+
+            p["im_size"] = {
+                "photoneo" : (2064, 1544),
+                "basler_hr3" : (2592, 1944),
+                "": (2064, 1544)
+            }
+
             
             p["photoneo_im_size"] = (2064, 1544)
             p["basler_hr3_im_size"] = (2592, 1944)
@@ -479,23 +484,24 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
             supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
 
-    elif dataset_name == "xyz":
+    elif dataset_name == "xyzibd":
         modalities_have_separate_annotations = True 
         p["im_modalities"] = ["gray_photoneo", "depth_photoneo", "gray_xyz", "depth_xyz", "rgb_realsense", "depth_realsense"]
-        p["test_scene_ids"] = list(range(1,87))
-        # p["test_aria_scene_ids"] = list(range(3365, 3832))
+        val_scene_ids = [0, 5, 10, 18, 23, 28, 33, 38, 46, 51, 56, 61, 69, 74, 79]
         p["scene_ids"] = {
-            "test": p["test_scene_ids"],  # test_quest3 + test_aria
-            "train": p["test_scene_ids"],  # train_quest3 + train_aria
-            "train_pbr": list(range(50)),  # train_quest3 + train_aria
+            "test": [i for i in range(84) if i not in val_scene_ids],  # test_quest3 + test_aria
+            "val": val_scene_ids,  # train_quest3 + train_aria
+            "train_pbr": list(range(45)),  # train_quest3 + train_aria
         }[split]
 
-        # These are probably mixed up in the real data!
-        p["photoneo_im_size"] = (1440, 1080)
-        p["realsense_im_size"] = (1280, 720)
-        p["xyz_im_size"] = (2064, 1544)
-        # pbr im size
-        p["im_size"] = p["photoneo_im_size"]
+        # These are probably mixed up in the real datan
+        p["im_size"] = {
+            "xyz": (1440, 1080),
+            "realsense": (1280, 720),
+            "photoneo": (2064, 1544),
+            "": (1440, 1080),
+        }
+
 
         def xyz_eval_modality(scene_id):
             return "gray_xyz"
