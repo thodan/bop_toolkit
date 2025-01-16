@@ -151,9 +151,9 @@ if p["dataset"] == "hot3d":
     aria_im_size = dp_split["aria_im_size"][dp_split["aria_eval_modality"]]
     quest3_ren = renderer_htt.RendererHtt(quest3_im_size, p["renderer_type"], shading="flat")
     aria_ren = renderer_htt.RendererHtt(aria_im_size, p["renderer_type"], shading="flat")
-elif p["sensor"]:  # classical BOP format
-    width, height = dp_split["{}_im_size".format(p["sensor"])]
-else:
+elif type(dp_split["im_size"]) == dict:  
+    width, height = dp_split["im_size"][p["sensor"]]
+else: # classical BOP format
     width, height = dp_split["im_size"]
     
 ren = renderer.create_renderer(
