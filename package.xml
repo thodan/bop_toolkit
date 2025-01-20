@@ -9,6 +9,8 @@
   <license>Apache license 2.0</license>
 
   <test_depend>ament_black</test_depend>
+  <exec_depend>python3-imageio</exec_depend>
+  <exec_depend>python3-pypng</exec_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>
