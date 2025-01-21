@@ -35,7 +35,7 @@ except ImportError as e:
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "xyzibd",
+    "dataset": "ipd",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -53,7 +53,7 @@ p = {
     # Which sensor to visualize. By default it uses the evaluation modality set
     # in dataset_params.py. Set to None for rendering PBR images or BOP core datasets.
     # Set to sensor for new BOP core sets, e.g. "photoneo".
-    "sensor": "",
+    "sensor": "photoneo",
 
     # ---------------------------------------------------------------------------------
     # Next parameters apply only to classical BOP19 datasets (not the H3 BOP24 format)
@@ -110,8 +110,7 @@ dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], mod
 
 # Find color modality of specified sensor.
 if p["sensor"]:
-    sensor_mods = [mod.split("_")[0] for mod in dp_split["im_modalities"] if p["sensor"] in mod]
-    p["modality"] = [mod for mod in sensor_mods if any(col in mod for col in ["rgb","gray"])][0]
+    p["color_modality"] = [mod for mod in dp_split["im_modalities"][p["sensor"]] if mod != "depth"][0]
 
 # Load colors.
 colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
@@ -178,7 +177,7 @@ for obj_id in dp_model["obj_ids"]:
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
     if p["sensor"]:
-        tpath_keys = dataset_params.scene_tpaths_keys("{}_{}".format(p["modality"], p["sensor"]))
+        tpath_keys = dataset_params.scene_tpaths_keys("{}_{}".format(p["color_modality"], p["sensor"]))
     else:
         tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
@@ -243,7 +242,6 @@ for scene_id in scene_ids:
 
         if p["dataset"] in ["hot3d", "ipd", "xyzibd"]:
             # load the image of the eval modality
-            
             img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
             if not os.path.exists(img_path):
                 print("rbg path {} does not exist, looking for gray images".format(img_path))

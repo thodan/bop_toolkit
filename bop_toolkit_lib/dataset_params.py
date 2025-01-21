@@ -183,8 +183,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p["eval_modality"] = None
     # ...and only one set of annotation is present in the dataset 
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
-    modalities_have_separate_annotations = False 
-    exts = None  # has to be set if modalities_have_separate_annotations is True
+    sensor_modalities_have_separate_annotations = False 
+    exts = None  # has to be set if sensor_modalities_have_separate_annotations is True
 
     supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
 
@@ -406,8 +406,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     # HOT3D.
     elif dataset_name == "hot3d":
-        modalities_have_separate_annotations = True 
-        p["im_modalities"] = ["rgb","gray1","gray2"]
+        sensor_modalities_have_separate_annotations = {"aria": True, "quest3": True} 
+        p["im_modalities"] = {"aria": ["rgb", "gray1", "gray2"], "quest3": ["rgb", "gray1", "gray2"]}
         p["test_quest3_scene_ids"] = list(range(1288, 1849))
         p["test_aria_scene_ids"] = list(range(3365, 3832))
         p["train_quest3_scene_ids"] = list(range(0, 1288))
@@ -416,8 +416,11 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "test": p["test_quest3_scene_ids"] + p["test_aria_scene_ids"],  # test_quest3 + test_aria
             "train": p["train_quest3_scene_ids"] + p["train_aria_scene_ids"],  # train_quest3 + train_aria
         }[split]
-        p["quest3_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
-        p["aria_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
+
+        p["im_size"] = {
+            "aria" : {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)},
+            "quest3" : {"gray1": (1280, 1024), "gray2": (1280, 1024)}
+        }
 
         p["quest3_eval_modality"] = "gray1"
         p["aria_eval_modality"] = "rgb"
@@ -444,10 +447,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
     elif dataset_name == "ipd":
-            modalities_have_separate_annotations = True 
-            p["im_modalities"] = ["rgb_photoneo", "depth_photoneo", "rgb_basler_hr3"]
+            sensor_modalities_have_separate_annotations = {"photoneo": False, "basler_hr3" : False} 
+            p["im_modalities"] = {"photoneo": ["rgb", "depth"], "basler_hr3" : ["rgb"]}
             p["test_scene_ids"] = list(range(0,1))
-            # p["test_aria_scene_ids"] = list(range(3365, 3832))
             p["scene_ids"] = {
                 "test": p["test_scene_ids"],  # test_quest3 + test_aria
                 "train": p["test_scene_ids"],  # train_quest3 + train_aria
@@ -459,11 +461,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 "basler_hr3" : (2592, 1944),
                 "": (2064, 1544)
             }
-
-            
-            p["photoneo_im_size"] = (2064, 1544)
-            p["basler_hr3_im_size"] = (2592, 1944)
-            p["im_size"] = p["photoneo_im_size"]
             
             def ipd_eval_modality(scene_id):
                 return "rgb_photoneo"
@@ -485,8 +482,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
 
     elif dataset_name == "xyzibd":
-        modalities_have_separate_annotations = True 
-        p["im_modalities"] = ["gray_photoneo", "depth_photoneo", "gray_xyz", "depth_xyz", "rgb_realsense", "depth_realsense"]
+        sensor_modalities_have_separate_annotations = {"photoneo": False, "xyz": False, "realsense": False}
+        p["im_modalities"] = {"photoneo": ["gray", "depth"], "xyz": ["gray", "depth"], "realsense": ["rgb", "depth"]}
         val_scene_ids = [0, 5, 10, 18, 23, 28, 33, 38, 46, 51, 56, 61, 69, 74, 79]
         p["scene_ids"] = {
             "test": [i for i in range(84) if i not in val_scene_ids],  # test_quest3 + test_aria
@@ -494,7 +491,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "train_pbr": list(range(45)),  # train_quest3 + train_aria
         }[split]
 
-        # These are probably mixed up in the real datan
         p["im_size"] = {
             "xyz": (1440, 1080),
             "realsense": (1280, 720),
@@ -511,7 +507,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         if "pbr" == split_type:
             # The PBR data is in classical BOP format without sensor names.
             p["eval_modality"] = None
-            modalities_have_separate_annotations = False
+            sensor_modalities_have_separate_annotations = False
 
         exts = {
             "gray_photoneo": ".png",
@@ -543,7 +539,10 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # Path to the split directory.
     p["split_path"] = split_path
     p["supported_error_types"] = supported_error_types
-    if not modalities_have_separate_annotations:
+
+    # For classic BOP format datasets with one gt file per folder 
+    classic_bop_format = type(p["im_modalities"]) is list
+    if classic_bop_format:
         p.update(
             {
                 # Path template to a gray image.
@@ -591,48 +590,49 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     else:
         assert exts is not None, "Need to set 'exts' for dataset {}".format()
         present_scene_id = get_present_scene_ids(p)[0]
-        for moda in p["im_modalities"]:
-            sensor_moda = moda
-            if not os.path.exists(join(
-                        split_path, "{present_scene_id:06d}", "scene_gt_{}.json".format(moda)
-                    )):
+        # im_modalities is a dict from sensor to modalities
+        for sensor, modalities in p["im_modalities"].items():
+            for modality in modalities:
                 # If modalities have aligned extrinsics/intrinsics they are combined in one file 
-                sensor_moda = moda[(moda.find("_") + 1):]
-            p.update(
-                {
-                    # Path template to modality image.
-                    "{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", moda, "{im_id:06d}" + exts[moda]
-                    ),
-                    # Path template to a file with per-image camera parameters.
-                    "scene_camera_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_camera_{}.json".format(sensor_moda)
-                    ),
-                    # Path template to a file with GT annotations.
-                    "scene_gt_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_gt_{}.json".format(sensor_moda)
-                    ),
-                    # Path template to a file with meta information about the GT annotations.
-                    "scene_gt_info_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_gt_info_{}.json".format(sensor_moda)
-                    ),
-                    # Path template to a file with the coco GT annotations.
-                    "scene_gt_coco_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_gt_coco_{}.json".format(sensor_moda)
-                    ),
-                    # Path template to a mask of the full object silhouette.
-                    "mask_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "mask_{}".format(sensor_moda), "{im_id:06d}_{gt_id:06d}.png"
-                    ),
-                    # Path template to a mask of the visible part of an object silhouette.
-                    "mask_visib_{}_tpath".format(moda): join(
-                        split_path,
-                        "{scene_id:06d}",
-                        "mask_visib_{}".format(sensor_moda),
-                        "{im_id:06d}_{gt_id:06d}.png",
-                    ),
-                }
-            )
+                gt_file_suffix = sensor
+                # If modalities have separate extrinsics/intrinsics they are accessed by unique modalities (compatible to H3)
+                if sensor_modalities_have_separate_annotations[sensor]:
+                    gt_file_suffix = modality
+                p.update(
+                    {
+                        # Path template to modality image.
+                        "{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", f"{modality}_{sensor}", "{im_id:06d}" + exts[f"{modality}_{sensor}"]
+                        ),
+                        # Path template to a file with per-image camera parameters.
+                        "scene_camera_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_camera_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a file with GT annotations.
+                        "scene_gt_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_gt_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a file with meta information about the GT annotations.
+                        "scene_gt_info_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_gt_info_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a file with the coco GT annotations.
+                        "scene_gt_coco_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_gt_coco_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a mask of the full object silhouette.
+                        "mask_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "mask_{}".format(gt_file_suffix), "{im_id:06d}_{gt_id:06d}.png"
+                        ),
+                        # Path template to a mask of the visible part of an object silhouette.
+                        "mask_visib_{}_{}_tpath".format(modality, sensor): join(
+                            split_path,
+                            "{scene_id:06d}",
+                            "mask_visib_{}".format(gt_file_suffix),
+                            "{im_id:06d}_{gt_id:06d}.png",
+                        ),
+                    }
+                )
 
     return p
 
