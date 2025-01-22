@@ -8,9 +8,18 @@
   <maintainer email="Martin.Sundermeyer@dlr.de">Martin Sundermeyer</maintainer>
   <license>Apache license 2.0</license>
 
-  <test_depend>ament_black</test_depend>
+  <exec_depend>cython3</exec_depend>
   <exec_depend>python3-imageio</exec_depend>
+  <exec_depend>python3-kiwisolver</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-opengl</exec_depend>
+  <exec_depend>python3-pil</exec_depend>
   <exec_depend>python3-pypng</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+
+  <test_depend>ament_black</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>
