@@ -772,7 +772,7 @@ class AppWindow:
 
                 geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)  # point cloud in mm
             elif p['tool_model'] == 'sequence':
-                point_cloud_path = os.path.join(scene_path, 'assembled_cloud_WORLD.pcd')
+                point_cloud_path = os.path.join(scene_path, 'assembled_cloud_world.pcd')
                 #point_cloud_path  = '/home/gouda/tmp/assembled_cloud_world.pcd'
                 geometry = o3d.io.read_point_cloud(point_cloud_path)
                 image_num = 'w'  # represent 6D annotations in the world coordinate system

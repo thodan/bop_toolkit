@@ -16,6 +16,7 @@ import json
 from scipy.spatial.transform import Rotation as R
 import os
 import glob
+from tqdm import tqdm
 
 import open3d.t.pipelines.registration as treg
 
@@ -73,8 +74,9 @@ def main():
                 updated_result_dict["inlier_rmse"].item()))
         accumulated_target_icp_tf = np.eye(4)
 
-    assembled_cloud = o3d.geometry.PointCloud()
     for scene_path in scenes_paths:  # samples are not ordered
+        assembled_cloud = o3d.geometry.PointCloud()
+        print("Processing", scene_path)
         scene_camera_json = os.path.join(scene_path, 'scene_camera.json')
         rgb_folder = os.path.join(scene_path, 'rgb')
         depth_folder = os.path.join(scene_path, 'depth')
@@ -84,7 +86,10 @@ def main():
 
         # Extracting Json translation and rotation for each frame
         # for index, trans_rot in json_trot.items():
-        for index in range(len(scene_camera_data)):
+        #for index in tqdm(range(len(scene_camera_data))):
+        # loop through the keys of scene_camera_data
+        for index in tqdm(scene_camera_data.keys()):
+            index = int(index)
             rgb_img = os.path.join(rgb_folder, f'{int(index):06}' + '.png')
             depth_img = os.path.join(depth_folder, f'{int(index):06}' + '.png')
 
@@ -97,19 +102,27 @@ def main():
             rgb = o3d.io.read_image(rgb_img)
             depth = o3d.io.read_image(depth_img)
             # Extract RGDB image from RGB and Depth, intensity is set to false - get colour data (3 Channels)
-            rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=1000,
-                                                                      convert_rgb_to_intensity=False)  # rgbd in mm
-            camera_intrinsic_zivid = o3d.camera.PinholeCameraIntrinsic(width=1944, height=1200,
-                                                                       fx=1778.81005859375, fy=1778.87036132812,
-                                                                       cx=967.931579589844, cy=572.408813476562)  # TODO read from scene_camera
-            pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, camera_intrinsic_zivid)
+            depth_scale = scene_camera_data[str(index)]['depth_scale'] / 1000  # depth scale converts image to meter
+            depth_scale = 1/depth_scale  # depth scale for open3d is the inverse of the depth scale in BOP format
+            # convert depth to meter
+            rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=depth_scale,
+                                                                      convert_rgb_to_intensity=False)  # rgbd in meter
+            # get camera intrinsic parameters from scene_camera.json
+            height, width, channels = np.asarray(rgb).shape
+            fx = scene_camera_data[str(index)]['cam_K'][0]
+            cx = scene_camera_data[str(index)]['cam_K'][2]
+            fy = scene_camera_data[str(index)]['cam_K'][4]
+            cy = scene_camera_data[str(index)]['cam_K'][5]
+            camera_intrinsics= o3d.camera.PinholeCameraIntrinsic(width=width, height=height, fx=fx, fy=fy, cx=cx, cy=cy)
+            pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, camera_intrinsics)
             pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
+            # Open3d expects the inverse of the transform
+            world2cam = np.linalg.inv(world2cam)
             transformed_cloud = pcd.transform(world2cam)
             transformed_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=10, max_nn=30))  # TODO recheck radius
-            #o3d.visualization.draw_geometries([transformed_pcd])
 
-            if index == 0:
+            if p['refine'] and index == 0:
                 previous_cloud = copy.deepcopy(transformed_cloud)  # cache current cloud as previous_cloud
             elif p['refine']:  # refine the transform between the current cloud and the previous cloud, first cloud is not refined of course
                 # visualize both clouds before ICP
