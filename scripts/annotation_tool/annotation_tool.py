@@ -56,7 +56,7 @@ p = {
 
     # TODO add ICP parameters here
     # TODO add moving object parameters here (dist, deg)
-    # add assembled_cloud_downsamlple parameter here
+    # add assembled_cloud_downsample parameter here
 }
 ################################################################################
 
@@ -816,43 +816,51 @@ class AppWindow:
         model_names = self.load_model_names()
 
         if p['tool_model'] == 'individual':
-            scene_gt_file = 'scene_gt.json'
+            scene_gt_filename = 'scene_gt.json'
         elif p['tool_model'] == 'sequence':
-            scene_gt_file = 'scene_gt_WORLD.json'
-        scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_file)
-        # if os.path.exists(json_path):
-        with open(scene_gt_path) as scene_gt_file:
-            data = json.load(scene_gt_file)
-            scene_data = data[str(image_num)]
-            active_meshes = list()
-            obj_meshes_colored = []
-            for obj in scene_data:  # add object to annotation_scene object
-                # load object mesh
-                obj_mesh_path = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply')
-                # assert normals exist
-                #assert not obj_geometry.has_normals(), "Object mesh does not have normals. Exiting ..."
+            scene_gt_filename = 'scene_gt_world.json'
+        scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_filename)
+        active_meshes = list()
+        # if scene_gt.json does not exist, then create an new empty json file
+        if not os.path.exists(scene_gt_path):
+            with open(scene_gt_path, 'w') as f:
+                json.dump({}, f)
+        else:  # if scene_gt.json exists, load the annotation
+            with open(scene_gt_path) as scene_gt_file:
+                data = json.load(scene_gt_file)
+                # if data doesn't contain annotations for the current image
+                if not str(image_num) in data:
+                    self._obj_meshes_colored = True  # default to colored ICP
+                else:  # if data contains annotations for the current image
+                    scene_data = data[str(image_num)]
+                    obj_meshes_colored = []
+                    for obj in scene_data:  # add object to annotation_scene object
+                        # load object mesh
+                        obj_mesh_path = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply')
+                        # assert normals exist
+                        #assert not obj_geometry.has_normals(), "Object mesh does not have normals. Exiting ..."
 
-                obj_geometry, obj_mesh_colored = self._load_object(obj_mesh_path)
+                        obj_geometry, obj_mesh_colored = self._load_object(obj_mesh_path)
 
-                obj_meshes_colored.append(obj_mesh_colored)
+                        obj_meshes_colored.append(obj_mesh_colored)
 
-                #obj_geometry.points = o3d.utility.Vector3dVector(np.array(obj_geometry.points))  # object point cloud in mm
-                model_name = model_names[int(obj['obj_id']) - 1]
-                obj_instance = self._obj_instance_count(model_name, active_meshes)
-                obj_name = model_name + '_' + str(obj_instance)
-                translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64)  # distance in mm
-                orientation = np.array(np.array(obj['cam_R_m2c']), dtype=np.float64)
-                transform = np.concatenate((orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1)
-                transform_cam_to_obj = np.concatenate(
-                    (transform, np.array([0, 0, 0, 1]).reshape(1, 4)))  # homogeneous transform
+                        #obj_geometry.points = o3d.utility.Vector3dVector(np.array(obj_geometry.points))  # object point cloud in mm
+                        model_name = model_names[int(obj['obj_id']) - 1]
+                        obj_instance = self._obj_instance_count(model_name, active_meshes)
+                        obj_name = model_name + '_' + str(obj_instance)
+                        translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64)  # distance in mm
+                        orientation = np.array(np.array(obj['cam_R_m2c']), dtype=np.float64)
+                        transform = np.concatenate((orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1)
+                        transform_cam_to_obj = np.concatenate(
+                            (transform, np.array([0, 0, 0, 1]).reshape(1, 4)))  # homogeneous transform
 
-                self._annotation_scene.add_obj(obj_geometry, obj_name, obj_instance, transform_cam_to_obj)
-                # adding object to the scene
-                obj_geometry.transform(transform_cam_to_obj)
-                self._scene.scene.add_geometry(obj_name, obj_geometry, self.settings.annotation_obj_material,
-                                               add_downsampled_copy_for_fast_rendering=True)
-                active_meshes.append(obj_name)
-            self._obj_meshes_colored = all(obj_meshes_colored)  # this is used to determione which ICP to use (colored ir PointToPoint)
+                        self._annotation_scene.add_obj(obj_geometry, obj_name, obj_instance, transform_cam_to_obj)
+                        # adding object to the scene
+                        obj_geometry.transform(transform_cam_to_obj)
+                        self._scene.scene.add_geometry(obj_name, obj_geometry, self.settings.annotation_obj_material,
+                                                       add_downsampled_copy_for_fast_rendering=True)
+                        active_meshes.append(obj_name)
+                    self._obj_meshes_colored = all(obj_meshes_colored)  # this is used to determine which ICP to use (colored ir PointToPoint)
         self._meshes_used.set_items(active_meshes)
 
         self._update_scene_numbers()
