@@ -35,7 +35,7 @@ except ImportError as e:
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "ipd",
+    "dataset": "xyzibd",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -53,10 +53,10 @@ p = {
     # Which sensor to visualize. By default it uses the evaluation modality set
     # in dataset_params.py. Set to None for rendering PBR images or BOP core datasets.
     # Set to sensor for new BOP core sets, e.g. "photoneo".
-    "sensor": "photoneo",
+    "sensor": "",
 
     # ---------------------------------------------------------------------------------
-    # Next parameters apply only to classical BOP19 datasets (not the H3 BOP24 format)
+    # Next parameters apply only to dataset with aligned color and depth images.
     # ---------------------
     # Indicates whether to render RGB images.
     "vis_rgb": True,
@@ -104,6 +104,7 @@ if p["dataset"] in ["hot3d"]:
 dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
 )
+classic_bop_format = type(dp_split["im_modalities"]) == list
 
 model_type = "eval"  # None = default.
 dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
@@ -240,7 +241,7 @@ for scene_id in scene_ids:
                 }
             )
 
-        if p["dataset"] in ["hot3d", "ipd", "xyzibd"]:
+        if not classic_bop_format:
             # load the image of the eval modality
             img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
             if not os.path.exists(img_path):
@@ -272,10 +273,15 @@ for scene_id in scene_ids:
         depth = None
         if p["dataset"] not in ["hot3d"]:
             if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-                depth = inout.load_depth(
-                    dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
-                )
-                depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+                if p["sensor"] and not "depth" in dp_split["im_modalities"][p["sensor"]]:
+                    print("{} has no depth data, skipping depth visualization".format(p["sensor"]))
+                    p["vis_depth_diff"] = False
+                    p["vis_rgb_resolve_visib"] = False
+                else:
+                    depth = inout.load_depth(
+                        dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
+                    )
+                    depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
         # Path to the output RGB visualization.
         vis_rgb_path = None
@@ -291,7 +297,7 @@ for scene_id in scene_ids:
 
         # Path to the output depth difference visualization.
         vis_depth_diff_path = None
-        if p["dataset"] != "hot3d":
+        if p["dataset"] not in ["hot3d"]:
             split = p["dataset_split"] if not p["sensor"] else p["dataset_split"] + "_{}".format(p["sensor"])
             if p["vis_depth_diff"]:
                 vis_depth_diff_path = p["vis_depth_diff_tpath"].format(
