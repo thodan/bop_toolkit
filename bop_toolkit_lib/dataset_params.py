@@ -451,9 +451,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["im_modalities"] = {"photoneo": ["rgb", "depth"], "basler_hr3" : ["rgb"]}
             p["test_scene_ids"] = list(range(0,1))
             p["scene_ids"] = {
-                "test": p["test_scene_ids"],  # test_quest3 + test_aria
-                "train": p["test_scene_ids"],  # train_quest3 + train_aria
-                "train_pbr": list(range(50)),  # train_quest3 + train_aria
+                "test": p["test_scene_ids"],
+                "train": list(range(50)),
             }[split]
 
             p["im_size"] = {
@@ -486,9 +485,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = {"photoneo": ["gray", "depth"], "xyz": ["gray", "depth"], "realsense": ["rgb", "depth"]}
         val_scene_ids = [0, 5, 10, 18, 23, 28, 33, 38, 46, 51, 56, 61, 69, 74, 79]
         p["scene_ids"] = {
-            "test": [i for i in range(84) if i not in val_scene_ids],  # test_quest3 + test_aria
-            "val": val_scene_ids,  # train_quest3 + train_aria
-            "train_pbr": list(range(45)),  # train_quest3 + train_aria
+            "test": [i for i in range(84) if i not in val_scene_ids],
+            "val": val_scene_ids,
+            "train": list(range(45)),
         }[split]
 
         p["im_size"] = {
@@ -532,7 +531,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     base_path = join(datasets_path, dataset_name)
     split_path = join(base_path, split)
     if split_type is not None:
-        if split_type == "pbr":
+        if split_type == "pbr" and dataset_name != "xyzibd":
             p["scene_ids"] = list(range(50))
         split_path += "_" + split_type
 

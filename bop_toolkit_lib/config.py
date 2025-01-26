@@ -23,7 +23,7 @@ eval_path = r"/path/to/eval/folder"
 ######## Extended ########
 
 # Folder for outputs (e.g. visualizations).
-output_path = r"/tmp"
+output_path = r"/path/to/output/folder"
 
 # For offscreen C++ rendering: Path to the build folder of bop_renderer (github.com/thodan/bop_renderer).
 bop_renderer_path = r"/path/to/bop_renderer/build"

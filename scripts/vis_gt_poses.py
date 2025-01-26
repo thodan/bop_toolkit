@@ -266,22 +266,21 @@ for scene_id in scene_ids:
                     raise ValueError("RGB nor gray images are available.")
 
         depth = None
-        if p["dataset"] not in ["hot3d"]:
-            if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-                if p["sensor"] and not "depth" in dp_split["im_modalities"][p["sensor"]]:
-                    print("{} has no depth data, skipping depth visualization".format(p["sensor"]))
-                    p["vis_depth_diff"] = False
-                    p["vis_rgb_resolve_visib"] = False
-                else:
-                    depth = inout.load_depth(
-                        dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
-                    )
-                    depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+        if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+            if p["sensor"] and not "depth" in dp_split["im_modalities"][p["sensor"]]:
+                print("{} has no depth data, skipping depth visualization".format(p["sensor"]))
+                p["vis_depth_diff"] = False
+                p["vis_rgb_resolve_visib"] = False
+            else:
+                depth = inout.load_depth(
+                    dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
+                )
+                depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
         # Path to the output RGB visualization.
+        split = "{}_{}".format(p["dataset_split"], p["sensor"]) if p["sensor"] else p["dataset_split"] 
         vis_rgb_path = None
         if p["vis_rgb"]:
-            split = p["dataset_split"] if not p["sensor"] else p["dataset_split"] + "_{}".format(p["sensor"])
             vis_rgb_path = p["vis_rgb_tpath"].format(
                 vis_path=p["vis_path"],
                 dataset=p["dataset"],
@@ -292,16 +291,14 @@ for scene_id in scene_ids:
 
         # Path to the output depth difference visualization.
         vis_depth_diff_path = None
-        if p["dataset"] not in ["hot3d"]:
-            split = p["dataset_split"] if not p["sensor"] else p["dataset_split"] + "_{}".format(p["sensor"])
-            if p["vis_depth_diff"]:
-                vis_depth_diff_path = p["vis_depth_diff_tpath"].format(
-                    vis_path=p["vis_path"],
-                    dataset=p["dataset"],
-                    split=split,
-                    scene_id=scene_id,
-                    im_id=im_id,
-                )
+        if p["vis_depth_diff"]:
+            vis_depth_diff_path = p["vis_depth_diff_tpath"].format(
+                vis_path=p["vis_path"],
+                dataset=p["dataset"],
+                split=split,
+                scene_id=scene_id,
+                im_id=im_id,
+            )
 
         # Visualization.
         visualization.vis_object_poses(
