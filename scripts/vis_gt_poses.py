@@ -240,16 +240,11 @@ for scene_id in scene_ids:
                     ],
                 }
             )
-
+        # For H3 and Industrial
         if not classic_bop_format:
             # load the image of the eval modality
-            img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
-            if not os.path.exists(img_path):
-                print("rbg path {} does not exist, looking for gray images".format(img_path))
-                img_path = dp_split[tpath_keys["gray_tpath"]].format(scene_id=scene_id, im_id=im_id)
             rgb = inout.load_im(
-                    # dp_split[dp_split["eval_modality"](scene_id) + "_tpath"].format(scene_id=scene_id, im_id=im_id)
-                img_path
+                dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
             )
             # if image is grayscale (quest3), convert it to 3 channels
             if rgb.ndim == 2:

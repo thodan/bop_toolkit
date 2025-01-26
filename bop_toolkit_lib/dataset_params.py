@@ -589,7 +589,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     else:
         assert exts is not None, "Need to set 'exts' for dataset {}".format()
-        present_scene_id = get_present_scene_ids(p)[0]
         # im_modalities is a dict from sensor to modalities
         for sensor, modalities in p["im_modalities"].items():
             for modality in modalities:
@@ -637,7 +636,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     return p
 
 
-def scene_tpaths_keys(eval_modality, scene_id=None):
+def scene_tpaths_keys(eval_modality, scene_id=None, im_modality="rgb", sensor=""):
     """
     Define keys corresponding template path defined in get_split_params output.
     
@@ -645,10 +644,11 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
     - Classic datasets: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
     - H3 datasets: with separate annotations for modalities, e.g. "scene_gt_{modality}_tpath", 
     "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath", etc.
+    - Industrial datasets: with aligned annotations for modalities, e.g. "scene_gt_{sensor}_tpath".
     Modality may be the same for the whole dataset split (defined as a `str`), 
     or vary scene by scene (defined as function or a dictionary)
 
-    :param eval_modality: None, str, callable or ditc, defines
+    :param eval_modality: None, str, callable or dict, defines
     :param scene_id: None or int, should be specified if eval modality 
                      changes from scene to scen
     :return: scene tpath keys dictionary
@@ -656,13 +656,11 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
 
     tpath_keys = [
         "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
-        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath", 
-        "gray_tpath", "depth_tpath"
+        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath"
     ]
     tpath_keys_multi = [
         "scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
-        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath", "{}_tpath", 
-        "{}_tpath", "depth_{}_tpath"
+        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath", "{}_tpath"
     ]
 
     assert len(tpath_keys) == len(tpath_keys_multi)
@@ -679,10 +677,8 @@ def scene_tpaths_keys(eval_modality, scene_id=None):
             tpath_keys_dic[key] = key_multi.format(eval_modality[scene_id])
         else:
             raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
-    # TODO: Find a nicer solution. e.g. split modality and sensor throughout the bop toolkit.
-    parts = tpath_keys_dic["depth_tpath"].split("_")
-    parts.pop(1)
-    tpath_keys_dic["depth_tpath"] = "_".join(parts)
+        
+    tpath_keys_dic["depth_tpath"] = tpath_keys_dic["rgb_tpath"].replace("rgb","depth").replace("gray","depth")
     return tpath_keys_dic
 
 
