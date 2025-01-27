@@ -30,7 +30,7 @@ p = {
     # Folder for output visualisations.
     "vis_path": os.path.join(config.output_path, "gt_distribution"),
     # Save plots in "vis_path"
-    "save_plots": True,
+    "save_plots": False,
     # Show plots"
     "show_plots": True,
 }
@@ -133,34 +133,35 @@ misc.log("Mean visib fract: {}".format(np.mean(visib_fracts)))
 
 # Visualize distributions.
 if p["save_plots"]:
-    misc.log("Saving plots in {}".format(p["vis_path"]))
-    if not os.path.exists(p["vis_path"]):
-        misc.log("Creating {}".format(p["vis_path"]))
-        os.mkdir(p["vis_path"])
+    save_dir = os.path.join(p["vis_path"], p["dataset"])
+    misc.log(f"Saving plots in {save_dir}")
+    if not os.path.exists(save_dir):
+        misc.log(f"Creating {save_dir}")
+        os.mkdir(save_dir)
 
 plt.figure()
 plt.hist(dists, bins=100)
 plt.title("Object distance")
 if p["save_plots"]:
-    plt.savefig(os.path.join(p["vis_path"], "object_distance.png"))
+    plt.savefig(os.path.join(save_dir, "object_distance.png"))
 
 plt.figure()
 plt.hist(azimuths, bins=100)
 plt.title("Azimuth")
 if p["save_plots"]:
-    plt.savefig(os.path.join(p["vis_path"], "azimuth.png"))
+    plt.savefig(os.path.join(save_dir, "azimuth.png"))
 
 plt.figure()
 plt.hist(elevs, bins=100)
 plt.title("Elevation")
 if p["save_plots"]:
-    plt.savefig(os.path.join(p["vis_path"], "elevation.png"))
+    plt.savefig(os.path.join(save_dir, "elevation.png"))
 
 plt.figure()
 plt.hist(visib_fracts, bins=100)
 plt.title("Visibility fraction")
 if p["save_plots"]:
-    plt.savefig(os.path.join(p["vis_path"], "visibility_fraction.png"))
+    plt.savefig(os.path.join(save_dir, "visibility_fraction.png"))
 
 if p["show_plots"]:
     plt.show()
