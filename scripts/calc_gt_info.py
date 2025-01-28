@@ -24,7 +24,7 @@ from bop_toolkit_lib import visibility
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "xyzibd",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -47,6 +47,8 @@ p = {
         "{scene_id:06d}",
         "{im_id:06d}_{gt_id:06d}.jpg",
     ),
+    # which sensor is used to retrieve im_size, default to eval sensor
+    "sensor": "",
 }
 ################################################################################
 
@@ -68,7 +70,10 @@ dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], mod
 misc.log("Initializing renderer...")
 
 # The renderer has a larger canvas for generation of masks of truncated objects.
-im_width, im_height = dp_split["im_size"]
+if isinstance(dp_split["im_size"], dict):  
+    im_width, im_height = dp_split["im_size"][p["sensor"]]
+else: # classical BOP format
+    im_width, im_height = dp_split["im_size"]
 ren_width, ren_height = 3 * im_width, 3 * im_height
 ren_cx_offset, ren_cy_offset = im_width, im_height
 ren = renderer.create_renderer(ren_width, ren_height, p["renderer_type"], mode="depth")
@@ -79,11 +84,13 @@ for obj_id in dp_model["obj_ids"]:
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
-    # Load scene info and ground-truth poses.
-    scene_camera = inout.load_scene_camera(
-        dp_split["scene_camera_tpath"].format(scene_id=scene_id)
-    )
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+
+    # Load scene GT.
+    scene_camera_path = dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
+    scene_camera = inout.load_scene_camera(scene_camera_path)
+    scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
+    scene_gt = inout.load_scene_gt(scene_gt_path)
 
     scene_gt_info = {}
     im_ids = sorted(scene_gt.keys())
@@ -100,7 +107,7 @@ for scene_id in scene_ids:
             )
 
         # Load depth image.
-        depth_fpath = dp_split["depth_tpath"].format(scene_id=scene_id, im_id=im_id)
+        depth_fpath = dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
         if not os.path.exists(depth_fpath):
             depth_fpath = depth_fpath.replace(".tif", ".png")
         depth = inout.load_depth(depth_fpath)
@@ -208,6 +215,6 @@ for scene_id in scene_ids:
                 inout.save_im(vis_path, vis)
 
     # Save the info for the current scene.
-    scene_gt_info_path = dp_split["scene_gt_info_tpath"].format(scene_id=scene_id)
+    scene_gt_info_path = dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
     misc.ensure_dir(os.path.dirname(scene_gt_info_path))
     inout.save_json(scene_gt_info_path, scene_gt_info)

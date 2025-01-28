@@ -18,7 +18,7 @@ from bop_toolkit_lib import visibility
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "xyzibd",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -29,6 +29,8 @@ p = {
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
+    # which sensor is used to retrieve im_size, default to eval sensor
+    "sensor": "",
 }
 ################################################################################
 
@@ -38,6 +40,8 @@ dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
 )
 
+classic_bop_format = isinstance(dp_split["im_modalities"], list)
+
 model_type = None
 if p["dataset"] == "tless":
     model_type = "cad"
@@ -45,28 +49,30 @@ dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], mod
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
-    # Load scene GT.
-    scene_gt_path = dp_split["scene_gt_tpath"].format(scene_id=scene_id)
-    scene_gt = inout.load_scene_gt(scene_gt_path)
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
-    # Load scene camera.
-    scene_camera_path = dp_split["scene_camera_tpath"].format(scene_id=scene_id)
+    # Load scene GT.
+    scene_camera_path = dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
     scene_camera = inout.load_scene_camera(scene_camera_path)
+    scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
+    scene_gt = inout.load_scene_gt(scene_gt_path)
 
     # Create folders for the output masks (if they do not exist yet).
     mask_dir_path = os.path.dirname(
-        dp_split["mask_tpath"].format(scene_id=scene_id, im_id=0, gt_id=0)
+        dp_split[tpath_keys["mask_tpath"]].format(scene_id=scene_id, im_id=0, gt_id=0)
     )
     misc.ensure_dir(mask_dir_path)
-
     mask_visib_dir_path = os.path.dirname(
-        dp_split["mask_visib_tpath"].format(scene_id=scene_id, im_id=0, gt_id=0)
+        dp_split[tpath_keys["mask_visib_tpath"]].format(scene_id=scene_id, im_id=0, gt_id=0)
     )
     misc.ensure_dir(mask_visib_dir_path)
 
     # Initialize a renderer.
     misc.log("Initializing renderer...")
-    width, height = dp_split["im_size"]
+    if isinstance(dp_split["im_size"], dict):  
+        width, height = dp_split["im_size"][p["sensor"]]
+    else: # classical BOP format
+        width, height = dp_split["im_size"]
     ren = renderer.create_renderer(
         width, height, renderer_type=p["renderer_type"], mode="depth"
     )
@@ -92,8 +98,10 @@ for scene_id in scene_ids:
         fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
 
         # Load depth image.
-        depth_path = dp_split["depth_tpath"].format(scene_id=scene_id, im_id=im_id)
-        depth_im = inout.load_depth(depth_path)
+        depth_fpath = dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
+        if not os.path.exists(depth_fpath):
+            depth_fpath = depth_fpath.replace(".tif", ".png")        
+        depth_im = inout.load_depth(depth_fpath)
         depth_im *= scene_camera[im_id]["depth_scale"]  # to [mm]
         dist_im = misc.depth_im_to_dist_im_fast(depth_im, K)
 
@@ -115,12 +123,12 @@ for scene_id in scene_ids:
             )
 
             # Save the calculated masks.
-            mask_path = dp_split["mask_tpath"].format(
+            mask_path = dp_split[tpath_keys["mask_tpath"]].format(
                 scene_id=scene_id, im_id=im_id, gt_id=gt_id
             )
             inout.save_im(mask_path, 255 * mask.astype(np.uint8))
 
-            mask_visib_path = dp_split["mask_visib_tpath"].format(
+            mask_visib_path = dp_split[tpath_keys["mask_visib_tpath"]].format(
                 scene_id=scene_id, im_id=im_id, gt_id=gt_id
             )
             inout.save_im(mask_visib_path, 255 * mask_visib.astype(np.uint8))
