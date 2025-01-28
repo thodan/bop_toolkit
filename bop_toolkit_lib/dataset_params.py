@@ -411,7 +411,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # HOT3D.
     elif dataset_name == "hot3d":
         sensor_modalities_have_separate_annotations = {"aria": True, "quest3": True} 
-        p["im_modalities"] = {"aria": ["rgb", "gray1", "gray2"], "quest3": ["rgb", "gray1", "gray2"]}
+        p["im_modalities"] = {"aria": ["rgb", "gray1", "gray2"], "quest3": ["gray1", "gray2"]}
         p["test_quest3_scene_ids"] = list(range(1288, 1849))
         p["test_aria_scene_ids"] = list(range(3365, 3832))
         p["train_quest3_scene_ids"] = list(range(0, 1288))
@@ -430,18 +430,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["aria_eval_modality"] = "rgb"
         def hot3d_eval_modality(scene_id):
             if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
-                return p["quest3_eval_modality"]
+                return p["quest3_eval_modality"]+"_quest3"
             elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
-                return p["aria_eval_modality"]
+                return p["aria_eval_modality"]+"_aria"
             else:
                 raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
 
         p["eval_modality"] = hot3d_eval_modality
 
         exts = {
-            "rgb": ".jpg",
-            "gray1": ".jpg",
-            "gray2": "jpg",
+            "gray1_quest3": ".jpg",
+            "gray2_quest3": ".jpg",
+            "rgb_aria": ".jpg",
+            "gray1_aria": ".jpg",
+            "gray2_aria": ".jpg",
         }
 
         if split == "test":
@@ -487,7 +489,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 "aolp_cam3": ".png",
                 "dolp_cam3": ".png",
             }
-
 
             if split == "test":
                 p["depth_range"] = None  # Not calculated yet.
