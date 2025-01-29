@@ -26,10 +26,10 @@ try:
     from bop_toolkit_lib import renderer_htt
     htt_available = True
 except ImportError as e:
-    logger.warn("""Missing hand_tracking_toolkit dependency,
-                mandatory if you are running evaluation on HOT3d.
-                Refer to the README.md for installation instructions.
-                """)
+    logger.warning("""Missing hand_tracking_toolkit dependency,
+                   mandatory if you are running evaluation on HOT3d.
+                   Refer to the README.md for installation instructions.
+                   """)
 
 # PARAMETERS.
 ################################################################################
@@ -47,13 +47,18 @@ p = {
     "targets_filename": None,
     # Select ID's of scenes, images and GT poses to be processed.
     # Empty list [] means that all ID's will be used.
-    "scene_ids": [],
+    "scene_ids": [1],
     "im_ids": [],
     "gt_ids": [],
-    # Which sensor to visualize. By default it uses the evaluation modality set
+    #########
+    # Which sensor to visualize, . By default it uses the evaluation modality set
     # in dataset_params.py. Set to None for rendering PBR images or BOP core datasets.
     # Set to sensor for new BOP core sets, e.g. "photoneo".
-    "sensor": "",
+    #########
+    # Modality used to visualize ground truth, default to eval modality. Should not be "depth".
+    "modality": None,
+    # Sensor used to visualize ground truth, default to eval sensor.
+    "sensor": None,
 
     # ---------------------------------------------------------------------------------
     # Next parameters apply only to dataset with aligned color and depth images.
@@ -94,6 +99,7 @@ p = {
 if p["dataset"] == "hot3d" and not htt_available:
     raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
 
+
 # if HOT3D dataset is used, next parameters are set
 if p["dataset"] in ["hot3d"]:
     p["vis_rgb"] = True
@@ -104,14 +110,15 @@ if p["dataset"] in ["hot3d"]:
 dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
 )
+if p["modality"] is None:
+    p["modality"] = dp_split["eval_modality"]
+assert p["modality"] != "depth", "Modality should be a color modality (not 'depth')"
+if p["sensor"] is None:
+    p["sensor"] = dp_split["eval_sensor"]
 classic_bop_format = type(dp_split["im_modalities"]) == list
 
 model_type = "eval"  # None = default.
 dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
-
-# Find color modality of specified sensor.
-if p["sensor"]:
-    p["color_modality"] = [mod for mod in dp_split["im_modalities"][p["sensor"]] if mod != "depth"][0]
 
 # Load colors.
 colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
@@ -159,12 +166,11 @@ else: # classical BOP format
 ren = renderer.create_renderer(
     width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
 )
-# ren = renderer_htt.RendererHtt(dp_split["im_size"], p["renderer_type"], shading="flat")
 
 # Load object models.
 models = {}
 for obj_id in dp_model["obj_ids"]:
-    misc.log("Loading 3D model of object {}...".format(obj_id))
+    misc.log(f"Loading 3D model of object {obj_id}...")
     model_path = dp_model["model_tpath"].format(obj_id=obj_id)
     model_color = None
     if not p["vis_orig_color"]:
@@ -175,12 +181,9 @@ for obj_id in dp_model["obj_ids"]:
     else:
         ren.add_object(obj_id, model_path, surf_color=model_color)
 
-scene_ids = dataset_params.get_present_scene_ids(dp_split)
-for scene_id in scene_ids:
-    if p["sensor"]:
-        tpath_keys = dataset_params.scene_tpaths_keys("{}_{}".format(p["color_modality"], p["sensor"]))
-    else:
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+for scene_id in scene_ids_curr:
+    tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
+    scene_sensor = dataset_params.get_scene_sensor_or_modality(p["sensor"], scene_id)
 
     if p["dataset"] == "hot3d":  # for other dataset the renderer does not change
         # find which renderer to use (quest3 or aria)
@@ -246,7 +249,7 @@ for scene_id in scene_ids:
             rgb = inout.load_im(
                 dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
             )
-            # if image is grayscale (quest3), convert it to 3 channels
+            # if image is grayscale (e.g. quest3), convert it to 3 channels
             if rgb.ndim == 2:
                 rgb = np.dstack([rgb, rgb, rgb])
         else:
@@ -267,8 +270,9 @@ for scene_id in scene_ids:
 
         depth = None
         if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-            if p["sensor"] and not "depth" in dp_split["im_modalities"][p["sensor"]]:
-                print("{} has no depth data, skipping depth visualization".format(p["sensor"]))
+            depth_available = dataset_params.sensor_has_depth_modality(dp_split, scene_sensor)
+            if not depth_available:
+                misc.log(f"{scene_sensor} has no depth data, skipping depth visualization")
                 p["vis_depth_diff"] = False
                 p["vis_rgb_resolve_visib"] = False
             else:

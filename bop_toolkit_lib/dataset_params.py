@@ -45,7 +45,7 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
             cam_type = "uw"
         cam_filename = "camera_{}.json".format(cam_type)
     
-    # H3 format datasets do not have a single camera file, raise an exception 
+    # hot3d does not have a single camera file, raise an exception
     elif dataset_name in ['hot3d']:
         raise ValueError("BOP dataset {} does not have a global camera file.".format(dataset_name))
 
@@ -183,12 +183,15 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         depth_ext = ".tif"
 
     p["im_modalities"] = ["rgb", "depth"]
-    # for Classic datasets, test modality is implicit... 
+    # for Classic datasets, sensor and modality used for the evaluation is implicit...
+    p["eval_sensor"] = None
     p["eval_modality"] = None
     # ...and only one set of annotation is present in the dataset 
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
     sensor_modalities_have_separate_annotations = False 
-    exts = None  # has to be set if sensor_modalities_have_separate_annotations is True
+    # file extensions for datasets with multiple sensor/modalities options
+    # has to be set if sensor_modalities_have_separate_annotations is True
+    exts = None
 
     supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
 
@@ -430,20 +433,26 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["aria_eval_modality"] = "rgb"
         def hot3d_eval_modality(scene_id):
             if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
-                return p["quest3_eval_modality"]+"_quest3"
+                return p["quest3_eval_modality"]
             elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
-                return p["aria_eval_modality"]+"_aria"
+                return p["aria_eval_modality"]
+            else:
+                raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
+
+        def hot3d_eval_sensor(scene_id):
+            if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
+                return "quest3"
+            elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
+                return "aria"
             else:
                 raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
 
         p["eval_modality"] = hot3d_eval_modality
+        p["eval_sensor"] = hot3d_eval_sensor
 
         exts = {
-            "gray1_quest3": ".jpg",
-            "gray2_quest3": ".jpg",
-            "rgb_aria": ".jpg",
-            "gray1_aria": ".jpg",
-            "gray2_aria": ".jpg",
+            "aria" : {"rgb": ".jpg", "gray1": ".jpg", "gray2": ".jpg"},
+            "quest3": {"gray1": ".jpg", "gray2": ".jpg"}
         }
 
         if split == "test":
@@ -468,26 +477,14 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 "cam3": (3840, 2160),
             }
             
-            def ipd_eval_modality(scene_id):
-                return "rgb_photoneo"
-
-            p["eval_modality"] = ipd_eval_modality
+            p["eval_modality"] = "rgb"
+            p["eval_sensor"] = "photoneo"
             
             exts = {
-                "rgb_photoneo": ".png",
-                "depth_photoneo": ".png",
-                "rgb_cam1": ".png",
-                "depth_cam1": ".png",
-                "aolp_cam1": ".png",
-                "dolp_cam1": ".png",
-                "rgb_cam2": ".png",
-                "depth_cam2": ".png",
-                "aolp_cam2": ".png",
-                "dolp_cam2": ".png",
-                "rgb_cam3": ".png",
-                "depth_cam3": ".png",
-                "aolp_cam3": ".png",
-                "dolp_cam3": ".png",
+                "photoneo": {"rgb": ".png", "depth": ".png"},
+                "cam1": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
+                "cam2": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
+                "cam3": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
             }
 
             if split == "test":
@@ -514,26 +511,20 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "": (1440, 1080),
         }
 
-
-        def xyz_eval_modality(scene_id):
-            return "gray_xyz"
-
-        p["eval_modality"] = xyz_eval_modality
+        p["eval_modality"] = "gray"
+        p["eval_sensor"] = "xyz"
 
         if "pbr" == split_type:
             # The PBR data is in classical BOP format without sensor names.
             p["eval_modality"] = None
+            p["eval_sensor"] = None
             sensor_modalities_have_separate_annotations = False
 
         exts = {
-            "gray_photoneo": ".png",
-            "depth_photoneo": ".png",
-            "gray_xyz": ".png",
-            "depth_xyz": ".png",
-            "rgb_realsense": ".png",
-            "depth_realsense": ".png",
+            "photoneo": {"gray": ".png", "depth": ".png"},
+            "xyz": {"gray": ".png", "depth": ".png"},
+            "realsense": {"rgb": ".png", "depth": ".png"},
         }
-        rgb_ext = ".png"
 
         if split == "test":
             p["depth_range"] = None  # Not calculated yet.
@@ -610,15 +601,21 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             for modality in modalities:
                 # If modalities have aligned extrinsics/intrinsics they are combined in one file 
                 gt_file_suffix = sensor
-                # If modalities have separate extrinsics/intrinsics they are accessed by unique modalities (compatible to H3)
+                # If modalities have separate extrinsics/intrinsics they are accessed by unique modalities (compatible with hot3d)
                 if sensor_modalities_have_separate_annotations[sensor]:
                     gt_file_suffix = modality
+
+                # Path template to modality image.
+                if dataset_name == "hot3d":
+                    p[f"{modality}_tpath"] = join(
+                        split_path, "{scene_id:06d}", f"{modality}", "{im_id:06d}" + exts[sensor][modality]
+                    )
+                else:
+                    p[f"{modality}_{sensor}_tpath"] = join(
+                        split_path, "{scene_id:06d}", f"{modality}_{sensor}", "{im_id:06d}" + exts[sensor][modality]
+                    )
                 p.update(
                     {
-                        # Path template to modality image.
-                        "{}_{}_tpath".format(modality, sensor): join(
-                            split_path, "{scene_id:06d}", f"{modality}_{sensor}", "{im_id:06d}" + exts[f"{modality}_{sensor}"]
-                        ),
                         # Path template to a file with per-image camera parameters.
                         "scene_camera_{}_{}_tpath".format(modality, sensor): join(
                             split_path, "{scene_id:06d}", "scene_camera_{}.json".format(gt_file_suffix)
@@ -652,50 +649,87 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     return p
 
 
-def scene_tpaths_keys(eval_modality, scene_id=None, im_modality="rgb", sensor=""):
+from collections.abc import Callable
+from typing import Union, Dict
+
+
+def get_scene_sensor_or_modality(
+        sm: Union[None, str, Callable],
+        scene_id: Union[None, int]
+    ) -> Union[None,str]:
+    """
+    Get sensor|modality associated with a given scene.
+
+    Some datasets (hot3d) have different sensor|modality available depending on the scene.
+    Same logic for sensor or modality.
+    """
+    if sm is None or isinstance(sm, str):
+        return sm
+    elif callable(sm):
+        return sm(scene_id)
+    else:
+        raise TypeError(f"Sensor or modality {sm} should be either None, str or callable, not {type(sm)}")
+
+
+def scene_tpaths_keys(
+        modality: Union[None, str, Callable],
+        sensor: Union[None, str, Callable],
+        scene_id: Union[None, int] = None
+    ) -> Dict[str,str]:
     """
     Define keys corresponding template path defined in get_split_params output.
     
     Definition for scene gt, scene gt info and scene camera.
-    - Classic datasets: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
-    - H3 datasets: with separate annotations for modalities, e.g. "scene_gt_{modality}_tpath", 
-    "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath", etc.
-    - Industrial datasets: with aligned annotations for modalities, e.g. "scene_gt_{sensor}_tpath".
-    Modality may be the same for the whole dataset split (defined as a `str`), 
-    or vary scene by scene (defined as function or a dictionary)
+    - Classic datasets (handal and hopev2 included): "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", etc.
+    - hot3d and Industrial datasets: same tpath keys with modality and sensor,
+    e.g. "scene_gt_{modality}_{sensor}_tpath", "scene_gt_info_{modality}_{sensor}_tpath",
+    "scene_camera_{modality}_{sensor}_tpath", etc.
+    Modality|sensor may be the same for the whole dataset split (defined as a `str`),
+    or vary scene by scene (defined as function).
 
-    :param eval_modality: None, str, callable or dict, defines
-    :param scene_id: None or int, should be specified if eval modality 
-                     changes from scene to scen
+    :param modality: None, str or callable
+    :param sensor: None, str or callable
+    :param scene_id: None or int, should be specified if eval modality|sensor
+                     changes from scene to scene
     :return: scene tpath keys dictionary
     """
+
+    scene_sensor = get_scene_sensor_or_modality(sensor, scene_id)
+    scene_modality = get_scene_sensor_or_modality(modality, scene_id)
+
+    # 2 valid combinations:
+    # - modality and sensor are None -> BOP classic format
+    # - modality and sensor are not None -> hot3d + BOP industrial format
+    assert ((scene_modality is None and scene_sensor is None) or (scene_modality is not None and scene_sensor is not None)), f"scene_modality={scene_modality}, scene_sensor={scene_sensor}"
 
     tpath_keys = [
         "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
         "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath"
     ]
     tpath_keys_multi = [
-        "scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
-        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath", "{}_tpath"
+        "scene_gt_{}_{}_tpath", "scene_gt_info_{}_{}_tpath", "scene_camera_{}_{}_tpath",
+        "scene_gt_coco_{}_{}_tpath", "mask_{}_{}_tpath", "mask_visib_{}_{}_tpath", "{}_{}_tpath"
     ]
-
     assert len(tpath_keys) == len(tpath_keys_multi)
+
     tpath_keys_dic = {}
     for key, key_multi in zip(tpath_keys, tpath_keys_multi):
-        if eval_modality is None:
-            # Classic filenames
+        if scene_sensor is None:
+            # BOP-Classic filenames
             tpath_keys_dic[key] = key
-        elif isinstance(eval_modality, str):
-            tpath_keys_dic[key] = key_multi.format(eval_modality)
-        elif callable(eval_modality) and scene_id is not None:
-            tpath_keys_dic[key] = key_multi.format(eval_modality(scene_id))
-        elif isinstance(eval_modality, dict) and scene_id is not None:
-            tpath_keys_dic[key] = key_multi.format(eval_modality[scene_id])
         else:
-            raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
-        
+            tpath_keys_dic[key] = key_multi.format(scene_modality, scene_sensor)
+
     tpath_keys_dic["depth_tpath"] = tpath_keys_dic["rgb_tpath"].replace("rgb","depth").replace("gray","depth")
     return tpath_keys_dic
+
+
+def sensor_has_depth_modality(dp_split: Dict, sensor: str):
+    # BOP classic dataset sensors all have depth modality
+    if isinstance(dp_split["im_modalities"], list):
+        return 'depth' in dp_split["im_modalities"]
+    else:
+        return 'depth' in dp_split["im_modalities"][sensor]
 
 
 def get_present_scene_ids(dp_split):

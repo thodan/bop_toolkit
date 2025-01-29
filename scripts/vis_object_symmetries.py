@@ -18,7 +18,7 @@ from bop_toolkit_lib import transform as tr
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "itodd",
+    "dataset": "xyzibd",
     # Type of the renderer (used for the VSD pose error function).
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     # See misc.get_symmetry_transformations().

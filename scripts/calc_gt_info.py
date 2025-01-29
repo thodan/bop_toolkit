@@ -37,6 +37,10 @@ p = {
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
+    # which modality to compute masks on, default to eval modality
+    "modality": "rgb",
+    # which sensor to compute masks on, default to eval sensor
+    "sensor": "realsense",
     # Path template for output images with object masks.
     "vis_mask_visib_tpath": os.path.join(
         config.output_path,
@@ -47,8 +51,6 @@ p = {
         "{scene_id:06d}",
         "{im_id:06d}_{gt_id:06d}.jpg",
     ),
-    # which sensor is used to retrieve im_size, default to eval sensor
-    "sensor": "",
 }
 ################################################################################
 
@@ -60,6 +62,10 @@ if p["vis_visibility_masks"]:
 dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
 )
+if p["modality"] is None:
+    p["modality"] = dp_split["eval_modality"]
+if p["sensor"] is None:
+    p["sensor"] = dp_split["eval_sensor"]
 
 model_type = None
 if p["dataset"] == "tless":
@@ -84,7 +90,7 @@ for obj_id in dp_model["obj_ids"]:
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
 
     # Load scene GT.
     scene_camera_path = dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)

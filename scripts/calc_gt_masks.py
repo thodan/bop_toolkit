@@ -29,8 +29,10 @@ p = {
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
-    # which sensor is used to retrieve im_size, default to eval sensor
-    "sensor": "",
+    # which modality to compute masks on, default to eval modality
+    "modality": None,
+    # which sensor to compute masks on, default to eval sensor
+    "sensor": None,
 }
 ################################################################################
 
@@ -39,6 +41,10 @@ p = {
 dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
 )
+if p["modality"] is None:
+    p["modality"] = dp_split["eval_modality"]
+if p["sensor"] is None:
+    p["sensor"] = dp_split["eval_sensor"]
 
 classic_bop_format = isinstance(dp_split["im_modalities"], list)
 
@@ -49,7 +55,7 @@ dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], mod
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
 
     # Load scene GT.
     scene_camera_path = dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
@@ -61,10 +67,12 @@ for scene_id in scene_ids:
     mask_dir_path = os.path.dirname(
         dp_split[tpath_keys["mask_tpath"]].format(scene_id=scene_id, im_id=0, gt_id=0)
     )
+    misc.log(f"Saving masks in {mask_dir_path}")
     misc.ensure_dir(mask_dir_path)
     mask_visib_dir_path = os.path.dirname(
         dp_split[tpath_keys["mask_visib_tpath"]].format(scene_id=scene_id, im_id=0, gt_id=0)
     )
+    misc.log(f"Saving visible masks in {mask_visib_dir_path}")
     misc.ensure_dir(mask_visib_dir_path)
 
     # Initialize a renderer.
