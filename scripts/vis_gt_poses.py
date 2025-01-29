@@ -47,7 +47,7 @@ p = {
     "targets_filename": None,
     # Select ID's of scenes, images and GT poses to be processed.
     # Empty list [] means that all ID's will be used.
-    "scene_ids": [1],
+    "scene_ids": [],
     "im_ids": [],
     "gt_ids": [],
     #########
@@ -77,7 +77,7 @@ p = {
     # Whether to use the original model color.
     "vis_orig_color": True,
     # Type of the renderer (used for the VSD pose error function).
-    "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
+    "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'. 'htt' is mandatory for "hot3d" dataset.
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
     # Folder for output visualisations.
@@ -99,6 +99,8 @@ p = {
 if p["dataset"] == "hot3d" and not htt_available:
     raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
 
+if p["dataset"] == "hot3d" and p["renderer_type"] != "htt":
+    raise ValueError("'htt' renderer_type is mandatory for HOT3D dataset.")
 
 # if HOT3D dataset is used, next parameters are set
 if p["dataset"] in ["hot3d"]:
@@ -115,7 +117,7 @@ if p["modality"] is None:
 assert p["modality"] != "depth", "Modality should be a color modality (not 'depth')"
 if p["sensor"] is None:
     p["sensor"] = dp_split["eval_sensor"]
-classic_bop_format = type(dp_split["im_modalities"]) == list
+classic_bop_format = isinstance(dp_split["im_modalities"], list)
 
 model_type = "eval"  # None = default.
 dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
@@ -141,56 +143,40 @@ if p["scene_ids"]:
     scene_ids_curr = set(scene_ids_curr).intersection(p["scene_ids"])
 
 # Rendering mode.
-# if classical BOP19 format define render modalities
-# The H3 BOP24 format for HOT3D does not include depth images, so this is irrelevant
-if not p['dataset'] == "hot3d":
-    renderer_modalities = []
-    if p["vis_rgb"]:
-        renderer_modalities.append("rgb")
-    if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-        renderer_modalities.append("depth")
-    renderer_mode = "+".join(renderer_modalities)
+renderer_modalities = []
+if p["vis_rgb"]:
+    renderer_modalities.append("rgb")
+if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+    renderer_modalities.append("depth")
+renderer_mode = "+".join(renderer_modalities)
 
-# Create a renderer.
-# if HOT3D dataset, create separate renderers for Quest3 and Aria with different image sizes
-if p["dataset"] == "hot3d":
-    quest3_im_size = dp_split["quest3_im_size"][dp_split["quest3_eval_modality"]]
-    aria_im_size = dp_split["aria_im_size"][dp_split["aria_eval_modality"]]
-    quest3_ren = renderer_htt.RendererHtt(quest3_im_size, p["renderer_type"], shading="flat")
-    aria_ren = renderer_htt.RendererHtt(aria_im_size, p["renderer_type"], shading="flat")
-elif type(dp_split["im_size"]) == dict:  
-    width, height = dp_split["im_size"][p["sensor"]]
-else: # classical BOP format
-    width, height = dp_split["im_size"]
-    
-ren = renderer.create_renderer(
-    width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
-)
 
-# Load object models.
-models = {}
-for obj_id in dp_model["obj_ids"]:
-    misc.log(f"Loading 3D model of object {obj_id}...")
-    model_path = dp_model["model_tpath"].format(obj_id=obj_id)
-    model_color = None
-    if not p["vis_orig_color"]:
-        model_color = tuple(colors[(obj_id - 1) % len(colors)])
-    if p["dataset"] == "hot3d":
-        quest3_ren.add_object(obj_id, model_path, surf_color=model_color)
-        aria_ren.add_object(obj_id, model_path, surf_color=model_color)
-    else:
-        ren.add_object(obj_id, model_path, surf_color=model_color)
+width, height = None, None
+ren = None
 
 for scene_id in scene_ids_curr:
     tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
+    scene_modality = dataset_params.get_scene_sensor_or_modality(p["modality"], scene_id)
     scene_sensor = dataset_params.get_scene_sensor_or_modality(p["sensor"], scene_id)
 
-    if p["dataset"] == "hot3d":  # for other dataset the renderer does not change
-        # find which renderer to use (quest3 or aria)
-        if scene_id in dp_split["test_quest3_scene_ids"] or scene_id in dp_split["train_quest3_scene_ids"]:
-            ren = quest3_ren
-        elif scene_id in dp_split["test_aria_scene_ids"] or scene_id in dp_split["train_aria_scene_ids"]:
-            ren = aria_ren
+    # Create a new renderer if image size has changed
+    scene_width, scene_height = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)
+
+    if (width, height) != (scene_width, scene_height):
+        width, height = scene_width, scene_height
+        misc.log(f"Creating renderer of type {p['renderer_type']}")
+        ren = renderer.create_renderer(
+            width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
+        )
+        # Load object models in the new renderer.
+        for obj_id in dp_model["obj_ids"]:
+            misc.log(f"Loading 3D model of object {obj_id}...")
+            model_path = dp_model["model_tpath"].format(obj_id=obj_id)
+            model_color = None
+            if not p["vis_orig_color"]:
+                model_color = tuple(colors[(obj_id - 1) % len(colors)])
+            ren.add_object(obj_id, model_path, surf_color=model_color)
+
     # Load scene info and ground-truth poses.
     scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
     scene_gt = inout.load_scene_gt(dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id))
@@ -213,7 +199,6 @@ for scene_id in scene_ids_curr:
 
         if p['dataset'] == 'hot3d':
             cam = pose_error_htt.create_camera_model(scene_camera[im_id])
-        # TODO might delete if-else here
         else:
             cam = scene_camera[im_id]["cam_K"]
 
@@ -243,19 +228,19 @@ for scene_id in scene_ids_curr:
                     ],
                 }
             )
-        # For H3 and Industrial
-        if not classic_bop_format:
-            # load the image of the eval modality
-            rgb = inout.load_im(
-                dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
-            )
-            # if image is grayscale (e.g. quest3), convert it to 3 channels
-            if rgb.ndim == 2:
-                rgb = np.dstack([rgb, rgb, rgb])
-        else:
-            # Load the color and depth images and prepare images for rendering.
-            rgb = None
-            if p["vis_rgb"]:
+        rgb = None
+        if p["vis_rgb"]:
+            # For H3 and Industrial
+            if not classic_bop_format:
+                # load the image of the eval modality
+                rgb = inout.load_im(
+                    dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
+                )
+                # if image is grayscale (e.g. quest3), convert it to 3 channels
+                if rgb.ndim == 2:
+                    rgb = np.dstack([rgb, rgb, rgb])
+            else:
+                # Load the color and depth images and prepare images for rendering.
                 if "rgb" in dp_split["im_modalities"] or p["dataset_split_type"] == "pbr":
                     rgb = inout.load_im(
                         dp_split["rgb_tpath"].format(scene_id=scene_id, im_id=im_id)
@@ -282,7 +267,7 @@ for scene_id in scene_ids_curr:
                 depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
         # Path to the output RGB visualization.
-        split = "{}_{}".format(p["dataset_split"], p["sensor"]) if p["sensor"] else p["dataset_split"] 
+        split = "{}_{}".format(p["dataset_split"], scene_sensor) if scene_sensor else p["dataset_split"] 
         vis_rgb_path = None
         if p["vis_rgb"]:
             vis_rgb_path = p["vis_rgb_tpath"].format(

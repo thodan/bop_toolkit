@@ -7,6 +7,8 @@ import math
 import glob
 import os
 from os.path import join
+from collections.abc import Callable
+from typing import Union, Dict
 
 from bop_toolkit_lib import inout
 
@@ -607,7 +609,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
                 # Path template to modality image.
                 if dataset_name == "hot3d":
-                    p[f"{modality}_tpath"] = join(
+                    p[f"{modality}_{sensor}_tpath"] = join(
                         split_path, "{scene_id:06d}", f"{modality}", "{im_id:06d}" + exts[sensor][modality]
                     )
                 else:
@@ -647,10 +649,6 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 )
 
     return p
-
-
-from collections.abc import Callable
-from typing import Union, Dict
 
 
 def get_scene_sensor_or_modality(
@@ -702,6 +700,7 @@ def scene_tpaths_keys(
     # - modality and sensor are not None -> hot3d + BOP industrial format
     assert ((scene_modality is None and scene_sensor is None) or (scene_modality is not None and scene_sensor is not None)), f"scene_modality={scene_modality}, scene_sensor={scene_sensor}"
 
+    # "rgb_tpath" refers to the template path key of the given modality|sensor pair
     tpath_keys = [
         "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
         "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath"
@@ -725,11 +724,27 @@ def scene_tpaths_keys(
 
 
 def sensor_has_depth_modality(dp_split: Dict, sensor: str):
-    # BOP classic dataset sensors all have depth modality
+    """Convenience function to check if a sensor has depth modality."""
+
     if isinstance(dp_split["im_modalities"], list):
         return 'depth' in dp_split["im_modalities"]
     else:
         return 'depth' in dp_split["im_modalities"][sensor]
+
+def get_im_size(dp_split: Dict, modality: str, sensor: str):
+    """
+    Conveniance function to retrieve the image size of a modality|sensor pair.
+    """
+    if isinstance(dp_split["im_size"], dict):
+        if isinstance(dp_split["im_size"][sensor], dict):
+            # hot3d
+            return dp_split["im_size"][sensor][modality]
+        else:
+            # BOP Industrial
+            return dp_split["im_size"][sensor]
+    # BOP Classic: one image size for the whole dataset
+    else:
+        return dp_split["im_size"]
 
 
 def get_present_scene_ids(dp_split):
