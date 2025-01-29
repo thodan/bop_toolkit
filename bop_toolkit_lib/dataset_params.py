@@ -89,7 +89,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": list(range(1, 29)),
         "hot3d": list(range(1, 34)),
         "handal": list(range(1, 41)),
-        "ipd": list(range(0, 21)),
+        "ipd": [0, 1, 4, 8, 10, 11, 14, 18, 19, 20],
         "xyzibd": [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     }[dataset_name]
 
@@ -447,18 +447,19 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
     elif dataset_name == "ipd":
-            sensor_modalities_have_separate_annotations = {"photoneo": False, "basler_hr3" : False} 
-            p["im_modalities"] = {"photoneo": ["rgb", "depth"], "basler_hr3" : ["rgb"]}
-            p["test_scene_ids"] = list(range(0,1))
+            sensor_modalities_have_separate_annotations = {"photoneo": False, "cam1" : False, "cam2" : False, "cam3" : False} 
+            p["im_modalities"] = {"photoneo": ["rgb", "depth"], "cam1" : ["rgb", "aolp", "dolp", "depth"], 
+                                  "cam2" : ["rgb", "aolp", "dolp", "depth"], "cam3" : ["rgb", "aolp", "dolp", "depth"]}
             p["scene_ids"] = {
-                "test": p["test_scene_ids"],
+                "test": list(range(16)),
                 "train": list(range(50)),
             }[split]
 
             p["im_size"] = {
                 "photoneo" : (2064, 1544),
-                "basler_hr3" : (2592, 1944),
-                "": (2064, 1544)
+                "cam1" : (3840, 2160),
+                "cam2": (3840, 2160),
+                "cam3": (3840, 2160),
             }
             
             def ipd_eval_modality(scene_id):
@@ -468,8 +469,19 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             
             exts = {
                 "rgb_photoneo": ".png",
-                "rgb_basler_hr3": ".png",
                 "depth_photoneo": ".png",
+                "rgb_cam1": ".png",
+                "depth_cam1": ".png",
+                "aolp_cam1": ".png",
+                "dolp_cam1": ".png",
+                "rgb_cam2": ".png",
+                "depth_cam2": ".png",
+                "aolp_cam2": ".png",
+                "dolp_cam2": ".png",
+                "rgb_cam3": ".png",
+                "depth_cam3": ".png",
+                "aolp_cam3": ".png",
+                "dolp_cam3": ".png",
             }
 
 
