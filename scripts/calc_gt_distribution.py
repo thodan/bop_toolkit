@@ -55,32 +55,18 @@ elevs = []
 visib_fracts = []
 ims_count = 0
 
-
 for scene_id in scene_ids:
     tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
 
-    misc.log(
-        "Processing - dataset: {} ({}, {}), scene: {}".format(
-            p["dataset"], p["dataset_split"], p["dataset_split_type"], scene_id
-        )
-    )
+    misc.log(f"Processing - dataset: {p['dataset']} ({p['dataset_split']}, {p['dataset_split_type']}), scene: {scene_id}")
 
     # Load GT poses.
-    try:
-        scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
-        if not os.path.exists(scene_gt_path):
-            misc.log("Path {} does not exist".format(scene_gt_path))
-            continue
-    except:
-        misc.log("Path {} does not exist, check the 'modality' parameters".format(scene_gt_path))
-        continue
-
+    scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
     scene_gt = inout.load_scene_gt(scene_gt_path)
     
     # Load info about the GT poses.
-    scene_gt_info = inout.load_json(
-        dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
-    )
+    scene_gt_info_path = dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
+    scene_gt_info = inout.load_json(scene_gt_info_path, keys_to_int=True)
 
     ims_count += len(scene_gt)
 
