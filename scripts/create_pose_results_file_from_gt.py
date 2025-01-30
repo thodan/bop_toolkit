@@ -11,6 +11,7 @@ import argparse
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS (can be overwritten by the command line arguments below).
@@ -24,7 +25,7 @@ p = {
     "results_path": config.results_path,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
-    "dataset": "ycbv",
+    "dataset": "xyzibd",
     "split": "test",  
     "split_type": None,
     # by default, we consider only objects that are at least 10% visible
@@ -70,21 +71,19 @@ results = []
 
 for target in targets:
     scene_id, im_id = target["scene_id"], target["im_id"] 
-
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
     if scene_id not in scene_gts:
-        scene_gts[scene_id] = inout.load_scene_gt(
-            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
-        )
-        scene_gts_info[scene_id] = inout.load_scene_gt(
-            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
-        )
+        scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
+        scene_gt_info_path = dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
+        scene_gts[scene_id] = inout.load_scene_gt(scene_gt_path)
+        scene_gts_info[scene_id] = inout.load_scene_gt(scene_gt_info_path)
 
     img_gt = scene_gts[scene_id][im_id]
     img_gt_info = scene_gts_info[scene_id][im_id]
     
     if "obj_id" not in target:
+        # "bop24" type target file
         target = inout.get_im_targets(img_gt, img_gt_info, p["visib_gt_min"], p["eval_mode"])
 
     for obj_gt in img_gt:
@@ -103,4 +102,4 @@ for target in targets:
 result_filename = "{}_{}-{}_pose.csv".format(p["results_name"], p["dataset"], p["split"])
 results_path = os.path.join(p["results_path"], result_filename)
 inout.save_bop_results(results_path, results)
-print('Saved ', results_path)
+misc.log('Saved ', results_path)

@@ -57,9 +57,8 @@ dp_split = dataset_params.get_split_params(
 )
 
 # Load and organize the estimation targets.
-targets = inout.load_json(
-    os.path.join(dp_split["base_path"], p["targets_filename"])
-)
+target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+targets = inout.load_json(target_file_path)
 targets_org = {}
 for target in targets:
     targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})
@@ -94,10 +93,9 @@ for scene_id in targets_org:
 result_filename = "{}_{}-{}_coco.json".format(p["results_name"], p["dataset"], p["split"])
 results_path = os.path.join(p["results_path"], result_filename)
 inout.save_json(results_path, results)
-check_passed, _ = inout.check_coco_results(
-    os.path.join(p["results_path"], result_filename), ann_type="segm"
-)
+result_file_path = os.path.join(p["results_path"], result_filename)
+check_passed, _ = inout.check_coco_results(result_file_path, ann_type="segm")
 if not check_passed:
     misc.log("Please correct the coco result format of {}".format(result_filename))
     exit()
-print('Saved ', results_path)
+misc.log('Saved ', results_path)
