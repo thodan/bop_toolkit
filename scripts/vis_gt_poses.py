@@ -13,13 +13,23 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import pose_error_htt
 from bop_toolkit_lib import renderer
 from bop_toolkit_lib import visualization
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
+
+htt_available = False
+try:
+    from bop_toolkit_lib import pose_error_htt
+    htt_available = True
+except ImportError as e:
+    logger.warning("""Missing hand_tracking_toolkit dependency,
+                   mandatory if you are running evaluation on HOT3d.
+                   Refer to the README.md for installation instructions.
+                   """)
+
 
 # PARAMETERS.
 ################################################################################
@@ -86,14 +96,20 @@ p = {
 }
 ################################################################################
 
+#######################
+# hot3d specific checks
+if p["dataset"] == "hot3d" and not htt_available:
+    raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
+
 if p["dataset"] == "hot3d" and p["renderer_type"] != "htt":
     raise ValueError("'htt' renderer_type is mandatory for HOT3D dataset.")
 
-# if HOT3D dataset is used, next parameters are set
+# hot3d does not contain depth modality, some visualizations are not available
 if p["dataset"] in ["hot3d"]:
     p["vis_rgb"] = True
     p["vis_rgb_resolve_visib"] = False
     p["vis_depth_diff"] = False
+#######################
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
@@ -182,6 +198,7 @@ for scene_id in scene_ids_curr:
                 )
             )
 
+        # Retrieve camera intrinsics.
         if p['dataset'] == 'hot3d':
             cam = pose_error_htt.create_camera_model(scene_camera[im_id])
         else:
