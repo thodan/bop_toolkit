@@ -117,7 +117,6 @@ if p["modality"] is None:
 assert p["modality"] != "depth", "Modality should be a color modality (not 'depth')"
 if p["sensor"] is None:
     p["sensor"] = dp_split["eval_sensor"]
-classic_bop_format = isinstance(dp_split["im_modalities"], list)
 
 model_type = "eval"  # None = default.
 dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
@@ -228,34 +227,29 @@ for scene_id in scene_ids_curr:
                     ],
                 }
             )
+
+        # Load the color and depth images and prepare images for rendering.
         rgb = None
         if p["vis_rgb"]:
-            # For H3 and Industrial
-            if not classic_bop_format:
-                # load the image of the eval modality
-                rgb = inout.load_im(
-                    dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
-                )
-                # if image is grayscale (e.g. quest3), convert it to 3 channels
-                if rgb.ndim == 2:
-                    rgb = np.dstack([rgb, rgb, rgb])
+            # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
+            im_tpath = tpath_keys["rgb_tpath"]
+            # check for BOP classic (itodd)
+            rgb_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, 'rgb')
+            if im_tpath == "rgb_tpath" and not rgb_available:
+                im_tpath = "gray_tpath"
+
+            rgb = inout.load_im(
+                dp_split[im_tpath].format(scene_id=scene_id, im_id=im_id)
+            )
+            # if image is grayscale (e.g. quest3), convert it to 3 channels
+            if rgb.ndim == 2:
+                rgb = np.dstack([rgb, rgb, rgb])
             else:
-                # Load the color and depth images and prepare images for rendering.
-                if "rgb" in dp_split["im_modalities"] or p["dataset_split_type"] == "pbr":
-                    rgb = inout.load_im(
-                        dp_split["rgb_tpath"].format(scene_id=scene_id, im_id=im_id)
-                    )[:, :, :3]
-                elif "gray" in dp_split["im_modalities"]:
-                    gray = inout.load_im(
-                        dp_split["gray_tpath"].format(scene_id=scene_id, im_id=im_id)
-                    )
-                    rgb = np.dstack([gray, gray, gray])
-                else:
-                    raise ValueError("RGB nor gray images are available.")
+                rgb = rgb[:,:,:3]  # should we keep this?
 
         depth = None
         if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-            depth_available = dataset_params.sensor_has_depth_modality(dp_split, scene_sensor)
+            depth_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, "depth")
             if not depth_available:
                 misc.log(f"{scene_sensor} has no depth data, skipping depth visualization")
                 p["vis_depth_diff"] = False

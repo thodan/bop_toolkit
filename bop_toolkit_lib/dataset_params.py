@@ -723,13 +723,12 @@ def scene_tpaths_keys(
     return tpath_keys_dic
 
 
-def sensor_has_depth_modality(dp_split: Dict, sensor: str):
-    """Convenience function to check if a sensor has depth modality."""
-
+def sensor_has_modality(dp_split: Dict, sensor: str, modality: str):
     if isinstance(dp_split["im_modalities"], list):
-        return 'depth' in dp_split["im_modalities"]
+        return modality in dp_split["im_modalities"]
     else:
-        return 'depth' in dp_split["im_modalities"][sensor]
+        return modality in dp_split["im_modalities"][sensor]
+
 
 def get_im_size(dp_split: Dict, modality: str, sensor: str):
     """
