@@ -21,16 +21,6 @@ from bop_toolkit_lib import visualization
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
 
-htt_available = False
-try:
-    from bop_toolkit_lib import renderer_htt
-    htt_available = True
-except ImportError as e:
-    logger.warning("""Missing hand_tracking_toolkit dependency,
-                   mandatory if you are running evaluation on HOT3d.
-                   Refer to the README.md for installation instructions.
-                   """)
-
 # PARAMETERS.
 ################################################################################
 p = {
@@ -96,9 +86,6 @@ p = {
 }
 ################################################################################
 
-if p["dataset"] == "hot3d" and not htt_available:
-    raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
-
 if p["dataset"] == "hot3d" and p["renderer_type"] != "htt":
     raise ValueError("'htt' renderer_type is mandatory for HOT3D dataset.")
 
@@ -160,7 +147,6 @@ for scene_id in scene_ids_curr:
 
     # Create a new renderer if image size has changed
     scene_width, scene_height = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)
-
     if (width, height) != (scene_width, scene_height):
         width, height = scene_width, scene_height
         misc.log(f"Creating renderer of type {p['renderer_type']}")
