@@ -256,7 +256,7 @@ for result_filename in p["result_filenames"]:
         # for each scene, organize the estimates per object as each object
         est_per_object = copy.deepcopy(estimate_templates)
 
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
         # Load camera and GT poses for the current scene.
         scene_camera = inout.load_scene_camera(
