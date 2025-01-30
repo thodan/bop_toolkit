@@ -98,4 +98,4 @@ check_passed, _ = inout.check_coco_results(result_file_path, ann_type="segm")
 if not check_passed:
     misc.log("Please correct the coco result format of {}".format(result_filename))
     exit()
-misc.log('Saved ', results_path)
+misc.log(f"Saved {results_path}")
