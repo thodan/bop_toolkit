@@ -231,10 +231,7 @@ for error_dir_path in p["error_dir_paths"]:
         scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
 
         # Handle change of image size location between BOP19 and BOP24 dataset formats
-        if "cam_model" in next(iter(scene_camera.items()))[1]:
-            scene_im_widths[scene_id] = scene_camera[0]["cam_model"]["image_width"]
-        else:
-            scene_im_widths[scene_id] = float(dp_split["im_size"][0])
+        scene_im_widths[scene_id] = dataset_params.get_im_size(dp_split, dp_split['eval_modality'], dp_split['eval_sensor'])[0]
 
         # Keep GT poses only for the selected targets.
         scene_gt_curr = {}
