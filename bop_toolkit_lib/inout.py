@@ -621,6 +621,7 @@ def load_ply(path):
         "float": ("f", 4),
         "double": ("d", 8),
         "int": ("i", 4),
+        "uint": ("I", 4),
         "uchar": ("B", 1),
     }
 
