@@ -19,7 +19,7 @@ p = {
     # Out perfect result file name 
     "results_name": 'gt-results',    
     # Predefined test targets 
-    "targets_filename": "test_targets_bop24.json",    
+    "targets_filename": "test_targets_bop19.json",    
     # Folder with results to be evaluated.
     "results_path": config.results_path,
     # Folder containing the BOP datasets.
@@ -88,7 +88,7 @@ for target in targets:
         target = inout.get_im_targets(img_gt, img_gt_info, p["visib_gt_min"], p["eval_mode"])
 
     for obj_gt in img_gt:
-        if obj_gt["obj_id"] in target:
+        if obj_gt["obj_id"] == target["obj_id"]:
             result = {
                 "scene_id": int(scene_id),
                 "im_id": int(im_id),
@@ -98,7 +98,7 @@ for target in targets:
                 "t": obj_gt["cam_t_m2c"],
                 "time": -1.0,
             }
-        results.append(result)
+            results.append(result)
 
 result_filename = "{}_{}-{}_pose.csv".format(p["results_name"], p["dataset"], p["split"])
 results_path = os.path.join(p["results_path"], result_filename)
