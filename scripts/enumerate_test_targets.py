@@ -60,7 +60,7 @@ test_targets = []
 for scene_id in scene_ids_curr:
     misc.log("Processing scene: {}".format(scene_id))
 
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
 
     # Load the ground-truth poses.

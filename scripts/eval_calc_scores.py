@@ -217,7 +217,7 @@ for error_dir_path in p["error_dir_paths"]:
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(

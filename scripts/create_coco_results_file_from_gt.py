@@ -67,7 +67,7 @@ results = []
 
 # loop over coco annotation and select based on targets
 for scene_id in targets_org:
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
     coco_gt_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
     if p["bbox_type"] == "modal":

@@ -71,7 +71,7 @@ results = []
 for target in targets:
     scene_id, im_id = target["scene_id"], target["im_id"] 
 
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
     if scene_id not in scene_gts:
         scene_gts[scene_id] = inout.load_scene_gt(
