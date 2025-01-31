@@ -195,7 +195,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # has to be set if sensor_modalities_have_separate_annotations is True
     exts = None
 
-    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
+    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mssd_mm", "mspd", "cus", "proj"]
 
     # Linemod (LM).
     if dataset_name == "lm":
@@ -468,7 +468,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["im_modalities"] = {"photoneo": ["rgb", "depth"], "cam1" : ["rgb", "aolp", "dolp", "depth"], 
                                   "cam2" : ["rgb", "aolp", "dolp", "depth"], "cam3" : ["rgb", "aolp", "dolp", "depth"]}
             p["scene_ids"] = {
-                "test": list(range(16)),
+                "test": list(range(15)),
                 "train": list(range(50)),
             }[split]
 
@@ -494,7 +494,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 p["azimuth_range"] = None  # Not calculated yet.
                 p["elev_range"] = None  # Not calculated yet.
 
-            supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+            supported_error_types = ["ad", "add", "adi", "mssd", "mssd_mm", "mspd"]
 
     elif dataset_name == "xyzibd":
         sensor_modalities_have_separate_annotations = {"photoneo": False, "xyz": False, "realsense": False}
@@ -533,7 +533,43 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
 
-        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+        supported_error_types = ["ad", "add", "adi", "mssd", "mssd_mm", "mspd"]
+    elif dataset_name == "itoddmv":
+        sensor_modalities_have_separate_annotations = {"3d1": False, "cam0": False, "cam1": False, "cam2": False}
+        p["im_modalities"] = {"3dlong": ["gray", "depth"], "cam0": ["gray"], "cam1": ["gray"], "cam2": ["gray"]}
+        p["scene_ids"] = {
+            "test": [1],
+            "train": list(range(50)),
+        }[split]
+
+        p["im_size"] = {
+            "3dlong": (1280, 960),
+            "cam0": (4224, 2838),
+            "cam1": (4224, 2838),
+            "cam2": (4224, 2838),
+            "": (1280, 960),
+        }
+
+        p["eval_modality"] = "gray"
+        p["eval_sensor"] = "3dlong"
+
+        if "pbr" == split_type:
+            # The PBR data is in classical BOP format without sensor names.
+            p["eval_modality"] = None
+            p["eval_sensor"] = None
+            sensor_modalities_have_separate_annotations = False
+
+        exts = {
+            "3dlong": {"gray": ".tif", "depth": ".tif"},
+            "cam0": {"gray": ".tif"},
+        }
+
+        if split == "test":
+            p["depth_range"] = (638.38, 775.97)  # Range of camera-object distances.
+            p["azimuth_range"] = (0, 2 * math.pi)
+            p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
+
+        supported_error_types = ["ad", "add", "adi", "mssd", "mssd_mm", "mspd"]
 
     else:
         raise ValueError("Unknown BOP dataset ({}).".format(dataset_name))
