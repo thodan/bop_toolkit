@@ -477,6 +477,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 "cam1" : (3840, 2160),
                 "cam2": (3840, 2160),
                 "cam3": (3840, 2160),
+                "": (2400, 2400),
             }
             
             p["eval_modality"] = "rgb"
