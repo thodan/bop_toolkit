@@ -31,7 +31,7 @@ p = {
         {
             "n_top": 0,
             "type": "mssd",
-            "correct_th": [[th] for th in range(1,20,2)],
+            "correct_th": [[th] for th in range(2,21,2)],
             "threshold_unit": "mm"
         },
         {
