@@ -118,7 +118,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": [],
         "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
         "handal": [26, 35, 36, 37, 38, 39, 40],
-        "ipd": [],
+        "ipd": [8, 14, 18, 19, 20],
         "xyzibd": [1, 2, 5, 8, 9, 11, 12, 16, 17]
     }[dataset_name]
 
