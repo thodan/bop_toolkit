@@ -195,7 +195,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # has to be set if sensor_modalities_have_separate_annotations is True
     exts = None
 
-    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mssd_mm", "mspd", "cus", "proj"]
+    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
 
     # Linemod (LM).
     if dataset_name == "lm":
@@ -494,7 +494,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 p["azimuth_range"] = None  # Not calculated yet.
                 p["elev_range"] = None  # Not calculated yet.
 
-            supported_error_types = ["ad", "add", "adi", "mssd", "mssd_mm", "mspd"]
+            supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
 
     elif dataset_name == "xyzibd":
         sensor_modalities_have_separate_annotations = {"photoneo": False, "xyz": False, "realsense": False}
@@ -533,7 +533,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
 
-        supported_error_types = ["ad", "add", "adi", "mssd", "mssd_mm", "mspd"]
+        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
     elif dataset_name == "itoddmv":
         sensor_modalities_have_separate_annotations = {"3d1": False, "cam0": False, "cam1": False, "cam2": False}
         p["im_modalities"] = {"3dlong": ["gray", "depth"], "cam0": ["gray"], "cam1": ["gray"], "cam2": ["gray"]}
@@ -569,7 +569,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
-        supported_error_types = ["ad", "add", "adi", "mssd", "mssd_mm", "mspd"]
+        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
 
     else:
         raise ValueError("Unknown BOP dataset ({}).".format(dataset_name))
