@@ -46,7 +46,7 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
         if cam_type is None:
             cam_type = "uw"
         cam_filename = "camera_{}.json".format(cam_type)
-    
+
     # hot3d does not have a single camera file, raise an exception
     elif dataset_name in ['hot3d']:
         raise ValueError("BOP dataset {} does not have a global camera file.".format(dataset_name))
@@ -188,9 +188,9 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # for Classic datasets, sensor and modality used for the evaluation is implicit...
     p["eval_sensor"] = None
     p["eval_modality"] = None
-    # ...and only one set of annotation is present in the dataset 
+    # ...and only one set of annotation is present in the dataset
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
-    sensor_modalities_have_separate_annotations = False 
+    sensor_modalities_have_separate_annotations = False
     # file extensions for datasets with multiple sensor/modalities options
     # has to be set if sensor_modalities_have_separate_annotations is True
     exts = None
@@ -384,7 +384,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["depth_range"] = None  # Not calculated yet.
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
-    
+
     # HOPEV2.
     elif dataset_name == "hopev2":
         p["scene_ids"] = {
@@ -415,7 +415,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     # HOT3D.
     elif dataset_name == "hot3d":
-        sensor_modalities_have_separate_annotations = {"aria": True, "quest3": True} 
+        sensor_modalities_have_separate_annotations = {"aria": True, "quest3": True}
         p["im_modalities"] = {"aria": ["rgb", "gray1", "gray2"], "quest3": ["gray1", "gray2"]}
         p["test_quest3_scene_ids"] = list(range(1288, 1849))
         p["test_aria_scene_ids"] = list(range(3365, 3832))
@@ -464,12 +464,13 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
     elif dataset_name == "ipd":
-            sensor_modalities_have_separate_annotations = {"photoneo": False, "cam1" : False, "cam2" : False, "cam3" : False} 
-            p["im_modalities"] = {"photoneo": ["rgb", "depth"], "cam1" : ["rgb", "aolp", "dolp", "depth"], 
+            sensor_modalities_have_separate_annotations = {"photoneo": False, "cam1" : False, "cam2" : False, "cam3" : False}
+            p["im_modalities"] = {"photoneo": ["rgb", "depth"], "cam1" : ["rgb", "aolp", "dolp", "depth"],
                                   "cam2" : ["rgb", "aolp", "dolp", "depth"], "cam3" : ["rgb", "aolp", "dolp", "depth"]}
             p["scene_ids"] = {
                 "test": list(range(15)),
                 "train": list(range(50)),
+                "val": list(range(15)),
             }[split]
 
             p["im_size"] = {
@@ -479,10 +480,10 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                 "cam3": (3840, 2160),
                 "": (2400, 2400),
             }
-            
+
             p["eval_modality"] = "rgb"
             p["eval_sensor"] = "photoneo"
-            
+
             exts = {
                 "photoneo": {"rgb": ".png", "depth": ".png"},
                 "cam1": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
@@ -586,7 +587,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     p["split_path"] = split_path
     p["supported_error_types"] = supported_error_types
 
-    # For classic BOP format datasets with one gt file per folder 
+    # For classic BOP format datasets with one gt file per folder
     classic_bop_format = type(p["im_modalities"]) is list
     if classic_bop_format:
         p.update(
@@ -638,7 +639,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         # im_modalities is a dict from sensor to modalities
         for sensor, modalities in p["im_modalities"].items():
             for modality in modalities:
-                # If modalities have aligned extrinsics/intrinsics they are combined in one file 
+                # If modalities have aligned extrinsics/intrinsics they are combined in one file
                 gt_file_suffix = sensor
                 # If modalities have separate extrinsics/intrinsics they are accessed by unique modalities (compatible with hot3d)
                 if sensor_modalities_have_separate_annotations[sensor]:
@@ -713,7 +714,7 @@ def scene_tpaths_keys(
     ) -> Dict[str,str]:
     """
     Define keys corresponding template path defined in get_split_params output.
-    
+
     Definition for scene gt, scene gt info and scene camera.
     - Classic datasets (handal and hopev2 included): "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", etc.
     - hot3d and Industrial datasets: same tpath keys with modality and sensor,
@@ -739,7 +740,7 @@ def scene_tpaths_keys(
 
     # "rgb_tpath" refers to the template path key of the given modality|sensor pair
     tpath_keys = [
-        "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
+        "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath",
         "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath"
     ]
     tpath_keys_multi = [
