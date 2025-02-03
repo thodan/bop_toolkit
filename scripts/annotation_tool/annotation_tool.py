@@ -30,8 +30,7 @@ import os
 import json
 import cv2
 import trimesh
-import warnings
-import torch
+import torch  # remove torch later and use open3d.cuda.is_available() instead
 
 # PARAMETERS.
 ################################################################################
@@ -541,7 +540,7 @@ class AppWindow:
             scene_gt_path = 'scene_gt.json'
         elif p['tool_model'] == 'sequence':
             image_num = 'w'
-            scene_gt_path = 'scene_gt_WORLD.json'
+            scene_gt_path = 'scene_gt_world.json'
 
         json_6d_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_path)
 
@@ -780,7 +779,7 @@ class AppWindow:
                 print(p['tool_model'], " is not valid. Exiting ...")
                 exit()
         except Exception:
-            print("Failed to load scene.")
+            print("Failed to load scene ", scene_path)
 
         if geometry is not None:
             print("[Info] Successfully read scene ", scene_num)

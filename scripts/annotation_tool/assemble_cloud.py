@@ -161,7 +161,7 @@ def main():
 
             assembled_cloud += transformed_cloud
 
-        assembled_cloud = assembled_cloud.voxel_down_sample(voxel_size=1)
+        assembled_cloud = assembled_cloud.voxel_down_sample(voxel_size=3)
 
         if p['show_assembled_cloud']:
             o3d.visualization.draw_geometries([assembled_cloud])
