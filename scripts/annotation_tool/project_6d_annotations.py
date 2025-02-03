@@ -1,5 +1,5 @@
 """
-This script will read the "scene_gt_WORLD.json" file and project the annotations from the world frame to each camera frame.
+This script will read the "scene_gt_world.json" file and project the annotations from the world frame to each camera frame.
 
 This script is supposed to be used after the annotations have been manually refined in the annotation tool.
 """
@@ -33,10 +33,10 @@ def main():
     scenes_paths = glob.glob(dataset_split_path + '/*')
 
     for scene_path in scenes_paths:  # samples are not ordered
-        scene_camera_WORLD_json = os.path.join(scene_path, 'scene_gt_WORLD.json')
+        scene_camera_world_json = os.path.join(scene_path, 'scene_gt_world.json')
         scene_camera_json = os.path.join(scene_path, 'scene_camera.json')
         scene_gt_json = os.path.join(scene_path, 'scene_gt.json')
-        with open(scene_camera_WORLD_json) as j:
+        with open(scene_camera_world_json) as j:
             scene_camera_world_data = json.load(j)
         with open(scene_camera_json) as j:
             scene_camera_data = json.load(j)
