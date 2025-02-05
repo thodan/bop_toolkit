@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 import os
 import re
+import time
+import shutil
 import subprocess
 import argparse
 from tqdm import tqdm
 
 from bop_toolkit_lib import config
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS (some can be overwritten by the command line arguments below).
@@ -33,7 +36,7 @@ p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
 
 
-RESULT_PATH = "./bop_toolkit_lib/tests/data/"
+RESULT_PATH = "./bop_toolkit_lib/tests/data"
 EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
 LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
 os.makedirs(EVAL_PATH, exist_ok=True)
@@ -90,6 +93,10 @@ for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
     log_file_path = f"{LOGS_PATH}/eval_bop19_pose_test_{dataset_method_name}.txt"
+    # Remove eval sub path to start clean
+    eval_path_dir = os.path.join(EVAL_PATH, file_name.split('.')[0])
+    if os.path.exists(eval_path_dir):
+        shutil.rmtree(eval_path_dir)
     command = [
         "python",
         "scripts/eval_bop19_pose.py",
@@ -108,11 +115,15 @@ for dataset_method_name, file_name in tqdm(
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
-    command_ = " ".join(command)
-    print(f"Executing: {command_}")
+    command_str = " ".join(command)
+    misc.log(f"Executing: {command_str}")
+    start_time = time.perf_counter()
     with open(log_file_path, "a") as output_file:
-        subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT)
-print("Script executed successfully.")
+        returncode = subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT).returncode
+        if returncode != 0:
+            misc.log('FAILED: '+command_str)
+    end_time = time.perf_counter()
+    misc.log(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")
 
 
 # Check scores for each dataset
@@ -136,12 +147,12 @@ for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying...")
         actual_value = scores.get(key)
         if actual_value is not None:
             if abs(actual_value - expected_value) < p["tolerance"]:
-                print(f"{dataset_method_name}: {key}: {actual_value} - PASSED")
+                misc.log(f"{dataset_method_name}: {key}: {actual_value} - PASSED")
             else:
-                print(
+                misc.log(
                     f"{dataset_method_name}: {key} - FAILED. Expected: {expected_value}, Actual: {actual_value}"
                 )
         else:
-            print(f"{dataset_method_name}: {key} - NOT FOUND")
+            misc.log(f"{dataset_method_name}: {key} - NOT FOUND")
 
-print("Verification completed.")
+misc.log("Verification completed.")

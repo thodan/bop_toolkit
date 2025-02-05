@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 import subprocess
 import os
+import shutil
 import time
 from tqdm import tqdm
+
 from bop_toolkit_lib import inout
+from bop_toolkit_lib import misc
 
 EPS_AP = 0.001
 
 # Define path to directories
-RESULT_PATH = "./bop_toolkit_lib/tests/data/"
-EVAL_PATH = "./bop_toolkit_lib/tests/data/eval/"
+RESULT_PATH = "./bop_toolkit_lib/tests/data"
+EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
 LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
 os.makedirs(EVAL_PATH, exist_ok=True)
 os.makedirs(LOGS_PATH, exist_ok=True)
@@ -62,6 +65,11 @@ for dataset_method_name, (sub_name, ann_type, compressed) in tqdm(
 ):
     ext = ".json.gz" if compressed else ".json"
     result_filename = sub_name + ext
+    log_file_path = f"{LOGS_PATH}/eval_bop22_coco_test_{dataset_method_name}.txt"
+    # Remove eval sub path to start clean
+    eval_path_dir = os.path.join(EVAL_PATH, sub_name)
+    if os.path.exists(eval_path_dir):
+        shutil.rmtree(eval_path_dir)
     command = [
         "python",
         "scripts/eval_bop22_coco.py",
@@ -71,16 +79,15 @@ for dataset_method_name, (sub_name, ann_type, compressed) in tqdm(
         "--bbox_type", "amodal",
         "--ann_type", ann_type
     ]
-    command_ = " ".join(command)
-    print(f"Executing: {command_}")
-    start_time = time.time()
-    log_file_path = f"{LOGS_PATH}/eval_bop22_coco_test_{dataset_method_name}.txt"
+    command_str = " ".join(command)
+    misc.log(f"Executing: {command_str}")
+    start_time = time.perf_counter()
     with open(log_file_path, "a") as output_file:
-        subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT)
-    end_time = time.time()
-    print(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")
-
-print("Script executed successfully.")
+        returncode = subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT).returncode
+        if returncode != 0:
+            misc.log('FAILED: '+command_str)
+    end_time = time.perf_counter()
+    misc.log(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")
 
 
 # Check scores for each dataset
@@ -93,13 +100,13 @@ for sub_short_name, (sub_name, ann_type, compressed) in tqdm(FILE_DICTIONARY.ite
             eval_score = eval_scores.get(key)
             if eval_score is not None:
                 if abs(eval_score - expected_score) < EPS_AP:
-                    print(f"{sub_short_name}: {key} - PASSED")
+                    misc.log(f"{sub_short_name}: {key} - PASSED")
                 else:
-                    print(
+                    misc.log(
                         f"{sub_short_name}: {key} - FAILED. Expected: {expected_score}, Actual: {eval_score}"
                     )
             else:
-                print(f"{sub_short_name}: {key} - NOT FOUND")
-                print(f"Please check the log file {log_file_path} and {eval_file_path} for more details.")
+                misc.log(f"{sub_short_name}: {key} - NOT FOUND")
+                misc.log(f"Please check the log file {log_file_path} and {eval_file_path} for more details.")
 
-print("Verification completed.")
+misc.log("Verification completed.")

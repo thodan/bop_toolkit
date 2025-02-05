@@ -1,13 +1,16 @@
 #!/usr/bin/env python
-import subprocess
 import os
 import re
 import time
+import shutil
+import subprocess
 import numpy as np
 from tqdm import tqdm
 import argparse
+
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import config
+from bop_toolkit_lib import misc
 
 
 # PARAMETERS (some can be overwritten by the command line arguments below).
@@ -36,7 +39,7 @@ p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
 
 
-RESULT_PATH = "./bop_toolkit_lib/tests/data/"
+RESULT_PATH = "./bop_toolkit_lib/tests/data"
 EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
 LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
 os.makedirs(EVAL_PATH, exist_ok=True)
@@ -70,11 +73,11 @@ for dataset_method_name, file_name in FILE_DICTIONARY.items():
         ests.extend(dummy_ests)
         inout.save_bop_results(f"{RESULT_PATH}/{output_filename}", ests, version="bop19")
         FILE_DICTIONARY[dataset_method_name] = output_filename
-        print(
+        misc.log(
             f"Added {args.num_false_positives} false positives to {dataset_method_name} (total: {len(ests)} instances)"
         )
     else:
-        print(f"Using {dataset_method_name} with {len(ests)} instances")
+        misc.log(f"Using {dataset_method_name} with {len(ests)} instances")
 
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
@@ -104,6 +107,10 @@ for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
     log_file_path = f"{LOGS_PATH}/eval_bop24_pose_test_{dataset_method_name}.txt"
+    # Remove eval sub path to start clean
+    eval_path_dir = os.path.join(EVAL_PATH, file_name.split('.')[0])
+    if os.path.exists(eval_path_dir):
+        shutil.rmtree(eval_path_dir)
     command = [
         "python",
         "scripts/eval_bop24_pose.py",
@@ -122,15 +129,17 @@ for dataset_method_name, file_name in tqdm(
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
-    command_ = " ".join(command)
-    print(f"Executing: {command_}")
-    start_time = time.time()
+    command_str = " ".join(command)
+    misc.log(f"Executing: {command_str}")
+    start_time = time.perf_counter()
     with open(log_file_path, "a") as output_file:
-        subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT)
-    end_time = time.time()
-    print(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")
+        returncode = subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT).returncode
+        if returncode != 0:
+            misc.log('FAILED: '+command_str)    
+    end_time = time.perf_counter()
+    misc.log(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")
 
-print("Script executed successfully.")
+misc.log("Script executed successfully.")
 
 
 # Check scores for each dataset
@@ -157,12 +166,12 @@ if args.num_false_positives == 0:
                 actual_value = scores.get(key)
                 if actual_value is not None:
                     if abs(actual_value - expected_value) < p["tolerance"]:
-                        print(f"{dataset_name}: {key} - PASSED")
+                        misc.log(f"{dataset_name}: {key} - PASSED")
                     else:
-                        print(
+                        misc.log(
                             f"{dataset_name}: {key} - FAILED. Expected: {expected_value}, Actual: {actual_value}"
                         )
                 else:
-                    print(f"{dataset_name}: {key} - NOT FOUND")
-                    print(f"Please check the log file {log_file_path} for more details.")
-    print("Verification completed.")
+                    misc.log(f"{dataset_name}: {key} - NOT FOUND")
+                    misc.log(f"Please check the log file {log_file_path} for more details.")
+    misc.log("Verification completed.")
