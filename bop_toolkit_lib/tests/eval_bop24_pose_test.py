@@ -137,7 +137,7 @@ for dataset_method_name, file_name in tqdm(
         if returncode != 0:
             misc.log('FAILED: '+command_str)    
     end_time = time.perf_counter()
-    misc.log(f"Execution time for {dataset_method_name}: {end_time - start_time} seconds")
+    misc.log(f"Evaluation time for {dataset_method_name}: {end_time - start_time} seconds")
 
 misc.log("Script executed successfully.")
 
