@@ -65,7 +65,7 @@ for result_filename in p["result_filenames"]:
     misc.log("===========")
 
     # Parse info about the method and the dataset from the filename.
-    result_name = os.path.splitext(os.path.basename(result_filename))[0]
+    result_name = os.path.basename(result_filename).split('.')[0]  # extension can be either .json or .json.gz
     result_info = result_name.split("_")
     method = str(result_info[0])
     dataset_info = result_info[1].split("-")
