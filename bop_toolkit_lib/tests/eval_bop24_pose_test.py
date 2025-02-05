@@ -36,12 +36,12 @@ p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
 
 
-# Define the input directory
-INPUT_DIR = "./bop_toolkit_lib/tests/data/"
+RESULT_PATH = "./bop_toolkit_lib/tests/data/"
+EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
+LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
+os.makedirs(EVAL_PATH, exist_ok=True)
+os.makedirs(LOGS_PATH, exist_ok=True)
 
-# Define the output directory
-OUTPUT_DIR = "./bop_toolkit_lib/tests/logs"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Define the dataset dictionary
 FILE_DICTIONARY = {
@@ -54,11 +54,11 @@ FILE_DICTIONARY = {
 
 # read the file
 for dataset_method_name, file_name in FILE_DICTIONARY.items():
-    input_path = f"{INPUT_DIR}/{file_name}"
+    result_file_path = f"{RESULT_PATH}/{file_name}"
     output_filename = file_name.replace(
         ".csv", f"_{args.num_false_positives}_false_positives.csv"
     )
-    ests = inout.load_bop_results(input_path, version="bop19")
+    ests = inout.load_bop_results(result_file_path, version="bop19")
     if args.num_false_positives > 0:
         # create dummy estimates
         dummy_ests = []
@@ -68,7 +68,7 @@ for dataset_method_name, file_name in FILE_DICTIONARY.items():
             est["t"] = np.ones(3)
             dummy_ests.append(est)
         ests.extend(dummy_ests)
-        inout.save_bop_results(f"{INPUT_DIR}/{output_filename}", ests, version="bop19")
+        inout.save_bop_results(f"{RESULT_PATH}/{output_filename}", ests, version="bop19")
         FILE_DICTIONARY[dataset_method_name] = output_filename
         print(
             f"Added {args.num_false_positives} false positives to {dataset_method_name} (total: {len(ests)} instances)"
@@ -103,16 +103,16 @@ EXPECTED_OUTPUT = {
 for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
-    log_file_path = f"{OUTPUT_DIR}/eval_bop24_pose_test_{dataset_method_name}.txt"
+    log_file_path = f"{LOGS_PATH}/eval_bop24_pose_test_{dataset_method_name}.txt"
     command = [
         "python",
         "scripts/eval_bop24_pose.py",
         "--renderer_type",
         p["renderer_type"],
         "--results_path",
-        INPUT_DIR,
+        RESULT_PATH,
         "--eval_path",
-        INPUT_DIR,
+        EVAL_PATH,
         "--result_filenames",
         file_name,
         "--num_worker",
@@ -137,7 +137,7 @@ print("Script executed successfully.")
 if args.num_false_positives == 0:
     for dataset_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
         if dataset_name in EXPECTED_OUTPUT:
-            log_file_path = f"{OUTPUT_DIR}/eval_bop24_pose_test_{dataset_name}.txt"
+            log_file_path = f"{LOGS_PATH}/eval_bop24_pose_test_{dataset_name}.txt"
 
             # Read the content of the log file
             with open(log_file_path, "r") as log_file:

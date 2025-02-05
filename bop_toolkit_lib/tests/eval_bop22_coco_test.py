@@ -9,8 +9,8 @@ EPS_AP = 0.001
 
 # Define path to directories
 RESULT_PATH = "./bop_toolkit_lib/tests/data/"
-EVAL_PATH = "./bop_toolkit_lib/tests/eval/"
-LOGS_PATH = "./bop_toolkit_lib/tests/logs"
+EVAL_PATH = "./bop_toolkit_lib/tests/data/eval/"
+LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
 os.makedirs(EVAL_PATH, exist_ok=True)
 os.makedirs(LOGS_PATH, exist_ok=True)
 
@@ -87,7 +87,7 @@ print("Script executed successfully.")
 for sub_short_name, (sub_name, ann_type, compressed) in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
     if sub_short_name in EXPECTED_OUTPUT:
         eval_filename = f"scores_bop22_coco_{ann_type}.json"
-        eval_file_path = os.path.join(RESULT_PATH, sub_name, eval_filename)
+        eval_file_path = os.path.join(EVAL_PATH, sub_name, eval_filename)
         eval_scores = inout.load_json(eval_file_path)
         for key, expected_score in EXPECTED_OUTPUT[sub_short_name].items():
             eval_score = eval_scores.get(key)

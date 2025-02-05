@@ -33,12 +33,11 @@ p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
 
 
-# Define the input directory
-INPUT_DIR = "./bop_toolkit_lib/tests/data/"
-
-# Define the output directory
-OUTPUT_DIR = "./bop_toolkit_lib/tests/logs"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+RESULT_PATH = "./bop_toolkit_lib/tests/data/"
+EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
+LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
+os.makedirs(EVAL_PATH, exist_ok=True)
+os.makedirs(LOGS_PATH, exist_ok=True)
 
 
 # Define the dataset dictionary
@@ -73,16 +72,16 @@ assert FILE_DICTIONARY.keys() == EXPECTED_OUTPUT.keys()
 for dataset_method_name, file_name in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
-    log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
+    log_file_path = f"{LOGS_PATH}/eval_bop19_pose_test_{dataset_method_name}.txt"
     command = [
         "python",
         "scripts/eval_bop19_pose.py",
         "--renderer_type",
         p["renderer_type"],
         "--results_path",
-        INPUT_DIR,
+        RESULT_PATH,
         "--eval_path",
-        INPUT_DIR,
+        EVAL_PATH,
         "--result_filenames",
         file_name,
         "--num_worker",
@@ -101,7 +100,7 @@ print("Script executed successfully.")
 
 # Check scores for each dataset
 for dataset_method_name, _ in tqdm(FILE_DICTIONARY.items(), desc="Verifying..."):
-    log_file_path = f"{OUTPUT_DIR}/eval_bop19_pose_test_{dataset_method_name}.txt"
+    log_file_path = f"{LOGS_PATH}/eval_bop19_pose_test_{dataset_method_name}.txt"
 
     # Read the content of the log file
     with open(log_file_path, "r") as log_file:
