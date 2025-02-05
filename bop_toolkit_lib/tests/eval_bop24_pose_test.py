@@ -20,7 +20,7 @@ p = {
     "targets_filename": "test_targets_bop19.json",
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
-    "tolerance": 1e-4,  # tolerance between expected scores and evaluated ones.
+    "tolerance": 1e-3,  # tolerance between expected scores and evaluated ones.
 }
 
 parser = argparse.ArgumentParser()

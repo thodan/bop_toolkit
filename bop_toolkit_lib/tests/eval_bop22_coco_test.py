@@ -1,14 +1,23 @@
 #!/usr/bin/env python
-import subprocess
 import os
-import shutil
 import time
+import shutil
+import subprocess
 from tqdm import tqdm
+import argparse
 
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 
-EPS_AP = 0.001
+# PARAMETERS (some can be overwritten by the command line arguments below).
+################################################################################
+p = {
+    "tolerance": 1e-3,  # tolerance between expected scores and evaluated ones.
+}
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tolerance", default=p["tolerance"], type=float)
+args = parser.parse_args()
 
 # Define path to directories
 RESULT_PATH = "./bop_toolkit_lib/tests/data"
@@ -99,7 +108,7 @@ for sub_short_name, (sub_name, ann_type, compressed) in tqdm(FILE_DICTIONARY.ite
         for key, expected_score in EXPECTED_OUTPUT[sub_short_name].items():
             eval_score = eval_scores.get(key)
             if eval_score is not None:
-                if abs(eval_score - expected_score) < EPS_AP:
+                if abs(eval_score - expected_score) < args.tolerance:
                     misc.log(f"{sub_short_name}: {key} - PASSED")
                 else:
                     misc.log(
