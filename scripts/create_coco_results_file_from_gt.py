@@ -17,6 +17,12 @@ from bop_toolkit_lib import misc
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
 p = {
+    # Dataset name. See dataset_params.py for options.
+    "dataset": "xyzibd",
+    # Dataset split. See dataset_params.py for options
+    "split": "test",  
+    # Dataset split type. See dataset_params.py for options
+    "split_type": None,
     # Out perfect result file name 
     "results_name": 'gt-results',    
     # Predefined test targets 
@@ -25,21 +31,18 @@ p = {
     "results_path": config.results_path,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
-    "dataset": "ycbv",
-    "split": "test",  
-    "split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
     "bbox_type": "amodal",
 }
 ################################################################################
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--results_path", default=p["results_path"])
-parser.add_argument("--results_name", default=p["results_name"])
-parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--split", default=p["split"])
 parser.add_argument("--split_type", default=p["split_type"])
+parser.add_argument("--results_name", default=p["results_name"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--results_path", default=p["results_path"])
 parser.add_argument("--bbox_type", default=p["bbox_type"])
 args = parser.parse_args()
 

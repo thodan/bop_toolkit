@@ -19,6 +19,12 @@ from bop_toolkit_lib import misc
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
 p = {
+    # Dataset name. See dataset_params.py for options.
+    "dataset": "xyzibd",
+    # Dataset split. See dataset_params.py for options
+    "split": "test",  
+    # Dataset split type. See dataset_params.py for options
+    "split_type": None,
     # Out perfect result file name 
     "results_name": 'gt-results',    
     # Predefined test targets 
@@ -27,10 +33,8 @@ p = {
     "results_path": config.results_path,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
-    "dataset": "xyzibd",
-    "split": "test",  
-    "split_type": None,
-    "eval_mode": "localization",
+    # Minimum visibility of the GT poses to include them in the output result file.
+    "min_visib_gt": 0.0,  # bop24 uses 0.1, 0.0 -> all gts are stored
 }
 ################################################################################
 
@@ -41,7 +45,7 @@ parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--split", default=p["split"])
 parser.add_argument("--split_type", default=p["split_type"])
-parser.add_argument("--eval_mode", default=p["eval_mode"])
+parser.add_argument("--min_visib_gt", default=p["min_visib_gt"])
 args = parser.parse_args()
 
 
@@ -51,7 +55,7 @@ p["targets_filename"] = str(args.targets_filename)
 p["dataset"] = str(args.dataset)
 p["split"] = str(args.split)
 p["split_type"] = str(args.split_type) if args.split_type is not None else None
-p["eval_mode"] = str(args.eval_mode)
+p["min_visib_gt"] = float(args.min_visib_gt)
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
@@ -85,17 +89,18 @@ for scene_id in targets_org:
         img_gt = scene_gt[im_id]
         img_gt_info = scene_gt_info[im_id]
 
-        for obj_gt in img_gt:
-            result = {
-                "scene_id": int(scene_id),
-                "im_id": int(im_id),
-                "obj_id": int(obj_gt["obj_id"]),
-                "score": 1.0,
-                "R": obj_gt["cam_R_m2c"],
-                "t": obj_gt["cam_t_m2c"],
-                "time": -1.0,
-            }
-            results.append(result)
+        for obj_gt, obj_gt_info in zip(img_gt, img_gt_info):
+            if obj_gt_info['visib_fract'] >= p["min_visib_gt"]:
+                result = {
+                    "scene_id": int(scene_id),
+                    "im_id": int(im_id),
+                    "obj_id": int(obj_gt["obj_id"]),
+                    "score": 1.0,
+                    "R": obj_gt["cam_R_m2c"],
+                    "t": obj_gt["cam_t_m2c"],
+                    "time": -1.0,
+                }
+                results.append(result)
 
 result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_pose.csv"
 results_path = os.path.join(p["results_path"], result_filename)
