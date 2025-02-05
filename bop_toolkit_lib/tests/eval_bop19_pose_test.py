@@ -43,20 +43,37 @@ os.makedirs(LOGS_PATH, exist_ok=True)
 # Define the dataset dictionary
 FILE_DICTIONARY = {
     "lmo_megaPose": "cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv",
-    # "icbin_megaPose": "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv",
-    # "tudl_megaPose": "cnos-fastsammegapose_tudl-test_1328490c-bf88-46ce-a12c-a5e5a7712220.csv",
-    # "ycbv_megaPose": "cnos-fastsammegapose_ycbv-test_8fe0af14-16e3-431a-83e7-df00e93828a6.csv",
+    "icbin_megaPose": "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv",
+    "tudl_megaPose": "cnos-fastsammegapose_tudl-test_1328490c-bf88-46ce-a12c-a5e5a7712220.csv",
+    "ycbv_megaPose": "cnos-fastsammegapose_ycbv-test_8fe0af14-16e3-431a-83e7-df00e93828a6.csv",
     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
 }
 
-# Note that the expected output of unittests using GT in case of 6D localization can be different than 1.0 due to matching stage
-# TODO: split in EXPECTED_OUTPUT_CPU and EXPECTED_OUTPUT_GPU to merge the test files
+# megapose-CNOS_fast (https://bop.felk.cvut.cz/sub_info/4299/)
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
         "bop19_average_recall_vsd": 0.3976885813148789,
         "bop19_average_recall_mssd": 0.49411764705882344,
         "bop19_average_recall_mspd": 0.6067128027681661,
         "bop19_average_recall": 0.49950634371395614,
+    },
+    "icbin_megaPose": {
+        "bop19_average_recall_vsd": 0.33743001,
+        "bop19_average_recall_mssd": 0.36108623,
+        "bop19_average_recall_mspd": 0.40184770,
+        "bop19_average_recall": 0.36678798,
+    },
+    "tudl_megaPose": {
+        "bop19_average_recall_vsd": 0.52866667,
+        "bop19_average_recall_mssd": 0.62200000,
+        "bop19_average_recall_mspd": 0.80766667,
+        "bop19_average_recall": 0.65277778,
+    },
+    "ycbv_megaPose": {
+        "bop19_average_recall_vsd": 0.52073733,
+        "bop19_average_recall_mssd": 0.57756488,
+        "bop19_average_recall_mspd": 0.70538443,
+        "bop19_average_recall": 0.60122888,
     },
     "tless_megaPose": {
         "bop19_average_recall_vsd": 0.4574871555347968,
