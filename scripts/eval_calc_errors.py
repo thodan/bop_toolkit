@@ -90,6 +90,7 @@ p = {
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
+    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
 }
 ################################################################################
 
@@ -245,7 +246,8 @@ for result_filename in p["result_filenames"]:
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
-    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename))
+    max_num_estimates_per_image = p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None
+    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=max_num_estimates_per_image)
 
     # Organize the pose estimates by scene, image and object.
     logger.info("Organizing pose estimates...")
@@ -257,7 +259,7 @@ for result_filename in p["result_filenames"]:
 
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(

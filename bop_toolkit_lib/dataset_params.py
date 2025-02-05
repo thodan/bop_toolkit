@@ -7,6 +7,8 @@ import math
 import glob
 import os
 from os.path import join
+from collections.abc import Callable
+from typing import Union, Dict
 
 from bop_toolkit_lib import inout
 
@@ -44,6 +46,10 @@ def get_camera_params(datasets_path, dataset_name, cam_type=None):
         if cam_type is None:
             cam_type = "uw"
         cam_filename = "camera_{}.json".format(cam_type)
+
+    # hot3d does not have a single camera file, raise an exception
+    elif dataset_name in ['hot3d']:
+        raise ValueError("BOP dataset {} does not have a global camera file.".format(dataset_name))
 
     else:
         cam_filename = "camera.json"
@@ -89,6 +95,8 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": list(range(1, 29)),
         "hot3d": list(range(1, 34)),
         "handal": list(range(1, 41)),
+        "ipd": [0, 1, 4, 8, 10, 11, 14, 18, 19, 20],
+        "xyzibd": [1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     }[dataset_name]
 
     # ID's of objects with ambiguous views evaluated using the ADI pose error
@@ -110,6 +118,8 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "hopev2": [],
         "hot3d": [1, 2, 3, 5, 22, 24, 25, 29, 30, 32],
         "handal": [26, 35, 36, 37, 38, 39, 40],
+        "ipd": [8, 14, 18, 19, 20],
+        "xyzibd": [1, 2, 5, 8, 9, 11, 12, 16, 17]
     }[dataset_name]
 
     # T-LESS includes two types of object models, CAD and reconstructed.
@@ -175,12 +185,15 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         depth_ext = ".tif"
 
     p["im_modalities"] = ["rgb", "depth"]
-    # for Classic datasets, test modality is implicit... 
+    # for Classic datasets, sensor and modality used for the evaluation is implicit...
+    p["eval_sensor"] = None
     p["eval_modality"] = None
-    # ...and only one set of annotation is present in the dataset 
+    # ...and only one set of annotation is present in the dataset
     # (e.g. scene_gt.json instead of scene_gt_rgb.json, scene_gt_gray1.json etc.)
-    modalities_have_separate_annotations = False 
-    exts = None  # has to be set if modalities_have_separate_annotations is True
+    sensor_modalities_have_separate_annotations = False
+    # file extensions for datasets with multiple sensor/modalities options
+    # has to be set if sensor_modalities_have_separate_annotations is True
+    exts = None
 
     supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
 
@@ -190,7 +203,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (600.90, 1102.35)
+            p["depth_range"] = (600.90, 1102.35)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (0, 0.5 * math.pi)
 
@@ -200,7 +213,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (346.31, 1499.84)
+            p["depth_range"] = (346.31, 1499.84)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (0, 0.5 * math.pi)
 
@@ -236,7 +249,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         # The following holds for Primesense, but is similar for the other sensors.
         if split == "test":
-            p["depth_range"] = (649.89, 940.04)
+            p["depth_range"] = (649.89, 940.04)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -249,7 +262,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (851.29, 2016.14)
+            p["depth_range"] = (569.88, 1995.27)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.4363, 0.5 * math.pi)  # (-25, 90) [deg].
 
@@ -259,7 +272,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (499.57, 1246.07)
+            p["depth_range"] = (499.57, 1246.07)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -269,7 +282,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (594.41, 739.12)
+            p["depth_range"] = (594.41, 739.12)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -279,7 +292,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (509.12, 1120.41)
+            p["depth_range"] = (509.12, 1120.41)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (0, 0.5 * math.pi)
 
@@ -289,7 +302,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (454.56, 1076.29)
+            p["depth_range"] = (454.56, 1076.29)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-1.0297, 0.5 * math.pi)  # (-59, 90) [deg].
 
@@ -301,7 +314,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = ["gray", "depth"]
 
         if split == "test":
-            p["depth_range"] = (638.38, 775.97)
+            p["depth_range"] = (638.38, 775.97)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -333,7 +346,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         # The following holds for Primesense, but is similar for Kinect.
         if split == "test":
-            p["depth_range"] = (438.24, 1416.97)
+            p["depth_range"] = (438.24, 1416.97)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
@@ -354,7 +367,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_size"] = (640, 480)
 
         if split == "test":
-            p["depth_range"] = (612.92, 1243.59)
+            p["depth_range"] = (612.92, 1243.59)  # Range of camera-object distances.
             p["azimuth_range"] = (0, 2 * math.pi)
             p["elev_range"] = (-1.2788, 1.1291)  # (-73.27, 64.69) [deg].
 
@@ -371,7 +384,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             p["depth_range"] = None  # Not calculated yet.
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
-    
+
     # HOPEV2.
     elif dataset_name == "hopev2":
         p["scene_ids"] = {
@@ -402,8 +415,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     # HOT3D.
     elif dataset_name == "hot3d":
-        modalities_have_separate_annotations = True 
-        p["im_modalities"] = ["rgb","gray1","gray2"]
+        sensor_modalities_have_separate_annotations = {"aria": True, "quest3": True}
+        p["im_modalities"] = {"aria": ["rgb", "gray1", "gray2"], "quest3": ["gray1", "gray2"]}
         p["test_quest3_scene_ids"] = list(range(1288, 1849))
         p["test_aria_scene_ids"] = list(range(3365, 3832))
         p["train_quest3_scene_ids"] = list(range(0, 1288))
@@ -412,8 +425,11 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             "test": p["test_quest3_scene_ids"] + p["test_aria_scene_ids"],  # test_quest3 + test_aria
             "train": p["train_quest3_scene_ids"] + p["train_aria_scene_ids"],  # train_quest3 + train_aria
         }[split]
-        p["quest3_im_size"] = {"gray1": (1280, 1024), "gray2": (1280, 1024)}
-        p["aria_im_size"] = {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)}
+
+        p["im_size"] = {
+            "aria" : {"rgb": (1408, 1408), "gray1": (640, 480), "gray2": (640, 480)},
+            "quest3" : {"gray1": (1280, 1024), "gray2": (1280, 1024)}
+        }
 
         p["quest3_eval_modality"] = "gray1"
         p["aria_eval_modality"] = "rgb"
@@ -425,18 +441,135 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
             else:
                 raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
 
+        def hot3d_eval_sensor(scene_id):
+            if scene_id in p["test_quest3_scene_ids"] or scene_id in p["train_quest3_scene_ids"]:
+                return "quest3"
+            elif scene_id in p["test_aria_scene_ids"] or scene_id in p["train_aria_scene_ids"]:
+                return "aria"
+            else:
+                raise ValueError("scene_id {} not part of hot3d valid scenes".format(scene_id))
+
         p["eval_modality"] = hot3d_eval_modality
+        p["eval_sensor"] = hot3d_eval_sensor
 
         exts = {
-            "rgb": ".jpg",
-            "gray1": ".jpg",
-            "gray2": "jpg",
+            "aria" : {"rgb": ".jpg", "gray1": ".jpg", "gray2": ".jpg"},
+            "quest3": {"gray1": ".jpg", "gray2": ".jpg"}
         }
 
         if split == "test":
             p["depth_range"] = None  # Not calculated yet.
             p["azimuth_range"] = None  # Not calculated yet.
             p["elev_range"] = None  # Not calculated yet.
+
+        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+    elif dataset_name == "ipd":
+            sensor_modalities_have_separate_annotations = {"photoneo": False, "cam1" : False, "cam2" : False, "cam3" : False}
+            p["im_modalities"] = {"photoneo": ["rgb", "depth"], "cam1" : ["rgb", "aolp", "dolp", "depth"],
+                                  "cam2" : ["rgb", "aolp", "dolp", "depth"], "cam3" : ["rgb", "aolp", "dolp", "depth"]}
+            p["scene_ids"] = {
+                "test": list(range(15)),
+                "train": list(range(50)),
+                "val": list(range(15)),
+            }[split]
+
+            p["im_size"] = {
+                "photoneo" : (2064, 1544),
+                "cam1" : (3840, 2160),
+                "cam2": (3840, 2160),
+                "cam3": (3840, 2160),
+                "": (2400, 2400),
+            }
+
+            p["eval_modality"] = "rgb"
+            p["eval_sensor"] = "photoneo"
+
+            exts = {
+                "photoneo": {"rgb": ".png", "depth": ".png"},
+                "cam1": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
+                "cam2": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
+                "cam3": {"rgb": ".png", "depth": ".png", "aolp": ".png", "dolp": ".png"},
+            }
+
+            if split == "test":
+                p["depth_range"] = None  # Not calculated yet.
+                p["azimuth_range"] = None  # Not calculated yet.
+                p["elev_range"] = None  # Not calculated yet.
+
+            supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+
+    elif dataset_name == "xyzibd":
+        sensor_modalities_have_separate_annotations = {"photoneo": False, "xyz": False, "realsense": False}
+        p["im_modalities"] = {"photoneo": ["gray", "depth"], "xyz": ["gray", "depth"], "realsense": ["rgb", "depth"]}
+        val_scene_ids = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 54, 60, 65, 70]
+        p["scene_ids"] = {
+            "test": [i for i in range(1, 75) if i not in val_scene_ids],
+            "val": val_scene_ids,
+            "train": list(range(45)),
+        }[split]
+
+        p["im_size"] = {
+            "xyz": (1440, 1080),
+            "realsense": (1280, 720),
+            "photoneo": (2064, 1544),
+            "": (1440, 1080),
+        }
+
+        p["eval_modality"] = "gray"
+        p["eval_sensor"] = "xyz"
+
+        if "pbr" == split_type:
+            # The PBR data is in classical BOP format without sensor names.
+            p["eval_modality"] = None
+            p["eval_sensor"] = None
+            sensor_modalities_have_separate_annotations = False
+
+        exts = {
+            "photoneo": {"gray": ".png", "depth": ".png"},
+            "xyz": {"gray": ".png", "depth": ".png"},
+            "realsense": {"rgb": ".png", "depth": ".png"},
+        }
+
+        if split == "test":
+            p["depth_range"] = None  # Not calculated yet.
+            p["azimuth_range"] = None  # Not calculated yet.
+            p["elev_range"] = None  # Not calculated yet.
+
+        supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
+    elif dataset_name == "itoddmv":
+        sensor_modalities_have_separate_annotations = {"3d1": False, "cam0": False, "cam1": False, "cam2": False}
+        p["im_modalities"] = {"3dlong": ["gray", "depth"], "cam0": ["gray"], "cam1": ["gray"], "cam2": ["gray"]}
+        p["scene_ids"] = {
+            "test": [1],
+            "train": list(range(50)),
+        }[split]
+
+        p["im_size"] = {
+            "3dlong": (1280, 960),
+            "cam0": (4224, 2838),
+            "cam1": (4224, 2838),
+            "cam2": (4224, 2838),
+            "": (1280, 960),
+        }
+
+        p["eval_modality"] = "gray"
+        p["eval_sensor"] = "3dlong"
+
+        if "pbr" == split_type:
+            # The PBR data is in classical BOP format without sensor names.
+            p["eval_modality"] = None
+            p["eval_sensor"] = None
+            sensor_modalities_have_separate_annotations = False
+
+        exts = {
+            "3dlong": {"gray": ".tif", "depth": ".tif"},
+            "cam0": {"gray": ".tif"},
+        }
+
+        if split == "test":
+            p["depth_range"] = (638.38, 775.97)  # Range of camera-object distances.
+            p["azimuth_range"] = (0, 2 * math.pi)
+            p["elev_range"] = (-0.5 * math.pi, 0.5 * math.pi)
 
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
 
@@ -446,14 +579,17 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     base_path = join(datasets_path, dataset_name)
     split_path = join(base_path, split)
     if split_type is not None:
-        if split_type == "pbr":
+        if split_type == "pbr" and dataset_name != "xyzibd":
             p["scene_ids"] = list(range(50))
         split_path += "_" + split_type
 
     # Path to the split directory.
     p["split_path"] = split_path
     p["supported_error_types"] = supported_error_types
-    if not modalities_have_separate_annotations:
+
+    # For classic BOP format datasets with one gt file per folder
+    classic_bop_format = type(p["im_modalities"]) is list
+    if classic_bop_format:
         p.update(
             {
                 # Path template to a gray image.
@@ -500,88 +636,152 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
     else:
         assert exts is not None, "Need to set 'exts' for dataset {}".format()
-        for moda in p["im_modalities"]:
-            p.update(
-                {
-                    # Path template to modality image.
-                    "{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", moda, "{im_id:06d}" + exts[moda]
-                    ),
-                    # Path template to a file with per-image camera parameters.
-                    "scene_camera_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_camera_{}.json".format(moda)
-                    ),
-                    # Path template to a file with GT annotations.
-                    "scene_gt_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_gt_{}.json".format(moda)
-                    ),
-                    # Path template to a file with meta information about the GT annotations.
-                    "scene_gt_info_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_gt_info_{}.json".format(moda)
-                    ),
-                    # Path template to a file with the coco GT annotations.
-                    "scene_gt_coco_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "scene_gt_coco_{}.json".format(moda)
-                    ),
-                    # Path template to a mask of the full object silhouette.
-                    "mask_{}_tpath".format(moda): join(
-                        split_path, "{scene_id:06d}", "mask_{}".format(moda), "{im_id:06d}_{gt_id:06d}.png"
-                    ),
-                    # Path template to a mask of the visible part of an object silhouette.
-                    "mask_visib_{}_tpath".format(moda): join(
-                        split_path,
-                        "{scene_id:06d}",
-                        "mask_visib_{}".format(moda),
-                        "{im_id:06d}_{gt_id:06d}.png",
-                    ),
-                }
-            )
+        # im_modalities is a dict from sensor to modalities
+        for sensor, modalities in p["im_modalities"].items():
+            for modality in modalities:
+                # If modalities have aligned extrinsics/intrinsics they are combined in one file
+                gt_file_suffix = sensor
+                # If modalities have separate extrinsics/intrinsics they are accessed by unique modalities (compatible with hot3d)
+                if sensor_modalities_have_separate_annotations[sensor]:
+                    gt_file_suffix = modality
+
+                # Path template to modality image.
+                if dataset_name == "hot3d":
+                    p[f"{modality}_{sensor}_tpath"] = join(
+                        split_path, "{scene_id:06d}", f"{modality}", "{im_id:06d}" + exts[sensor][modality]
+                    )
+                else:
+                    p[f"{modality}_{sensor}_tpath"] = join(
+                        split_path, "{scene_id:06d}", f"{modality}_{sensor}", "{im_id:06d}" + exts[sensor][modality]
+                    )
+                p.update(
+                    {
+                        # Path template to a file with per-image camera parameters.
+                        "scene_camera_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_camera_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a file with GT annotations.
+                        "scene_gt_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_gt_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a file with meta information about the GT annotations.
+                        "scene_gt_info_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_gt_info_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a file with the coco GT annotations.
+                        "scene_gt_coco_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "scene_gt_coco_{}.json".format(gt_file_suffix)
+                        ),
+                        # Path template to a mask of the full object silhouette.
+                        "mask_{}_{}_tpath".format(modality, sensor): join(
+                            split_path, "{scene_id:06d}", "mask_{}".format(gt_file_suffix), "{im_id:06d}_{gt_id:06d}.png"
+                        ),
+                        # Path template to a mask of the visible part of an object silhouette.
+                        "mask_visib_{}_{}_tpath".format(modality, sensor): join(
+                            split_path,
+                            "{scene_id:06d}",
+                            "mask_visib_{}".format(gt_file_suffix),
+                            "{im_id:06d}_{gt_id:06d}.png",
+                        ),
+                    }
+                )
 
     return p
 
 
-def scene_tpaths_keys(eval_modality, scene_id=None):
+def get_scene_sensor_or_modality(
+        sm: Union[None, str, Callable],
+        scene_id: Union[None, int]
+    ) -> Union[None,str]:
+    """
+    Get sensor|modality associated with a given scene.
+
+    Some datasets (hot3d) have different sensor|modality available depending on the scene.
+    Same logic for sensor or modality.
+    """
+    if sm is None or isinstance(sm, str):
+        return sm
+    elif callable(sm):
+        return sm(scene_id)
+    else:
+        raise TypeError(f"Sensor or modality {sm} should be either None, str or callable, not {type(sm)}")
+
+
+def scene_tpaths_keys(
+        modality: Union[None, str, Callable],
+        sensor: Union[None, str, Callable],
+        scene_id: Union[None, int] = None
+    ) -> Dict[str,str]:
     """
     Define keys corresponding template path defined in get_split_params output.
-    
-    Definition for scene gt, scene gt info and scene camera.
-    - Classic datasets: "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath"
-    - H3 datasets: with separate annotations for modalities, e.g. "scene_gt_{modality}_tpath", 
-    "scene_gt_info_{modality}_tpath", "scene_camera_{modality}_tpath", etc.
-    Modality may be the same for the whole dataset split (defined as a `str`), 
-    or vary scene by scene (defined as function or a dictionary)
 
-    :param eval_modality: None, str, callable or ditc, defines
-    :param scene_id: None or int, should be specified if eval modality 
-                     changes from scene to scen
+    Definition for scene gt, scene gt info and scene camera.
+    - Classic datasets (handal and hopev2 included): "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", etc.
+    - hot3d and Industrial datasets: same tpath keys with modality and sensor,
+    e.g. "scene_gt_{modality}_{sensor}_tpath", "scene_gt_info_{modality}_{sensor}_tpath",
+    "scene_camera_{modality}_{sensor}_tpath", etc.
+    Modality|sensor may be the same for the whole dataset split (defined as a `str`),
+    or vary scene by scene (defined as function).
+
+    :param modality: None, str or callable
+    :param sensor: None, str or callable
+    :param scene_id: None or int, should be specified if eval modality|sensor
+                     changes from scene to scene
     :return: scene tpath keys dictionary
     """
 
+    scene_sensor = get_scene_sensor_or_modality(sensor, scene_id)
+    scene_modality = get_scene_sensor_or_modality(modality, scene_id)
+
+    # 2 valid combinations:
+    # - modality and sensor are None -> BOP classic format
+    # - modality and sensor are not None -> hot3d + BOP industrial format
+    assert ((scene_modality is None and scene_sensor is None) or (scene_modality is not None and scene_sensor is not None)), f"scene_modality={scene_modality}, scene_sensor={scene_sensor}"
+
+    # "rgb_tpath" refers to the template path key of the given modality|sensor pair
     tpath_keys = [
-        "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath", 
-        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath"
+        "scene_gt_tpath", "scene_gt_info_tpath", "scene_camera_tpath",
+        "scene_gt_coco_tpath", "mask_tpath", "mask_visib_tpath", "rgb_tpath"
     ]
     tpath_keys_multi = [
-        "scene_gt_{}_tpath", "scene_gt_info_{}_tpath", "scene_camera_{}_tpath", 
-        "scene_gt_coco_{}_tpath", "mask_{}_tpath", "mask_visib_{}_tpath"
+        "scene_gt_{}_{}_tpath", "scene_gt_info_{}_{}_tpath", "scene_camera_{}_{}_tpath",
+        "scene_gt_coco_{}_{}_tpath", "mask_{}_{}_tpath", "mask_visib_{}_{}_tpath", "{}_{}_tpath"
     ]
-
     assert len(tpath_keys) == len(tpath_keys_multi)
+
     tpath_keys_dic = {}
     for key, key_multi in zip(tpath_keys, tpath_keys_multi):
-        if eval_modality is None:
-            # Classic filenames
+        if scene_sensor is None:
+            # BOP-Classic filenames
             tpath_keys_dic[key] = key
-        elif isinstance(eval_modality, str):
-            tpath_keys_dic[key] = key_multi.format(eval_modality)
-        elif callable(eval_modality) and scene_id is not None:
-            tpath_keys_dic[key] = key_multi.format(eval_modality(scene_id))
-        elif isinstance(eval_modality, dict) and scene_id is not None:
-            tpath_keys_dic[key] = key_multi.format(eval_modality[scene_id])
         else:
-            raise ValueError("eval_modality type not supported, either None, str, callable or dictionary")
-    
+            tpath_keys_dic[key] = key_multi.format(scene_modality, scene_sensor)
+
+    tpath_keys_dic["depth_tpath"] = tpath_keys_dic["rgb_tpath"].replace("rgb","depth").replace("gray","depth")
     return tpath_keys_dic
+
+
+def sensor_has_modality(dp_split: Dict, sensor: str, modality: str):
+    if isinstance(dp_split["im_modalities"], list):
+        return modality in dp_split["im_modalities"]
+    else:
+        return modality in dp_split["im_modalities"][sensor]
+
+
+def get_im_size(dp_split: Dict, modality: str, sensor: str):
+    """
+    Conveniance function to retrieve the image size of a modality|sensor pair.
+    """
+    if isinstance(dp_split["im_size"], dict):
+        if isinstance(dp_split["im_size"][sensor], dict):
+            # hot3d
+            return dp_split["im_size"][sensor][modality]
+        else:
+            # BOP Industrial
+            return dp_split["im_size"][sensor]
+    # BOP Classic: one image size for the whole dataset
+    else:
+        return dp_split["im_size"]
 
 
 def get_present_scene_ids(dp_split):

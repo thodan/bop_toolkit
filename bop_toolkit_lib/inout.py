@@ -4,6 +4,7 @@
 """I/O functions."""
 
 import os
+import gzip
 import struct
 import numpy as np
 import imageio
@@ -68,51 +69,65 @@ def save_depth(path, im):
 def load_json(path, keys_to_int=False):
     """Loads content of a JSON file.
 
-    :param path: Path to the JSON file.
+    :param path: Path to the JSON file. If ".json.gz" extension, opens with gzip.
     :return: Content of the loaded JSON file.
     """
 
     # Keys to integers.
     def convert_keys_to_int(x):
         return {int(k) if k.lstrip("-").isdigit() else k: v for k, v in x.items()}
+    
+    # Open+decompress with gzip if ".json.gz" file extension
+    if path.endswith('.json.gz'):
+        f = gzip.open(path, "rt", encoding="utf8")
+    else:
+        f = open(path, "r")
+    if keys_to_int:
+        content = json.load(f, object_hook=lambda x: convert_keys_to_int(x))
+    else:
+        content = json.load(f)
 
-    with open(path, "r") as f:
-        if keys_to_int:
-            content = json.load(f, object_hook=lambda x: convert_keys_to_int(x))
-        else:
-            content = json.load(f)
+    f.close()
 
     return content
 
 
-def save_json(path, content):
+def save_json(path, content, compress=False):
     """Saves the provided content to a JSON file.
 
     :param path: Path to the output JSON file.
     :param content: Dictionary/list to save.
+    :param compress: Saves as a gzip archive, appends ".gz" extension to filepath.
     """
-    with open(path, "w") as f:
-        if isinstance(content, dict):
-            f.write("{\n")
-            content_sorted = sorted(content.items(), key=lambda x: x[0])
-            for elem_id, (k, v) in enumerate(content_sorted):
-                f.write('  "{}": {}'.format(k, json.dumps(v, sort_keys=True)))
-                if elem_id != len(content) - 1:
-                    f.write(",")
-                f.write("\n")
-            f.write("}")
+    if compress:
+        path += ".gz"
+        f = gzip.open(path, "wt", encoding="utf8")
+    else:
+        f = open(path, "w")
 
-        elif isinstance(content, list):
-            f.write("[\n")
-            for elem_id, elem in enumerate(content):
-                f.write("  {}".format(json.dumps(elem, sort_keys=True)))
-                if elem_id != len(content) - 1:
-                    f.write(",")
-                f.write("\n")
-            f.write("]")
+    if isinstance(content, dict):
+        f.write("{\n")
+        content_sorted = sorted(content.items(), key=lambda x: x[0])
+        for elem_id, (k, v) in enumerate(content_sorted):
+            f.write('  "{}": {}'.format(k, json.dumps(v, sort_keys=True)))
+            if elem_id != len(content) - 1:
+                f.write(",")
+            f.write("\n")
+        f.write("}")
 
-        else:
-            json.dump(content, f, sort_keys=True)
+    elif isinstance(content, list):
+        f.write("[\n")
+        for elem_id, elem in enumerate(content):
+            f.write("  {}".format(json.dumps(elem, sort_keys=True)))
+            if elem_id != len(content) - 1:
+                f.write(",")
+            f.write("\n")
+        f.write("]")
+
+    else:
+        json.dump(content, f, sort_keys=True)
+
+    f.close()
 
 
 def load_cam_params(path):
@@ -276,7 +291,7 @@ def save_scene_gt(path, scene_gt):
     save_json(path, scene_gt)
 
 
-def load_bop_results(path, version="bop19"):
+def load_bop_results(path, version="bop19", max_num_estimates_per_image=None):
     """Loads 6D object pose estimates from a file.
 
     :param path: Path to a file with pose estimates.
@@ -321,6 +336,24 @@ def load_bop_results(path, version="bop19"):
     else:
         raise ValueError("Unknown version of BOP results.")
 
+    # Keep only the top max_num_estimates_per_image estimates for each image.
+    if max_num_estimates_per_image is not None:
+        # Group the results by image
+        im_results = defaultdict(list)
+        for res in results:
+            im_signature = (res["scene_id"], res["im_id"])
+            im_results[im_signature].append(res)
+        # Keep only the top n_top estimates for each image
+        filtered_results = []
+        num_ignored_estimates = 0
+        for im_signature in im_results.keys():
+            im_results[im_signature] = sorted(
+                im_results[im_signature], key=lambda x:x["score"], reverse=True
+            )
+            num_ignored_estimates += max(0, len(im_results[im_signature]) - max_num_estimates_per_image)
+            filtered_results.extend(im_results[im_signature][:max_num_estimates_per_image])
+        results = filtered_results
+        misc.log("Ignored {} estimates.".format(num_ignored_estimates))
     return results
 
 
@@ -401,7 +434,7 @@ def check_bop_results(path, version="bop19"):
 def check_coco_results(path, version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
     """Checks if the format of extended COCO results is correct.
 
-    :param path: Path to a file with coco estimates.
+    :param path: Path to a file with coco estimates. If ".json.gz" extension, opens with gzip.
     :param version: Version of the results.
     :param ann_type: type of annotation expected in the file.
         "bbox" -> bounding boxes
@@ -452,7 +485,7 @@ def check_coco_results(path, version="bop22", ann_type="segm", enforce_no_segm_i
     return check_passed, check_msg
 
 
-def save_coco_results(path, results, version="bop22"):
+def save_coco_results(path, results, version="bop22", compress=False):
     """Saves detections/instance segmentations for each scene in coco format.
 
     "bbox" should be [x,y,w,h] in pixels
@@ -463,7 +496,6 @@ def save_coco_results(path, results, version="bop22"):
     :param version: Version of the results.
     """
 
-    # See docs/bop_challenge_2022.md for details.
     if version == "bop22":
         coco_results = []
         for res in results:
@@ -480,7 +512,7 @@ def save_coco_results(path, results, version="bop22"):
                     "time": res["run_time"] if "run_time" in res else -1,
                 }
             )
-        save_json(path, coco_results)
+        save_json(path, coco_results, compress)
     else:
         raise ValueError("Unknown version of BOP detection results.")
 
@@ -589,6 +621,7 @@ def load_ply(path):
         "float": ("f", 4),
         "double": ("d", 8),
         "int": ("i", 4),
+        "uint": ("I", 4),
         "uchar": ("B", 1),
     }
 
@@ -825,7 +858,19 @@ def save_ply2(
 
 
 def get_im_targets(im_gt, im_gt_info, visib_gt_min, eval_mode="localization"):
+    """
+    From an image gt and gt info, given a minimum visibility, get valid object evaluation targets.
+
+    Output format: dict[obj_id]
+    {
+        <obj_id1>: {'inst_count': <inst_count_1>},
+        <obj_id2>: {'inst_count': <inst_count_2>},
+        ...
+    }
+    """
     im_targets = {}
+    # Objects gt detection are have gt and gt_info have same order.
+    # object id is retrieved from gt and visibility from gt info.
     for gt_id, gt in enumerate(im_gt):
         gt_info = im_gt_info[gt_id]
         obj_id = gt["obj_id"]
