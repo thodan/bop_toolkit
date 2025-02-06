@@ -12,12 +12,17 @@ from bop_toolkit_lib import misc
 # PARAMETERS (some can be overwritten by the command line arguments below).
 ################################################################################
 p = {
+    # Use generate results from gt files instead of submissions 
+    "use_gt_dataset_names": [],  # e.g. ['ycbv', 'lmo']
     "tolerance": 1e-3,  # tolerance between expected scores and evaluated ones.
 }
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--use_gt_dataset_names", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
 parser.add_argument("--tolerance", default=p["tolerance"], type=float)
 args = parser.parse_args()
+
+p["use_gt_dataset_names"] = args.use_gt_dataset_names.split(',') if len(args.use_gt_dataset_names) > 0 else [] 
 
 # Define path to directories
 RESULT_PATH = "./bop_toolkit_lib/tests/data/results_sub"
@@ -29,14 +34,11 @@ os.makedirs(LOGS_PATH, exist_ok=True)
 # Define the dataset dictionary
 # tuples: (submission name, annotation type, compressed)
 FILE_DICTIONARY = {
-    "ycbv_zebra_segm": ("zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528", "segm", False),
-    "ycbv_gdrnppdet_bbox": ("gdrnppdet-pbrreal_ycbv-test_abe6c5f1-cb26-4bbd-addc-bb76dd722a96", "bbox", True),
+    "ycbv_zebra_segm": ("zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528", "segm", False),  # https://bop.felk.cvut.cz/sub_info/3131/
+    "ycbv_gdrnppdet_bbox": ("gdrnppdet-pbrreal_ycbv-test_abe6c5f1-cb26-4bbd-addc-bb76dd722a96", "bbox", True),  # https://bop.felk.cvut.cz/sub_info/2743/
 }
 
 # From BOP website
-# ycbv_zebra_segm: https://bop.felk.cvut.cz/sub_info/3131/
-# ycbv_gdrnppdet_bbox: https://bop.felk.cvut.cz/sub_info/2743/
-
 EXPECTED_OUTPUT = {
     "ycbv_zebra_segm": {
         "AP":	0.740,
@@ -67,6 +69,32 @@ EXPECTED_OUTPUT = {
         "AR_small":	0.300,
     }
 }
+
+# If using ground truth datasets, redefine result files and expected results
+if len(p["use_gt_dataset_names"]) > 0:
+    RESULT_PATH = "./bop_toolkit_lib/tests/data/results_gt"
+    FILE_DICTIONARY = {
+        f"{ds}_gt": (f"gt-results_{ds}-test_coco", "bbox", False)
+        for ds in p["use_gt_dataset_names"]
+    }
+    EXPECTED_OUTPUT = {
+        f"{ds}_gt": {
+            "AP":	1.0,
+            "AP50":	1.0,
+            "AP75":	1.0,
+            "AP_large":	1.0,
+            "AP_medium":	1.0,
+            "AP_small":	1.0,
+            "AR1":	1.0,
+            "AR10":	1.0,
+            "AR100":	1.0,
+            "AR_large":	1.0,
+            "AR_medium":	1.0,
+            "AR_small":	1.0,
+        }
+        for ds in p["use_gt_dataset_names"]
+    }
+
 
 # Loop through each entry in the dictionary and execute the command
 for dataset_method_name, (sub_name, ann_type, compressed) in tqdm(

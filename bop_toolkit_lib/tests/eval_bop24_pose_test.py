@@ -16,24 +16,25 @@ from bop_toolkit_lib import misc
 # PARAMETERS (some can be overwritten by the command line arguments below).
 ################################################################################
 p = {
+    # Use generate results from gt files instead of submissions 
+    "use_gt_dataset_names": [],  # e.g. ['ycbv', 'lmo']
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
-    "targets_filename": "test_targets_bop19.json",
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "tolerance": 1e-3,  # tolerance between expected scores and evaluated ones.
 }
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--use_gt_dataset_names", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
 parser.add_argument("--renderer_type", default=p["renderer_type"])
-parser.add_argument("--targets_filename", default=p["targets_filename"])
-parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
-parser.add_argument("--num_false_positives", default=0, type=int)
+parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--tolerance", default=p["tolerance"], type=float)
+parser.add_argument("--num_false_positives", default=0, type=int)
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
-p["targets_filename"] = str(args.targets_filename)
+p["use_gt_dataset_names"] = args.use_gt_dataset_names.split(',') if len(args.use_gt_dataset_names) > 0 else [] 
 p["num_workers"] = int(args.num_workers)
 p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
@@ -48,37 +49,13 @@ os.makedirs(LOGS_PATH, exist_ok=True)
 
 # Define the dataset dictionary
 FILE_DICTIONARY = {
-    "lmo_megaPose": "cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv",
-    "lmo_gt": "gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv",
-    "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
-    "tless_gt": "gt-pbrreal-rgb-mmodel_tless-test_tless.csv",
+    "lmo_megaPose": ("cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv", "test_targets_bop19.csv"),
+    "lmo_gt": ("gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv", "test_targets_bop19.csv"),
+    "tless_megaPose": ("cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv", "test_targets_bop19.csv"),
+    "tless_gt": ("gt-pbrreal-rgb-mmodel_tless-test_tless.csv", "test_targets_bop19.csv"),
 }
 
-
-# read the file
-for dataset_method_name, file_name in FILE_DICTIONARY.items():
-    result_file_path = f"{RESULT_PATH}/{file_name}"
-    output_filename = file_name.replace(
-        ".csv", f"_{args.num_false_positives}_false_positives.csv"
-    )
-    ests = inout.load_bop_results(result_file_path, version="bop19")
-    if args.num_false_positives > 0:
-        # create dummy estimates
-        dummy_ests = []
-        for i in range(args.num_false_positives):
-            est = ests[i % len(ests)].copy()
-            est["R"] = np.eye(3)
-            est["t"] = np.ones(3)
-            dummy_ests.append(est)
-        ests.extend(dummy_ests)
-        inout.save_bop_results(f"{RESULT_PATH}/{output_filename}", ests, version="bop19")
-        FILE_DICTIONARY[dataset_method_name] = output_filename
-        misc.log(
-            f"Added {args.num_false_positives} false positives to {dataset_method_name} (total: {len(ests)} instances)"
-        )
-    else:
-        misc.log(f"Using {dataset_method_name} with {len(ests)} instances")
-
+# Define the expected scores
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
         "bop24_mAP_mssd": 0.503589108910891,
@@ -102,8 +79,52 @@ EXPECTED_OUTPUT = {
     },
 }
 
+
+# If using ground truth datasets, redefine result files and expected results
+if len(p["use_gt_dataset_names"]) > 0:
+    RESULT_PATH = "./bop_toolkit_lib/tests/data/results_gt"
+    # assuming all concerned datasets are bop24
+    FILE_DICTIONARY = {
+        f"{ds}_gt": (f"gt-results_{ds}-test_pose.csv", "test_targets_bop24.json")
+        for ds in p["use_gt_dataset_names"]
+    }
+    EXPECTED_OUTPUT = {
+        f"{ds}_gt": {
+            "bop24_mAP_mssd": 1.0,
+            "bop24_mAP_mspd": 1.0,
+            "bop24_mAP": 1.0,
+        }
+        for ds in p["use_gt_dataset_names"]
+    }
+
+
+
+# read the file
+for dataset_method_name, (file_name, test_targets_name) in FILE_DICTIONARY.items():
+    result_file_path = f"{RESULT_PATH}/{file_name}"
+    output_filename = file_name.replace(
+        ".csv", f"_{args.num_false_positives}_false_positives.csv"
+    )
+    ests = inout.load_bop_results(result_file_path, version="bop19")
+    if args.num_false_positives > 0:
+        # create dummy estimates
+        dummy_ests = []
+        for i in range(args.num_false_positives):
+            est = ests[i % len(ests)].copy()
+            est["R"] = np.eye(3)
+            est["t"] = np.ones(3)
+            dummy_ests.append(est)
+        ests.extend(dummy_ests)
+        inout.save_bop_results(f"{RESULT_PATH}/{output_filename}", ests, version="bop19")
+        FILE_DICTIONARY[dataset_method_name] = output_filename
+        misc.log(
+            f"Added {args.num_false_positives} false positives to {dataset_method_name} (total: {len(ests)} instances)"
+        )
+    else:
+        misc.log(f"Using {dataset_method_name} with {len(ests)} instances")
+
 # Loop through each entry in the dictionary and execute the command
-for dataset_method_name, file_name in tqdm(
+for dataset_method_name, (file_name, test_targets_name) in tqdm(
     FILE_DICTIONARY.items(), desc="Executing..."
 ):
     log_file_path = f"{LOGS_PATH}/eval_bop24_pose_test_{dataset_method_name}.txt"
@@ -125,7 +146,7 @@ for dataset_method_name, file_name in tqdm(
         "--num_worker",
         str(p["num_workers"]),
         "--targets_filename",
-        p["targets_filename"]
+        test_targets_name
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")

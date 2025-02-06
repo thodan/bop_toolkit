@@ -14,25 +14,26 @@ from bop_toolkit_lib import misc
 # PARAMETERS (some can be overwritten by the command line arguments below).
 ################################################################################
 p = {
+    # Use generate results from gt files instead of submissions 
+    "use_gt_dataset_names": [],  # e.g. ['ycbv', 'lmo']
+    "targets_filename": "test_targets_bop24.json",
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
-    "targets_filename": "test_targets_bop19.json",
-    # Use torch for the calculation of errors.
-    "use_gpu": config.use_gpu,  
-    # Number of parallel workers for the calculation of errors.
-    "num_workers": config.num_workers,
-    # tolerance between expected scores and evaluated ones.  
-    "tolerance": 1e-3,  
+    "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
+    "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
+    "tolerance": 1e-3,  # tolerance between expected scores and evaluated ones.
 }
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--renderer_type", default=p["renderer_type"])
+parser.add_argument("--use_gt_dataset_names", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
 parser.add_argument("--targets_filename", default=p["targets_filename"])
-parser.add_argument("--num_workers", default=p["num_workers"])
+parser.add_argument("--renderer_type", default=p["renderer_type"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
+parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--tolerance", default=p["tolerance"], type=float)
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
+p["use_gt_dataset_names"] = args.use_gt_dataset_names.split(',') if len(args.use_gt_dataset_names) > 0 else [] 
 p["targets_filename"] = str(args.targets_filename)
 p["num_workers"] = int(args.num_workers)
 p["use_gpu"] = bool(args.use_gpu)
@@ -55,6 +56,7 @@ FILE_DICTIONARY = {
     "tless_megaPose": "cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv",
 }
 
+# Define the expected scores
 # megapose-CNOS_fast (https://bop.felk.cvut.cz/sub_info/4299/)
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
@@ -88,6 +90,24 @@ EXPECTED_OUTPUT = {
         "bop19_average_recall": 0.47719341948206956,
     },
 }
+
+# If using ground truth datasets, redefine result files and expected results
+if len(p["use_gt_dataset_names"]) > 0:
+    RESULT_PATH = "./bop_toolkit_lib/tests/data/results_gt"
+    FILE_DICTIONARY = {
+        f"{ds}_gt": f"gt-results_{ds}-test_pose.csv"
+        for ds in p["use_gt_dataset_names"]
+    }
+    EXPECTED_OUTPUT = {
+        f"{ds}_gt": {
+            "bop19_average_recall_vsd": 1.0,
+            "bop19_average_recall_mssd": 1.0,
+            "bop19_average_recall_mspd": 1.0,
+            "bop19_average_recall": 1.0,
+        }
+        for ds in p["use_gt_dataset_names"]
+    }
+
 
 assert FILE_DICTIONARY.keys() == EXPECTED_OUTPUT.keys()
 
