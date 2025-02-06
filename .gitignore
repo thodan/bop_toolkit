@@ -100,4 +100,5 @@ bop_toolkit_lib/config_internal.py
 bop_toolkit_lib/tests/data/eval
 bop_toolkit_lib/tests/data/logs
 bop_toolkit_lib/tests/data/results_gt
-bop_toolkit_lib/tests/data/*false_positives.csv
+bop_toolkit_lib/tests/data/results_sub/*false_positives.csv
+bop_toolkit_lib/tests/data/results_sub/bop_toolkit_lib/tests/data/eval/
