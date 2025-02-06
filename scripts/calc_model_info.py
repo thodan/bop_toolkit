@@ -12,7 +12,7 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "hot3d",
     # Type of input object models.
     "model_type": None,
     # Folder containing the BOP datasets.

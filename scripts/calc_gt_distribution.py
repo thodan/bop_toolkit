@@ -2,6 +2,7 @@
 # Center for Machine Perception, Czech Technical University in Prague
 
 """Calculates distribution of GT poses."""
+import os
 import math
 import numpy as np
 import matplotlib.pyplot as plt
@@ -27,13 +28,23 @@ def debiasing_weights(visib_fracts):
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lmo",
+    "dataset": "ycbv",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
+    # Modality used to compute gt statistics, defaults to eval modality
+    "modality": None,
+    # Sensor used to compute gt statistics, defaults to eval sensor
+    "sensor": None,
+    # Folder for output visualisations.
+    "vis_path": os.path.join(config.output_path, "gt_distribution"),
+    # Save plots in "vis_path"
+    "save_plots": True,
+    # Show plots"
+    "show_plots": True,
 }
 ################################################################################
 
@@ -43,30 +54,34 @@ dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
 )
 
+if p["modality"] is None:
+    p["modality"] = dp_split["eval_modality"]
+if p["sensor"] is None:
+    p["sensor"] = dp_split["eval_sensor"]
+
 scene_ids = dp_split["scene_ids"]
 dists = []
 azimuths = []
 elevs = []
 visib_fracts = []
 ims_count = 0
+
 for scene_id in scene_ids:
-    misc.log(
-        "Processing - dataset: {} ({}, {}), scene: {}".format(
-            p["dataset"], p["dataset_split"], p["dataset_split_type"], scene_id
-        )
-    )
+    tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
+
+    misc.log(f"Processing - dataset: {p['dataset']} ({p['dataset_split']}, {p['dataset_split_type']}), scene: {scene_id}")
 
     # Load GT poses.
-    scene_gt = inout.load_scene_gt(dp_split["scene_gt_tpath"].format(scene_id=scene_id))
-
+    scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
+    scene_gt = inout.load_scene_gt(scene_gt_path)
+    
     # Load info about the GT poses.
-    scene_gt_info = inout.load_json(
-        dp_split["scene_gt_info_tpath"].format(scene_id=scene_id), keys_to_int=True
-    )
+    scene_gt_info_path = dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
+    scene_gt_info = inout.load_json(scene_gt_info_path, keys_to_int=True)
 
     ims_count += len(scene_gt)
 
-    for im_id in scene_gt.keys():
+    for im_id in scene_gt:
         for gt_id, im_gt in enumerate(scene_gt[im_id]):
             # Object distance.
             dist = np.linalg.norm(im_gt["cam_t_m2c"])
@@ -98,6 +113,10 @@ misc.log(
 )
 misc.log("Number of images: " + str(ims_count))
 
+if ims_count == 0:
+    misc.log("No ground truth found.")
+    exit()
+
 misc.log("Min dist: {}".format(np.min(dists)))
 misc.log("Max dist: {}".format(np.max(dists)))
 misc.log("Mean dist: {}".format(np.mean(dists)))
@@ -114,22 +133,44 @@ misc.log("Min visib fract: {}".format(np.min(visib_fracts)))
 misc.log("Max visib fract: {}".format(np.max(visib_fracts)))
 misc.log("Mean visib fract: {}".format(np.mean(visib_fracts)))
 
+prefix = f"{p['modality']}_{p['sensor']}_" if isinstance(p["modality"], str) else ""
 # Visualize distributions.
+if p["save_plots"]:
+    save_dir = os.path.join(p["vis_path"], p["dataset"])
+    misc.log(f"Saving plots in {save_dir}")
+    misc.ensure_dir(save_dir)
+
 plt.figure()
 plt.hist(dists, bins=100)
 plt.title("Object distance")
+if p["save_plots"]:
+    path = os.path.join(save_dir, f"{prefix}object_distance.png")
+    misc.log(f"Saving {path}")
+    plt.savefig(path)
 
 plt.figure()
 plt.hist(azimuths, bins=100)
 plt.title("Azimuth")
+if p["save_plots"]:
+    path = os.path.join(save_dir, f"{prefix}azimuth.png")
+    misc.log(f"Saving {path}")
+    plt.savefig(path)
 
 plt.figure()
 plt.hist(elevs, bins=100)
 plt.title("Elevation")
+if p["save_plots"]:
+    path = os.path.join(save_dir, f"{prefix}elevation.png")
+    misc.log(f"Saving {path}")
+    plt.savefig(path)
 
 plt.figure()
 plt.hist(visib_fracts, bins=100)
 plt.title("Visibility fraction")
+if p["save_plots"]:
+    path = os.path.join(save_dir, f"{prefix}visibility_fraction.png")
+    misc.log(f"Saving {path}")
+    plt.savefig(path)
 
 plt.show()
 

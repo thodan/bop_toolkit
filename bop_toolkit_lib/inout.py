@@ -621,6 +621,7 @@ def load_ply(path):
         "float": ("f", 4),
         "double": ("d", 8),
         "int": ("i", 4),
+        "uint": ("I", 4),
         "uchar": ("B", 1),
     }
 
@@ -857,7 +858,19 @@ def save_ply2(
 
 
 def get_im_targets(im_gt, im_gt_info, visib_gt_min, eval_mode="localization"):
+    """
+    From an image gt and gt info, given a minimum visibility, get valid object evaluation targets.
+
+    Output format: dict[obj_id]
+    {
+        <obj_id1>: {'inst_count': <inst_count_1>},
+        <obj_id2>: {'inst_count': <inst_count_2>},
+        ...
+    }
+    """
     im_targets = {}
+    # Objects gt detection are have gt and gt_info have same order.
+    # object id is retrieved from gt and visibility from gt info.
     for gt_id, gt in enumerate(im_gt):
         gt_info = im_gt_info[gt_id]
         obj_id = gt["obj_id"]

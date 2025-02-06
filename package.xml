@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>bop_toolkit_lib</name>
+  <version>1.0.0</version>
+  <description>A Python toolkit of the BOP benchmark for 6D object pose estimation.</description>
+  <maintainer email="tom.hodan@gmail.com">Tomas Hodan</maintainer>
+  <maintainer email="Martin.Sundermeyer@dlr.de">Martin Sundermeyer</maintainer>
+  <license>Apache license 2.0</license>
+
+  <exec_depend>cython3</exec_depend>
+  <exec_depend>python3-imageio</exec_depend>
+  <exec_depend>python3-kiwisolver</exec_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-opengl</exec_depend>
+  <exec_depend>python3-pil</exec_depend>
+  <exec_depend>python3-pypng</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+
+  <test_depend>ament_black</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
