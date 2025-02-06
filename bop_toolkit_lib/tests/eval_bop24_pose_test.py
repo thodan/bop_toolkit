@@ -17,7 +17,7 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # Use generate results from gt files instead of submissions 
-    "use_gt_dataset_names": [],  # e.g. ['ycbv', 'lmo']
+    "gt_from_datasets": [],  # e.g. ['ycbv', 'lmo']
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
@@ -25,7 +25,7 @@ p = {
 }
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--use_gt_dataset_names", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
+parser.add_argument("--gt_from_datasets", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
 parser.add_argument("--renderer_type", default=p["renderer_type"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 parser.add_argument("--num_workers", default=p["num_workers"])
@@ -34,7 +34,7 @@ parser.add_argument("--num_false_positives", default=0, type=int)
 args = parser.parse_args()
 
 p["renderer_type"] = str(args.renderer_type)
-p["use_gt_dataset_names"] = args.use_gt_dataset_names.split(',') if len(args.use_gt_dataset_names) > 0 else [] 
+p["gt_from_datasets"] = args.gt_from_datasets.split(',') if len(args.gt_from_datasets) > 0 else [] 
 p["num_workers"] = int(args.num_workers)
 p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
@@ -81,12 +81,12 @@ EXPECTED_OUTPUT = {
 
 
 # If using ground truth datasets, redefine result files and expected results
-if len(p["use_gt_dataset_names"]) > 0:
+if len(p["gt_from_datasets"]) > 0:
     RESULT_PATH = "./bop_toolkit_lib/tests/data/results_gt"
     # assuming all concerned datasets are bop24
     FILE_DICTIONARY = {
         f"{ds}_gt": (f"gt-results_{ds}-test_pose.csv", "test_targets_bop24.json")
-        for ds in p["use_gt_dataset_names"]
+        for ds in p["gt_from_datasets"]
     }
     EXPECTED_OUTPUT = {
         f"{ds}_gt": {
@@ -94,7 +94,7 @@ if len(p["use_gt_dataset_names"]) > 0:
             "bop24_mAP_mspd": 1.0,
             "bop24_mAP": 1.0,
         }
-        for ds in p["use_gt_dataset_names"]
+        for ds in p["gt_from_datasets"]
     }
 
 

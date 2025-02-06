@@ -13,16 +13,16 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # Use generate results from gt files instead of submissions 
-    "use_gt_dataset_names": [],  # e.g. ['ycbv', 'lmo']
+    "gt_from_datasets": [],  # e.g. ['ycbv', 'lmo']
     "tolerance": 1e-3,  # tolerance between expected scores and evaluated ones.
 }
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--use_gt_dataset_names", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
+parser.add_argument("--gt_from_datasets", default="", help='Comma separated list of dataset names, e.g. "ycbv,tless,lmo"', type=str)
 parser.add_argument("--tolerance", default=p["tolerance"], type=float)
 args = parser.parse_args()
 
-p["use_gt_dataset_names"] = args.use_gt_dataset_names.split(',') if len(args.use_gt_dataset_names) > 0 else [] 
+p["gt_from_datasets"] = args.gt_from_datasets.split(',') if len(args.gt_from_datasets) > 0 else [] 
 
 # Define path to directories
 RESULT_PATH = "./bop_toolkit_lib/tests/data/results_sub"
@@ -71,11 +71,11 @@ EXPECTED_OUTPUT = {
 }
 
 # If using ground truth datasets, redefine result files and expected results
-if len(p["use_gt_dataset_names"]) > 0:
+if len(p["gt_from_datasets"]) > 0:
     RESULT_PATH = "./bop_toolkit_lib/tests/data/results_gt"
     FILE_DICTIONARY = {
         f"{ds}_gt": (f"gt-results_{ds}-test_coco", "bbox", False)
-        for ds in p["use_gt_dataset_names"]
+        for ds in p["gt_from_datasets"]
     }
     EXPECTED_OUTPUT = {
         f"{ds}_gt": {
@@ -92,7 +92,7 @@ if len(p["use_gt_dataset_names"]) > 0:
             "AR_medium":	1.0,
             "AR_small":	1.0,
         }
-        for ds in p["use_gt_dataset_names"]
+        for ds in p["gt_from_datasets"]
     }
 
 
