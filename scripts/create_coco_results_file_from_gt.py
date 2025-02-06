@@ -92,13 +92,15 @@ for scene_id in targets_org:
             }
             results.append(result)
 
-
-result_filename = "{}_{}-{}_coco.json".format(p["results_name"], p["dataset"], p["split"])
+if not os.path.exists(p["results_path"]):
+    misc.log(f"Creating dir {p['results_path']}")
+    os.mkdir(p["results_path"])
+result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_coco.json"
 results_path = os.path.join(p["results_path"], result_filename)
 inout.save_json(results_path, results)
 result_file_path = os.path.join(p["results_path"], result_filename)
 check_passed, _ = inout.check_coco_results(result_file_path, ann_type="segm")
 if not check_passed:
-    misc.log("Please correct the coco result format of {}".format(result_filename))
+    misc.log(f"Please correct the coco result format of {result_filename}")
     exit()
 misc.log(f"Saved {results_path}")

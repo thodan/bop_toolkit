@@ -101,6 +101,9 @@ for scene_id in targets_org:
                 results.append(result)
 
 result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_pose.csv"
+if not os.path.exists(p["results_path"]):
+    misc.log(f"Creating dir {p['results_path']}")
+    os.mkdir(p["results_path"])
 results_path = os.path.join(p["results_path"], result_filename)
 inout.save_bop_results(results_path, results)
 misc.log(f"Saved {results_path}")
