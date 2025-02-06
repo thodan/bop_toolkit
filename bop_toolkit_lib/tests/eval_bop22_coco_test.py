@@ -20,7 +20,7 @@ parser.add_argument("--tolerance", default=p["tolerance"], type=float)
 args = parser.parse_args()
 
 # Define path to directories
-RESULT_PATH = "./bop_toolkit_lib/tests/data"
+RESULT_PATH = "./bop_toolkit_lib/tests/data/results_sub"
 EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
 LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
 os.makedirs(EVAL_PATH, exist_ok=True)

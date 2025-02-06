@@ -39,7 +39,7 @@ p["use_gpu"] = bool(args.use_gpu)
 p["tolerance"] = float(args.tolerance)
 
 
-RESULT_PATH = "./bop_toolkit_lib/tests/data"
+RESULT_PATH = "./bop_toolkit_lib/tests/data/results_sub"
 EVAL_PATH = "./bop_toolkit_lib/tests/data/eval"
 LOGS_PATH = "./bop_toolkit_lib/tests/data/logs"
 os.makedirs(EVAL_PATH, exist_ok=True)
