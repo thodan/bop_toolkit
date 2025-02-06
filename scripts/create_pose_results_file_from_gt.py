@@ -3,8 +3,6 @@
 
 """
 Create POSE result files from ground truth annotation and targets file.
-Simply generate estimates from using all object gt poses from the test target file, without caring about visibility.
-Non visible estimates are discarded by eval pose scripts and do not impact AP/AR scores.
 """
 
 import os
