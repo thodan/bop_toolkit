@@ -469,7 +469,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
                                   "cam2" : ["rgb", "aolp", "dolp", "depth"], "cam3" : ["rgb", "aolp", "dolp", "depth"]}
             p["scene_ids"] = {
                 "test": list(range(15)),
-                "train": list(range(50)),
+                "train": list(range(10)),
                 "val": list(range(15)),
             }[split]
 
