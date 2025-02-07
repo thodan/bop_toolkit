@@ -33,6 +33,7 @@ def main():
     scenes_paths = glob.glob(dataset_split_path + '/*')
 
     for scene_path in scenes_paths:  # samples are not ordered
+        print("Processing scene: ", scene_path)
         scene_camera_world_json = os.path.join(scene_path, 'scene_gt_world.json')
         scene_camera_json = os.path.join(scene_path, 'scene_camera.json')
         scene_gt_json = os.path.join(scene_path, 'scene_gt.json')
@@ -49,8 +50,8 @@ def main():
             cam_trans = np.array(cam_info['cam_t_w2c'])
             cam_rot = np.array(cam_info['cam_R_w2c']).reshape(3,3)
             H_camZ_V = np.eye(4)
-            H_camZ_V[:3,:3] = cam_rot.transpose()
-            H_camZ_V[:3,3] = - cam_rot.transpose() @ cam_trans
+            H_camZ_V[:3,:3] = cam_rot
+            H_camZ_V[:3,3] = cam_trans
 
             frame_anno_list = []
             for obj_world_anno in objs_world_annos:

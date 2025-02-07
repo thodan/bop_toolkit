@@ -99,7 +99,7 @@ class Settings:
 
     def __init__(self):
         self.bg_color = gui.Color(1, 1, 1)
-        self.show_axes = False
+        self.show_axes = False  # TODO change to show axes by default
         self.highlight_obj = True
         self.cam_follow_obj = False
 
@@ -501,6 +501,7 @@ class AppWindow:
                                                    max_iteration=300)
             max_correspondence_distance = 1 # mm
             voxel_size = 1  # TODO test with 0.5 mm voxel size
+            # TODO if source or target is empty, print error and do nothing
             target_cloud_t = cloud_gpu(target, color_available)
             source_cloud_t = cloud_gpu(source, color_available)
             if color_available:
