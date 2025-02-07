@@ -30,6 +30,12 @@ p = {
         },
         {
             "n_top": 0,
+            "type": "mssd",
+            "correct_th": [[th] for th in range(2,21,2)],
+            "threshold_unit": "mm"
+        },
+        {
+            "n_top": 0,
             "type": "mspd",
             "correct_th": [[th] for th in np.arange(5, 51, 5)],
         },
@@ -185,6 +191,10 @@ for result_filename in p["result_filenames"]:
                     "--visib_gt_min={}".format(p["visib_gt_min"]),
                     "--eval_mode=detection",
                 ]
+                if "threshold_unit" in error:
+                    calc_scores_cmd += [
+                        "--normalized_by_diameter=[]"
+                    ]
                 if p["ignore_object_visible_less_than_visib_gt_min"]:
                     calc_scores_cmd += [
                         "--ignore_object_visible_less_than_visib_gt_min"
@@ -262,6 +272,9 @@ for result_filename in p["result_filenames"]:
                     f"mAP, {error['type']}, {obj_id}: {mAP_over_correct_th:.3f}"
                 )
                 mAP_over_correct_ths.append(mAP_over_correct_th)
+            if "threshold_unit" in error:
+                error["type"] = error["type"] + "_" + error["threshold_unit"]
+                
             mAP_per_error_type[error["type"]] = np.mean(mAP_over_correct_ths)
             logger.info(
                 f"{error['type']}, Final mAP: {mAP_per_error_type[error['type']]:.3f}"
@@ -280,6 +293,16 @@ for result_filename in p["result_filenames"]:
     # Final score for the given dataset.
     final_scores["bop24_mAP"] = np.mean(
         [mAP_per_error_type["mssd"], mAP_per_error_type["mspd"]]
+    )
+
+    # Final score for the given dataset.
+    final_scores["bop25_mAP"] = np.mean(
+        [mAP_per_error_type["mssd"]]
+    )
+
+        # Final score for the given dataset.
+    final_scores["bop25_mAP_mm"] = np.mean(
+        [mAP_per_error_type["mssd_mm"]]
     )
 
     # Average estimation time per image.
