@@ -177,6 +177,9 @@ for error_dir_path in p["error_dir_paths"]:
     # Evaluation signature.
     score_sign = misc.get_score_signature(p["correct_th"][err_type], p["visib_gt_min"])
 
+    if dataset == "xyzibd":
+        p["max_num_estimates_per_image"] = 200
+
     logger.info(
         "Calculating score - error: {}, method: {}, dataset: {}.".format(
             err_type, method, dataset
