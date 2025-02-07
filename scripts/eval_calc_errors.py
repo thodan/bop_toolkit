@@ -174,6 +174,9 @@ for result_filename in p["result_filenames"]:
         p["datasets_path"], dataset, split, split_type
     )
 
+    if dataset == "xyzibd":
+        p["max_num_estimates_per_image"] = 200
+
     if p["error_type"] not in dp_split["supported_error_types"]:
         raise ValueError("""{} error is not among {} """
                          """supported error types: {}""".format(p["error_type"], dataset, dp_split["supported_error_types"]))

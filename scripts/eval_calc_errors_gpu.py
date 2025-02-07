@@ -176,6 +176,9 @@ for result_filename in p["result_filenames"]:
         p["datasets_path"], dataset, split, split_type
     )
 
+    if dataset == "xyzibd":
+        p["max_num_estimates_per_image"] = 200
+
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
 

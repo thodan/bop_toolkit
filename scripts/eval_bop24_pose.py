@@ -104,6 +104,8 @@ for result_filename in p["result_filenames"]:
     # Name of the result and the dataset.
     result_name = os.path.splitext(os.path.basename(result_filename))[0]
     dataset = str(result_name.split("_")[1].split("-")[0])
+    if dataset == "xyzibd":
+        p["max_num_estimates_per_image"] = 200
 
     # Calculate the average estimation time per image.
     ests = inout.load_bop_results(
