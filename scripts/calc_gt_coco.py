@@ -19,9 +19,9 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "xyzibd",
+    "dataset": "tudl",
     # Dataset split. Options: 'train', 'test'.
-    "dataset_split": "test",
+    "dataset_split": "train",
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
@@ -64,13 +64,11 @@ INFO = {
     "version": "0.1.0",
     "year": datetime.date.today().year,
     "contributor": "",
-    "date_created": datetime.datetime.now(datetime.timezone.utc).isoformat(" "),
+    "date_created": datetime.datetime.utcnow().isoformat(" "),
 }
 
 for scene_id in dp_split["scene_ids"]:
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
-    scene_modality = dataset_params.get_scene_sensor_or_modality(dp_split["eval_modality"], scene_id)
-    scene_sensor = dataset_params.get_scene_sensor_or_modality(dp_split["eval_sensor"], scene_id)
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
     segmentation_id = 1
 
@@ -104,9 +102,12 @@ for scene_id in dp_split["scene_ids"]:
     for scene_view, inst_list in scene_gt.items():
         im_id = int(scene_view)
 
-        img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
+        img_path = dp_split["rgb_tpath"].format(scene_id=scene_id, im_id=im_id)
         relative_img_path = os.path.relpath(img_path, os.path.dirname(coco_gt_path))
-        im_size = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)
+        if 'cam_model' in scene_camera[im_id]:
+            im_size = scene_camera[im_id]["cam_model"]["image_width"], scene_camera[im_id]["cam_model"]["image_height"]
+        else:
+            im_size = dp_split["im_size"]
         image_info = pycoco_utils.create_image_info(
             im_id, relative_img_path, im_size
         )

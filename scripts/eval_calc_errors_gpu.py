@@ -83,7 +83,6 @@ p = {
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
-    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
 }
 ################################################################################
 
@@ -176,9 +175,6 @@ for result_filename in p["result_filenames"]:
         p["datasets_path"], dataset, split, split_type
     )
 
-    if dataset == "xyzibd":
-        p["max_num_estimates_per_image"] = 200
-
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
 
@@ -229,8 +225,7 @@ for result_filename in p["result_filenames"]:
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
-    max_num_estimates_per_image = p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None
-    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=max_num_estimates_per_image)
+    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None)
 
     # Organize the pose estimates by scene, image and object.
     logger.info("Organizing pose estimates...")
@@ -261,7 +256,7 @@ for result_filename in p["result_filenames"]:
         # for each scene, organize the estimates per object as each object
         est_per_object = copy.deepcopy(estimate_templates)
 
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
         # Load camera and GT poses for the current scene.
         scene_camera = inout.load_scene_camera(
@@ -403,11 +398,10 @@ for result_filename in p["result_filenames"]:
                         "obj_id": obj_id,
                         "est_id": est_id,
                         "score": score,
-                        "gt_visib_fracts": {},
+                        "gt_visib_fract": gt_visib_fract,
                         "errors": {},
                     }
                 scene_errs[key_name]["errors"][gt_id] = [errors[i]]
-                scene_errs[key_name]["gt_visib_fracts"][gt_id] = [gt_visib_fract]
 
         scene_errs = [v for k, v in scene_errs.items()]
         del est_per_object

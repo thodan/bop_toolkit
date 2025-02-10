@@ -59,6 +59,7 @@ p = {
         "tyol": 15,
         "ycbv": 15,
         "hope": 15,
+        "industrial": 15
     },
     "vsd_taus": list(np.arange(0.05, 0.51, 0.05)),
     "vsd_normalized_by_diameter": True,
@@ -174,9 +175,6 @@ for result_filename in p["result_filenames"]:
         p["datasets_path"], dataset, split, split_type
     )
 
-    if dataset == "xyzibd":
-        p["max_num_estimates_per_image"] = 200
-
     if p["error_type"] not in dp_split["supported_error_types"]:
         raise ValueError("""{} error is not among {} """
                          """supported error types: {}""".format(p["error_type"], dataset, dp_split["supported_error_types"]))
@@ -249,8 +247,7 @@ for result_filename in p["result_filenames"]:
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
-    max_num_estimates_per_image = p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None
-    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=max_num_estimates_per_image)
+    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None)
 
     # Organize the pose estimates by scene, image and object.
     logger.info("Organizing pose estimates...")
@@ -262,7 +259,7 @@ for result_filename in p["result_filenames"]:
 
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(

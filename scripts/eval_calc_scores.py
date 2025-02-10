@@ -177,9 +177,6 @@ for error_dir_path in p["error_dir_paths"]:
     # Evaluation signature.
     score_sign = misc.get_score_signature(p["correct_th"][err_type], p["visib_gt_min"])
 
-    if dataset == "xyzibd":
-        p["max_num_estimates_per_image"] = 200
-
     logger.info(
         "Calculating score - error: {}, method: {}, dataset: {}.".format(
             err_type, method, dataset
@@ -220,7 +217,7 @@ for error_dir_path in p["error_dir_paths"]:
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
@@ -234,7 +231,10 @@ for error_dir_path in p["error_dir_paths"]:
         scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
 
         # Handle change of image size location between BOP19 and BOP24 dataset formats
-        scene_im_widths[scene_id] = dataset_params.get_im_size(dp_split, dp_split['eval_modality'], dp_split['eval_sensor'])[0]
+        if "cam_model" in next(iter(scene_camera.items()))[1]:
+            scene_im_widths[scene_id] = scene_camera[0]["cam_model"]["image_width"]
+        else:
+            scene_im_widths[scene_id] = float(dp_split["im_size"][0])
 
         # Keep GT poses only for the selected targets.
         scene_gt_curr = {}

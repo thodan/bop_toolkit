@@ -268,8 +268,6 @@ def vis_object_poses(
             {"name": "min diff", "fmt": ":.3f", "val": np.min(depth_diff_valid)},
             {"name": "max diff", "fmt": ":.3f", "val": np.max(depth_diff_valid)},
             {"name": "mean diff", "fmt": ":.3f", "val": np.mean(depth_diff_valid)},
-            {"name": "median diff", "fmt": ":.3f", "val": np.median(np.abs(depth_diff_valid))},
-            {"name": "25 percentile", "fmt": ":.3f", "val": np.percentile(np.abs(depth_diff_valid), 25)},
         ]
         depth_diff_vis = write_text_on_image(depth_diff_vis, depth_info)
         inout.save_im(vis_depth_diff_path, depth_diff_vis)

@@ -96,7 +96,7 @@ class BatchRenderer:
         for worker_id in range(num_workers_used):
             cmd = [
                 "python",
-                "bop_toolkit_lib/call_vsd_worker.py",
+                "external/bop_toolkit/bop_toolkit_lib/call_vsd_worker.py",
                 f"--input_dir={self.tmp_dir}",
                 f"--worker_id={worker_id}",
             ]

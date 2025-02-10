@@ -121,7 +121,7 @@ for result_filename in p["result_filenames"]:
     misc.log("Merging coco annotations and predictions...")
     # Merge coco scene annotations and results
     for i, scene_id in enumerate(targets_org):
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
         
         scene_coco_ann_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
         if p["ann_type"] == "bbox" and p["bbox_type"] == "modal":

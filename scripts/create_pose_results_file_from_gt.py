@@ -3,8 +3,6 @@
 
 """
 Create POSE result files from ground truth annotation and targets file.
-Simply generate estimates from using all object gt poses from the test target file, without caring about visibility.
-Non visible estimates are discarded by eval pose scripts and do not impact AP/AR scores.
 """
 
 import os
@@ -13,7 +11,6 @@ import argparse
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
-from bop_toolkit_lib import misc
 
 
 # PARAMETERS (can be overwritten by the command line arguments below).
@@ -22,14 +19,16 @@ p = {
     # Out perfect result file name 
     "results_name": 'gt-results',    
     # Predefined test targets 
-    "targets_filename": "test_targets_bop24.json",
+    "targets_filename": "test_targets_bop24.json",    
     # Folder with results to be evaluated.
     "results_path": config.results_path,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
-    "dataset": "xyzibd",
+    "dataset": "ycbv",
     "split": "test",  
     "split_type": None,
+    # by default, we consider only objects that are at least 10% visible
+    "visib_gt_min": 0.1,
     "eval_mode": "localization",
 }
 ################################################################################
@@ -41,6 +40,7 @@ parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--split", default=p["split"])
 parser.add_argument("--split_type", default=p["split_type"])
+parser.add_argument("--visib_gt_min", default=p["visib_gt_min"])
 parser.add_argument("--eval_mode", default=p["eval_mode"])
 args = parser.parse_args()
 
@@ -51,6 +51,7 @@ p["targets_filename"] = str(args.targets_filename)
 p["dataset"] = str(args.dataset)
 p["split"] = str(args.split)
 p["split_type"] = str(args.split_type) if args.split_type is not None else None
+p["visib_gt_min"] = float(args.visib_gt_min)
 p["eval_mode"] = str(args.eval_mode)
 
 # Load dataset parameters.
@@ -61,31 +62,33 @@ dp_split = dataset_params.get_split_params(
 targets_path = os.path.join(p["datasets_path"], p["dataset"], p["targets_filename"])
 targets = inout.load_json(targets_path)
 
-# Load the estimation targets.
-targets = inout.load_json(
-    os.path.join(dp_split["base_path"], p["targets_filename"])
-)
+unique_scene_ids = set([t["scene_id"] for t in targets])
 
-# Organize the targets by scene and image.
-misc.log("Organizing estimation targets...")
-targets_org = {}
-for target in targets:
-    targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})
-
+scene_gts = {}
+scene_gts_info = {}
 results = []
-for scene_id in targets_org:
-    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
-    scene_gt_path = dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
-    scene_gt_info_path = dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
-    scene_gt = inout.load_scene_gt(scene_gt_path)
-    scene_gt_info = inout.load_scene_gt(scene_gt_info_path)
+for target in targets:
+    scene_id, im_id = target["scene_id"], target["im_id"] 
 
-    for im_id in targets_org[scene_id]:
-        img_gt = scene_gt[im_id]
-        img_gt_info = scene_gt_info[im_id]
+    tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
 
-        for obj_gt in img_gt:
+    if scene_id not in scene_gts:
+        scene_gts[scene_id] = inout.load_scene_gt(
+            dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id)
+        )
+        scene_gts_info[scene_id] = inout.load_scene_gt(
+            dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id)
+        )
+
+    img_gt = scene_gts[scene_id][im_id]
+    img_gt_info = scene_gts_info[scene_id][im_id]
+    
+    if "obj_id" not in target:
+        target = inout.get_im_targets(img_gt, img_gt_info, p["visib_gt_min"], p["eval_mode"])
+
+    for obj_gt in img_gt:
+        if obj_gt["obj_id"] in target:
             result = {
                 "scene_id": int(scene_id),
                 "im_id": int(im_id),
@@ -95,9 +98,9 @@ for scene_id in targets_org:
                 "t": obj_gt["cam_t_m2c"],
                 "time": -1.0,
             }
-            results.append(result)
+        results.append(result)
 
-result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_pose.csv"
+result_filename = "{}_{}-{}_pose.csv".format(p["results_name"], p["dataset"], p["split"])
 results_path = os.path.join(p["results_path"], result_filename)
 inout.save_bop_results(results_path, results)
-misc.log(f"Saved {results_path}")
+print('Saved ', results_path)
