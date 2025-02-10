@@ -292,17 +292,16 @@ for result_filename in p["result_filenames"]:
             error["type"]
         ]
 
-    # Final score for the given dataset.
+    # Final scores for the given dataset.
     final_scores["bop24_mAP"] = np.mean(
         [mAP_per_error_type["mssd"], mAP_per_error_type["mspd"]]
     )
-
-    # Final score for the given dataset.
+    final_scores["bop24_mAP_mm"] = np.mean(
+        [mAP_per_error_type["mssd_mm"], mAP_per_error_type["mspd"]]
+    )
     final_scores["bop25_mAP"] = np.mean(
         [mAP_per_error_type["mssd"]]
     )
-
-        # Final score for the given dataset.
     final_scores["bop25_mAP_mm"] = np.mean(
         [mAP_per_error_type["mssd_mm"]]
     )
