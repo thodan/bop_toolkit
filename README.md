@@ -13,8 +13,10 @@ A Python toolkit of the BOP benchmark for 6D object pose estimation
 
 ### Python Dependencies
 
-To install the required python libraries, run:
+To install the required libraries in python 3.8.20:
 ```
+pip install numpy==1.24.4
+pip install cython==3.0.11
 pip install -r requirements.txt -e .
 ```
 
