@@ -60,6 +60,9 @@ dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["split"], p["split_type"]
 )
 
+if not os.path.exists(dp_split["base_path"]):
+    misc.log(f'{dp_split["base_path"]} does not exist')
+
 targets_path = os.path.join(p["datasets_path"], p["dataset"], p["targets_filename"])
 targets = inout.load_json(targets_path)
 

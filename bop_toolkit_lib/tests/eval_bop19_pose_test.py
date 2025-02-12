@@ -16,7 +16,7 @@ from bop_toolkit_lib import misc
 p = {
     # Use generate results from gt files instead of submissions 
     "gt_from_datasets": [],  # e.g. ['ycbv', 'lmo']
-    "targets_filename": "test_targets_bop24.json",
+    "targets_filename": "test_targets_bop19.json",
     "renderer_type": "vispy",  # Options: 'vispy', 'cpp', 'python'.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
