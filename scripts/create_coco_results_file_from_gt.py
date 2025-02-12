@@ -58,6 +58,9 @@ p["bbox_type"] = str(args.bbox_type)
 dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["split"], p["split_type"]
 )
+if not os.path.exists(dp_split["base_path"]):
+    misc.log(f'Dataset does not exist: {dp_split["base_path"]}')
+    exit()
 
 # Load and organize the estimation targets.
 target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
