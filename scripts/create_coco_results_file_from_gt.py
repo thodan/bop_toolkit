@@ -17,6 +17,12 @@ from bop_toolkit_lib import misc
 # PARAMETERS (can be overwritten by the command line arguments below).
 ################################################################################
 p = {
+    # Dataset name. See dataset_params.py for options.
+    "dataset": "xyzibd",
+    # Dataset split. See dataset_params.py for options
+    "split": "test",  
+    # Dataset split type. See dataset_params.py for options
+    "split_type": None,
     # Out perfect result file name 
     "results_name": 'gt-results',    
     # Predefined test targets 
@@ -25,21 +31,18 @@ p = {
     "results_path": config.results_path,
     # Folder containing the BOP datasets.
     "datasets_path": config.datasets_path,
-    "dataset": "ycbv",
-    "split": "test",  
-    "split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
     "bbox_type": "amodal",
 }
 ################################################################################
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--results_path", default=p["results_path"])
-parser.add_argument("--results_name", default=p["results_name"])
-parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--split", default=p["split"])
 parser.add_argument("--split_type", default=p["split_type"])
+parser.add_argument("--results_name", default=p["results_name"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--results_path", default=p["results_path"])
 parser.add_argument("--bbox_type", default=p["bbox_type"])
 args = parser.parse_args()
 
@@ -55,6 +58,9 @@ p["bbox_type"] = str(args.bbox_type)
 dp_split = dataset_params.get_split_params(
     p["datasets_path"], p["dataset"], p["split"], p["split_type"]
 )
+if not os.path.exists(dp_split["base_path"]):
+    misc.log(f'Dataset does not exist: {dp_split["base_path"]}')
+    exit()
 
 # Load and organize the estimation targets.
 target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
@@ -89,13 +95,15 @@ for scene_id in targets_org:
             }
             results.append(result)
 
-
-result_filename = "{}_{}-{}_coco.json".format(p["results_name"], p["dataset"], p["split"])
+if not os.path.exists(p["results_path"]):
+    misc.log(f"Creating dir {p['results_path']}")
+    os.mkdir(p["results_path"])
+result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_coco.json"
 results_path = os.path.join(p["results_path"], result_filename)
 inout.save_json(results_path, results)
 result_file_path = os.path.join(p["results_path"], result_filename)
 check_passed, _ = inout.check_coco_results(result_file_path, ann_type="segm")
 if not check_passed:
-    misc.log("Please correct the coco result format of {}".format(result_filename))
+    misc.log(f"Please correct the coco result format of {result_filename}")
     exit()
 misc.log(f"Saved {results_path}")

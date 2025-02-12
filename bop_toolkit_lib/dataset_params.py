@@ -537,7 +537,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
 
         supported_error_types = ["ad", "add", "adi", "mssd", "mspd"]
     elif dataset_name == "itoddmv":
-        sensor_modalities_have_separate_annotations = {"3d1": False, "cam0": False, "cam1": False, "cam2": False}
+        sensor_modalities_have_separate_annotations = {"3dlong": False, "cam0": False, "cam1": False, "cam2": False}
         p["im_modalities"] = {"3dlong": ["gray", "depth"], "cam0": ["gray"], "cam1": ["gray"], "cam2": ["gray"]}
         p["scene_ids"] = {
             "test": [1],
@@ -564,6 +564,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         exts = {
             "3dlong": {"gray": ".tif", "depth": ".tif"},
             "cam0": {"gray": ".tif"},
+            "cam1": {"gray": ".tif"},
+            "cam2": {"gray": ".tif"},
         }
 
         if split == "test":
