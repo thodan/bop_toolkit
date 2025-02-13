@@ -11,7 +11,7 @@ The datasets have the following structure:
 
 ```
 DATASET_NAME
-├─ camera[_TYPE].json
+├─ camera[_CAMTYPE].json
 ├─ dataset_info.json
 ├─ test_targets_bop19.json
 ├─ test_targets_bop24.json
@@ -21,16 +21,16 @@ DATASET_NAME
 │  ├─ obj_OBJ_ID.ply
 ├─ train|val|test[_SPLITTYPE]|onboarding_static|onboarding_dynamic
 │  ├─ SCENE_ID|OBJ_ID
-│  │  ├─ scene_camera[_TYPE].json
-│  │  ├─ scene_gt[_TYPE]son
-│  │  ├─ scene_gt_info[_TYPE].json
-│  │  ├─ scene_gt_coco[_TYPE].json
-│  │  ├─ depth[_TYPE]
-│  │  ├─ mask[_TYPE]
-│  │  ├─ mask_visib[_TYPE]
-│  │  ├─ rgb|gray[_TYPE]
+│  │  ├─ scene_camera[_CAMTYPE].json
+│  │  ├─ scene_gt[_CAMTYPE]son
+│  │  ├─ scene_gt_info[_CAMTYPE].json
+│  │  ├─ scene_gt_coco[_CAMTYPE].json
+│  │  ├─ depth[_CAMTYPE]
+│  │  ├─ mask[_CAMTYPE]
+│  │  ├─ mask_visib[_CAMTYPE]
+│  │  ├─ rgb|gray[_CAMTYPE]
 ```
-[_SPLITTYPE] and [_TYPE] are defined to be sensor and/or modality names in multi-sensory datasets.
+[_SPLITTYPE] and [_CAMTYPE] are defined to be sensor and/or modality names in multi-sensory datasets.
 
 * *models[\_MODELTYPE]* - 3D object models.
 * *models[\_MODELTYPE]\_eval* - "Uniformly" resampled and decimated 3D object
