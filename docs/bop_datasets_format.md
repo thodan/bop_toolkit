@@ -17,18 +17,18 @@ DATASET_NAME
 ├─ models[_MODELTYPE][_eval]
 │  ├─ models_info.json
 │  ├─ obj_OBJ_ID.ply
-├─ train|val|test[_TYPE]|onboarding_static|onboarding_dynamic
+├─ train|val|test[_SPLITTYPE]|onboarding_static|onboarding_dynamic
 │  ├─ SCENE_ID|OBJ_ID
-│  │  ├─ scene_camera.json
-│  │  ├─ scene_gt.json
-│  │  ├─ scene_gt_info.json
-│  │  ├─ scene_gt_coco.json
-│  │  ├─ depth
-│  │  ├─ mask
-│  │  ├─ mask_visib
-│  │  ├─ rgb|gray
+│  │  ├─ scene_camera[_TYPE].json
+│  │  ├─ scene_gt[_TYPE]son
+│  │  ├─ scene_gt_info[_TYPE].json
+│  │  ├─ scene_gt_coco[_TYPE].json
+│  │  ├─ depth[_TYPE]
+│  │  ├─ mask[_TYPE]
+│  │  ├─ mask_visib[_TYPE]
+│  │  ├─ rgb|gray[_TYPE]
 ```
-
+[_SPLITTYPE] and [_TYPE] are defined to be sensor and/or modality names in multi-sensory datasets.
 
 * *models[\_MODELTYPE]* - 3D object models.
 * *models[\_MODELTYPE]\_eval* - "Uniformly" resampled and decimated 3D object
