@@ -14,6 +14,8 @@ DATASET_NAME
 ├─ camera[_TYPE].json
 ├─ dataset_info.json
 ├─ test_targets_bop19.json
+├─ test_targets_bop24.json
+├─ [test_targets_multiview_bop25.json]
 ├─ models[_MODELTYPE][_eval]
 │  ├─ models_info.json
 │  ├─ obj_OBJ_ID.ply
@@ -45,10 +47,10 @@ DATASET_NAME
 * *camera.json* - Camera parameters (for sensor simulation only; per-image
   camera parameters are in files *scene_camera.json* - see below).
 * *dataset_info.md* - Dataset-specific information.
-* *test_targets_bop19.json* - A list of test targets used for the evaluation in
-the BOP Challenge 2019/2020/2022. The same list was used also in the ECCV 2018
-paper [1], with exception of T-LESS, for which the list from
-*test_targets_bop18.json* was used.
+* *test_targets_bop19.json* - A list of test targets used for the localization evaluation since the BOP Challenge 2019.
+* *test_targets_bop24.json* - A list of test targets used for the detection evaluation since the BOP Challenge 2024.
+the BOP Challenge 2019/2020/2022/2023/2024
+* *test_targets_multiview_bop25.json* - A list of test targets used for the multi-view detection evaluation since the BOP Challenge 2025.
 
 
 *MODELTYPE*, *TRAINTYPE*, *VALTYPE* and *TESTTYPE* are optional and used if more
