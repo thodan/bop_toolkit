@@ -88,6 +88,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "icmi": list(range(1, 7)),
         "icbin": list(range(1, 3)),
         "itodd": list(range(1, 29)),
+        "itoddmv": list(range(1, 29)),
         "hbs": [1, 3, 4, 8, 9, 10, 12, 15, 17, 18, 19, 22, 23, 29, 32, 33],
         "hb": list(range(1, 34)),  # Full HB dataset.
         "ycbv": list(range(1, 22)),
@@ -111,6 +112,7 @@ def get_model_params(datasets_path, dataset_name, model_type=None):
         "icmi": [1, 2, 6],
         "icbin": [1],
         "itodd": [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
+        "itoddmv": [2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 17, 18, 19, 23, 24, 25, 27, 28],
         "hbs": [10, 12, 18, 29],
         "hb": [6, 10, 11, 12, 13, 14, 18, 24, 29],
         "ycbv": [1, 13, 14, 16, 18, 19, 20, 21],
