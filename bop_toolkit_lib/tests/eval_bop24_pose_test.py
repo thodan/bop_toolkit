@@ -49,10 +49,10 @@ os.makedirs(LOGS_PATH, exist_ok=True)
 
 # Define the dataset dictionary
 FILE_DICTIONARY = {
-    "lmo_megaPose": ("cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv", "test_targets_bop19.csv"),
-    "lmo_gt": ("gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv", "test_targets_bop19.csv"),
-    "tless_megaPose": ("cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv", "test_targets_bop19.csv"),
-    "tless_gt": ("gt-pbrreal-rgb-mmodel_tless-test_tless.csv", "test_targets_bop19.csv"),
+    "lmo_megaPose": ("cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv", "test_targets_bop19.json"),
+    "lmo_gt": ("gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv", "test_targets_bop19.json"),
+    "tless_megaPose": ("cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv", "test_targets_bop19.json"),
+    "tless_gt": ("gt-pbrreal-rgb-mmodel_tless-test_tless.csv", "test_targets_bop19.json"),
 }
 
 # Define the expected scores

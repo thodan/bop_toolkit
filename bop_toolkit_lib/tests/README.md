@@ -32,7 +32,7 @@ Run eval test scripts with `--gt_from_datasets` argument, e.g.:
 
 ```
 python bop_toolkit_lib/tests/eval_bop19_pose_test.py --gt_from_datasets lmo,ycbv,tless,itodd,hb,icbin,tudl
-python bop_toolkit_lib/tests/eval_bop22_pose_test.py --gt_from_datasets lmo,ycbv,tless,itodd,hb,icbin,tudl,hopev2,hot3d,handal,ipd,xyzibd,itoddmv
+python bop_toolkit_lib/tests/eval_bop22_coco_test.py --gt_from_datasets lmo,ycbv,tless,itodd,hb,icbin,tudl,hopev2,hot3d,handal,ipd,xyzibd,itoddmv
 python bop_toolkit_lib/tests/eval_bop24_pose_test.py --gt_from_datasets hopev2,hot3d,handal,ipd,xyzibd,itoddmv
 ```
 
