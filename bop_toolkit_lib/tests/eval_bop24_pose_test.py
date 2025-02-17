@@ -55,30 +55,29 @@ FILE_DICTIONARY = {
     "tless_gt": ("gt-pbrreal-rgb-mmodel_tless-test_tless.csv", "test_targets_bop19.json"),
 }
 
-# Define the expected scores
+# Define the expected scores (from bop24 bop_toolkit commit e7ba9f2)
 EXPECTED_OUTPUT = {
     "lmo_megaPose": {
-        "bop24_mAP_mssd": 0.503589108910891,
-        "bop24_mAP_mspd": 0.6172029702970296,
-        "bop24_mAP": 0.5603960396039603,
+        "bop24_mAP_mssd": 0.44000810549674874,
+        "bop24_mAP_mspd": 0.5685263874253823,
+        "bop24_mAP": 0.5042672464610656,
     },
     "lmo_gt": {
-        "bop24_mAP_mssd": 1.0,
-        "bop24_mAP_mspd": 1.0,
-        "bop24_mAP": 1.0,
+        "bop24_mAP_mssd": 0.9678217821782178,
+        "bop24_mAP_mspd": 0.9678217821782178,
+        "bop24_mAP": 0.9678217821782178,
     },
     "tless_megaPose": {
-        "bop24_mAP_mssd": 0.5056105610561056,
-        "bop24_mAP_mspd": 0.5648844884488449,
-        "bop24_mAP": 0.5352475247524753,
+        "bop24_mAP_mssd": 0.4387896135435956,
+        "bop24_mAP_mspd": 0.5085668907013268,
+        "bop24_mAP": 0.4736782521224612,
     },
     "tless_gt": {
-        "bop24_mAP_mssd": 1.0, 
-        "bop24_mAP_mspd": 1.0,
-        "bop24_mAP": 1.0,
+        "bop24_mAP_mssd": 0.9765676567656766,
+        "bop24_mAP_mspd": 0.9765676567656766,
+        "bop24_mAP": 0.9765676567656766,
     },
 }
-
 
 # If using ground truth datasets, redefine result files and expected results
 if len(p["gt_from_datasets"]) > 0:
