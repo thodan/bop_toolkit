@@ -22,6 +22,10 @@ p = {
     "dataset": "xyzibd",
     # Dataset split. Options: 'train', 'test'.
     "dataset_split": "test",
+    # Predefined test targets, either 'test_targets_bop19.json' or 'test_targets_bop24.json'. 
+    "targets_filename": "test_targets_bop19.json",
+    # Instead of using the predefined test targets, use all GT poses. 
+    "use_all_gt": False,
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     "dataset_split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
@@ -34,6 +38,8 @@ p = {
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--dataset_split", default=p["dataset_split"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--use_all_gt", action="store_true")
 parser.add_argument("--dataset_split_type", default=p["dataset_split_type"])
 parser.add_argument("--bbox_type", default=p["bbox_type"])
 parser.add_argument("--datasets_path", default=p["datasets_path"])
@@ -66,6 +72,11 @@ INFO = {
     "contributor": "",
     "date_created": datetime.datetime.now(datetime.timezone.utc).isoformat(" "),
 }
+
+# Load and organize the estimation targets.
+target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+targets = inout.load_json(target_file_path)
+targets_org = misc.reorganize_targets(targets)
 
 for scene_id in dp_split["scene_ids"]:
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
@@ -101,8 +112,10 @@ for scene_id in dp_split["scene_ids"]:
     )
 
     # Go through each view in scene_gt
-    for scene_view, inst_list in scene_gt.items():
-        im_id = int(scene_view)
+    for im_id, inst_list in scene_gt.items():
+        # Skip if the image is not in the targets
+        if scene_id not in targets_org or im_id not in targets_org[scene_id]:
+            continue
 
         img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
         relative_img_path = os.path.relpath(img_path, os.path.dirname(coco_gt_path))
@@ -111,7 +124,7 @@ for scene_id in dp_split["scene_ids"]:
             im_id, relative_img_path, im_size
         )
         coco_scene_output["images"].append(image_info)
-        gt_info = scene_gt_info[scene_view]
+        gt_info = scene_gt_info[im_id]
 
         # Go through each instance in view
         for idx, inst in enumerate(inst_list):

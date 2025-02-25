@@ -466,3 +466,24 @@ def get_eval_calc_errors_script_name(use_gpu, error_type, dataset):
         if error_type != "mspd" or dataset != 'hot3d':
             return gpu_script
     return cpu_script
+
+
+def reorganize_targets(targets, organize_by_obj_ids=False):
+    """
+    Reorganizes the targets by scene_id, im_id, and optionally obj_id.
+
+    # targets_org : {"scene_id": {"im_id": {5: {"im_id": 3, "inst_count": 1, "obj_id": 3, "scene_id": 48}}}}
+
+    :param targets: List of targets.
+    :param organize_by_obj_ids: Whether to organize the targets by obj_id.
+    :return targets_org: Organized targets.
+    """
+    targets_org = {}
+
+    for target in targets:
+        if organize_by_obj_ids:
+            targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})[target["obj_id"]] = target
+        else:
+            targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
+
+    return targets_org
