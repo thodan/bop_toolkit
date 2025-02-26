@@ -65,12 +65,10 @@ if not os.path.exists(dp_split["base_path"]):
 # Load and organize the estimation targets.
 target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
 targets = inout.load_json(target_file_path)
-targets_org = {}
-for target in targets:
-    targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})
+targets_org = misc.reorganize_targets(targets)
+
 results = []
 
-# loop over coco annotation and select based on targets
 for scene_id in targets_org:
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 

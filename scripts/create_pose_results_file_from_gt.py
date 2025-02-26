@@ -46,7 +46,6 @@ parser.add_argument("--split_type", default=p["split_type"])
 parser.add_argument("--min_visib_gt", default=p["min_visib_gt"])
 args = parser.parse_args()
 
-
 p["results_path"] = str(args.results_path)
 p["results_name"] = str(args.results_name)
 p["targets_filename"] = str(args.targets_filename)
@@ -63,21 +62,13 @@ if not os.path.exists(dp_split["base_path"]):
     misc.log(f'Dataset does not exist: {dp_split["base_path"]}')
     exit()
 
-targets_path = os.path.join(p["datasets_path"], p["dataset"], p["targets_filename"])
-targets = inout.load_json(targets_path)
-
-# Load the estimation targets.
-targets = inout.load_json(
-    os.path.join(dp_split["base_path"], p["targets_filename"])
-)
-
-# Organize the targets by scene and image.
-misc.log("Organizing estimation targets...")
-targets_org = {}
-for target in targets:
-    targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})
+# Load and organize the estimation targets.
+target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+targets = inout.load_json(target_file_path)
+targets_org = misc.reorganize_targets(targets)
 
 results = []
+
 for scene_id in targets_org:
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
