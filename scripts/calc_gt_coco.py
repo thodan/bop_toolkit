@@ -22,12 +22,12 @@ p = {
     "dataset": "xyzibd",
     # Dataset split. Options: 'train', 'test'.
     "dataset_split": "test",
+    # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
+    "dataset_split_type": None,
     # Predefined test targets, either 'test_targets_bop19.json' or 'test_targets_bop24.json'. 
     "targets_filename": "test_targets_bop19.json",
     # Instead of using the predefined test targets, use all GT poses. 
     "use_all_gt": False,
-    # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
-    "dataset_split_type": None,
     # bbox type. Options: 'modal', 'amodal'.
     "bbox_type": "amodal",
     # Folder containing the BOP datasets.
@@ -38,36 +38,30 @@ p = {
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--dataset_split", default=p["dataset_split"])
+parser.add_argument("--dataset_split_type", default=p["dataset_split_type"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--use_all_gt", action="store_true", default=p["use_all_gt"])
-parser.add_argument("--dataset_split_type", default=p["dataset_split_type"])
 parser.add_argument("--bbox_type", default=p["bbox_type"])
 parser.add_argument("--datasets_path", default=p["datasets_path"])
 args = parser.parse_args()
 
-breakpoint()
-
-datasets_path = str(args.datasets_path)
-dataset_name = str(args.dataset)
-split = str(args.dataset_split)
 split_type = None if args.dataset_split_type is None else str(args.dataset_split_type)
-bbox_type = str(args.bbox_type)
 
 dp_split = dataset_params.get_split_params(
-    datasets_path, dataset_name, split, split_type=split_type
+    args.datasets_path, args.dataset, args.dataset_split, split_type=split_type
 )
-dp_model = dataset_params.get_model_params(datasets_path, dataset_name)
+dp_model = dataset_params.get_model_params(args.datasets_path, args.dataset)
 
-complete_split = split
+complete_split = args.dataset_split
 if dp_split["split_type"] is not None:
     complete_split += "_" + dp_split["split_type"]
 
 CATEGORIES = [
-    {"id": obj_id, "name": str(obj_id), "supercategory": dataset_name}
+    {"id": obj_id, "name": str(obj_id), "supercategory": args.dataset}
     for obj_id in dp_model["obj_ids"]
 ]
 INFO = {
-    "description": dataset_name + "_" + split,
+    "description": args.dataset + "_" + args.dataset_split,
     "url": "https://github.com/thodan/bop_toolkit",
     "version": "0.1.0",
     "year": datetime.date.today().year,
@@ -105,7 +99,7 @@ for scene_id in dp_split["scene_ids"]:
     )
     # Output coco path
     coco_gt_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
-    if bbox_type == "modal":
+    if args.bbox_type == "modal":
         coco_gt_path = coco_gt_path.replace("scene_gt_coco", "scene_gt_coco_modal")
     misc.log(
         "Calculating Coco Annotations - dataset: {} ({}, {}), scene: {}".format(
@@ -116,7 +110,9 @@ for scene_id in dp_split["scene_ids"]:
     # Go through each view in scene_gt
     for im_id, inst_list in scene_gt.items():
         # Skip if the image is not in the targets
-        if scene_id not in targets_org or im_id not in targets_org[scene_id]:
+        in_target = scene_id in targets_org and im_id in targets_org[scene_id]
+        if not args.use_all_gt and not in_target:
+            misc.log("Skip image {} in scene {}".format(im_id, scene_id))
             continue
 
         img_path = dp_split[tpath_keys["rgb_tpath"]].format(scene_id=scene_id, im_id=im_id)
@@ -144,18 +140,18 @@ for scene_id in dp_split["scene_ids"]:
             binary_inst_mask_visib = inout.load_depth(mask_visib_p).astype(bool)
             if binary_inst_mask_visib.sum() < 1:
                 continue
-            if bbox_type == "amodal":
+            if args.bbox_type == "amodal":
                 binary_inst_mask_full = inout.load_depth(mask_full_p).astype(bool)
                 if binary_inst_mask_full.sum() < 1:
                     continue
                 bounding_box = pycoco_utils.bbox_from_binary_mask(binary_inst_mask_full)
-            elif bbox_type == "modal":
+            elif args.bbox_type == "modal":
                 bounding_box = pycoco_utils.bbox_from_binary_mask(
                     binary_inst_mask_visib
                 )
             else:
                 raise Exception(
-                    "{} is not a valid bounding box type".format(p["bbox_type"])
+                    "{} is not a valid bounding box type".format(args.bbox_type)
                 )
 
             annotation_info = pycoco_utils.create_annotation_info(

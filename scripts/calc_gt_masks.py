@@ -4,6 +4,7 @@
 """Calculates masks of object models in the ground-truth poses."""
 
 import os
+import argparse
 import numpy as np
 
 from bop_toolkit_lib import config
@@ -23,6 +24,10 @@ p = {
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
     "dataset_split_type": None,
+    # Predefined test targets, either 'test_targets_bop19.json' or 'test_targets_bop24.json'. 
+    "targets_filename": "test_targets_bop19.json",
+    # Instead of using the predefined test targets, use all GT poses.
+    "use_all_gt": True,
     # Tolerance used in the visibility test [mm].
     "delta": 15,  # 5 for ITODD, 15 for the other datasets.
     # Type of the renderer.
@@ -36,22 +41,40 @@ p = {
 }
 ################################################################################
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", default=p["dataset"])
+parser.add_argument("--dataset_split", default=p["dataset_split"])
+parser.add_argument("--dataset_split_type", default=p["dataset_split_type"])
+parser.add_argument("--targets_filename", default=p["targets_filename"])
+parser.add_argument("--use_all_gt", action="store_true", default=p["use_all_gt"])
+parser.add_argument("--dont_use_all_gt", action="store_false", dest="use_all_gt")
+parser.add_argument("--delta", default=p["delta"])
+parser.add_argument("--renderer_type", default=p["renderer_type"])
+parser.add_argument("--datasets_path", default=p["datasets_path"])
+args = parser.parse_args()
+
+
+split_type = None if args.dataset_split_type is None else str(args.dataset_split_type)
+
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
-    p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
+    args.datasets_path, args.dataset, args.dataset_split, split_type
 )
 if p["modality"] is None:
     p["modality"] = dp_split["eval_modality"]
 if p["sensor"] is None:
     p["sensor"] = dp_split["eval_sensor"]
 
-classic_bop_format = isinstance(dp_split["im_modalities"], list)
-
 model_type = None
-if p["dataset"] == "tless":
+if args.dataset == "tless":
     model_type = "cad"
-dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
+dp_model = dataset_params.get_model_params(args.datasets_path, args.dataset, model_type)
+
+# Load and organize the estimation targets.
+target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+targets = inout.load_json(target_file_path)
+targets_org = misc.reorganize_targets(targets)
 
 scene_ids = dataset_params.get_present_scene_ids(dp_split)
 for scene_id in scene_ids:
@@ -82,25 +105,24 @@ for scene_id in scene_ids:
     else: # classical BOP format
         width, height = dp_split["im_size"]
     ren = renderer.create_renderer(
-        width, height, renderer_type=p["renderer_type"], mode="depth"
+        width, height, renderer_type=args.renderer_type, mode="depth"
     )
 
     # Add object models.
     for obj_id in dp_model["obj_ids"]:
         ren.add_object(obj_id, dp_model["model_tpath"].format(obj_id=obj_id))
 
-    im_ids = sorted(scene_gt.keys())
-    for im_id in im_ids:
-        if im_id % 100 == 0:
-            misc.log(
-                "Calculating masks - dataset: {} ({}, {}), scene: {}, im: {}".format(
-                    p["dataset"],
-                    p["dataset_split"],
-                    p["dataset_split_type"],
-                    scene_id,
-                    im_id,
-                )
-            )
+    for im_id in scene_gt:
+        # Skip if the image is not in the targets
+        in_target = scene_id in targets_org and im_id in targets_org[scene_id]
+        if not args.use_all_gt and not in_target:
+            misc.log("Skip image {} in scene {}".format(im_id, scene_id))
+            continue
+
+        misc.log(
+            f"Calculating mask - dataset: {args.dataset} "
+            f"({args.dataset_split}, {split_type}), scene: {scene_id}, im: {im_id}"
+        )
 
         K = scene_camera[im_id]["cam_K"]
         fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
@@ -127,7 +149,7 @@ for scene_id in scene_ids:
 
             # Mask of the visible part of the object silhouette.
             mask_visib = visibility.estimate_visib_mask_gt(
-                dist_im, dist_gt, p["delta"], visib_mode="bop19"
+                dist_im, dist_gt, args.delta, visib_mode="bop19"
             )
 
             # Save the calculated masks.
