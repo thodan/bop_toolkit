@@ -52,13 +52,17 @@ parser.add_argument("--ann_type", default=p["ann_type"])
 parser.add_argument("--compress", action="store_true", default=p["compress"])
 args = parser.parse_args()
 
+split_type = str(args.split_type) if args.split_type is not None else None
+
+misc.log(f"Creating coco {args.ann_type} results from gt for {args.dataset}")
+
 assert args.ann_type in ["segm", "bbox"]
 
-p["split_type"] = str(args.split_type) if args.split_type is not None else None
+
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
-    p["datasets_path"], args.dataset, args.split, p["split_type"]
+    p["datasets_path"], args.dataset, args.split, split_type
 )
 if not os.path.exists(dp_split["base_path"]):
     misc.log(f'Dataset does not exist: {dp_split["base_path"]}')
