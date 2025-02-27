@@ -33,6 +33,10 @@ p = {
     "datasets_path": config.datasets_path,
     # bbox type. Options: 'modal', 'amodal'.
     "bbox_type": "amodal",
+    # Include segmentation masks in the result file.
+    "ann_type": "segm",  # Options: 'bbox', 'segm'.
+    # Save the result file in GZIP format.
+    "compress": False,
 }
 ################################################################################
 
@@ -44,26 +48,24 @@ parser.add_argument("--results_name", default=p["results_name"])
 parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--results_path", default=p["results_path"])
 parser.add_argument("--bbox_type", default=p["bbox_type"])
+parser.add_argument("--ann_type", default=p["ann_type"])
+parser.add_argument("--compress", action="store_true", default=p["compress"])
 args = parser.parse_args()
 
-p["results_path"] = str(args.results_path)
-p["results_name"] = str(args.results_name)
-p["targets_filename"] = str(args.targets_filename)
-p["dataset"] = str(args.dataset)
-p["split"] = str(args.split)
+assert args.ann_type in ["segm", "bbox"]
+
 p["split_type"] = str(args.split_type) if args.split_type is not None else None
-p["bbox_type"] = str(args.bbox_type)
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
-    p["datasets_path"], p["dataset"], p["split"], p["split_type"]
+    p["datasets_path"], args.dataset, args.split, p["split_type"]
 )
 if not os.path.exists(dp_split["base_path"]):
     misc.log(f'Dataset does not exist: {dp_split["base_path"]}')
     exit()
 
 # Load and organize the estimation targets.
-target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+target_file_path = os.path.join(dp_split["base_path"], args.targets_filename)
 targets = inout.load_json(target_file_path)
 targets_org = misc.reorganize_targets(targets)
 
@@ -73,7 +75,7 @@ for scene_id in targets_org:
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
     coco_gt_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
-    if p["bbox_type"] == "modal":
+    if args.bbox_type == "modal":
         coco_gt_path = coco_gt_path.replace("scene_gt_coco", "scene_gt_coco_modal")
     scene_coco_ann = inout.load_json(coco_gt_path)['annotations']
     
@@ -87,21 +89,21 @@ for scene_id in targets_org:
                 "bbox": ann['bbox'], 
                 "score": 1.0, 
                 "category_id": ann['category_id'], 
-                "segmentation": ann['segmentation'], 
                 "time": -1, 
                 "scene_id": scene_id
             }
+            if args.ann_type == 'segm':
+                result["segmentation"] = ann['segmentation']
             results.append(result)
 
-if not os.path.exists(p["results_path"]):
+if not os.path.exists(args.results_path):
     misc.log(f"Creating dir {p['results_path']}")
-    os.mkdir(p["results_path"])
-result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_coco.json"
-results_path = os.path.join(p["results_path"], result_filename)
-inout.save_json(results_path, results)
-result_file_path = os.path.join(p["results_path"], result_filename)
-check_passed, _ = inout.check_coco_results(result_file_path, ann_type="segm")
+    os.mkdir(args.results_path)
+result_filename = f"{args.results_name}_{args.dataset}-{p['split']}_coco.json"
+results_path = os.path.join(args.results_path, result_filename)
+inout.save_json(results_path, results, args.compress, verbose=True)
+result_file_path = os.path.join(args.results_path, result_filename)
+check_passed, _ = inout.check_coco_results(result_file_path, ann_type=args.ann_type)
 if not check_passed:
     misc.log(f"Please correct the coco result format of {result_filename}")
     exit()
-misc.log(f"Saved {results_path}")

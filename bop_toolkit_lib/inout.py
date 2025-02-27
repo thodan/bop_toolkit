@@ -92,7 +92,7 @@ def load_json(path, keys_to_int=False):
     return content
 
 
-def save_json(path, content, compress=False):
+def save_json(path, content, compress=False, verbose=False):
     """Saves the provided content to a JSON file.
 
     :param path: Path to the output JSON file.
@@ -128,6 +128,8 @@ def save_json(path, content, compress=False):
         json.dump(content, f, sort_keys=True)
 
     f.close()
+    if verbose:
+        misc.log(f"Saved {path}")
 
 
 def load_cam_params(path):
