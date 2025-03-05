@@ -12,7 +12,7 @@ Note that symmetry transformations are not available for these objects, but coul
 - [Mapping from an image key to the index of the shard where it is stored](https://huggingface.co/datasets/bop-benchmark/datasets/resolve/main/MegaPose-GSO/key_to_shard.json)
 - The dataset is in the [BOP-webdataset](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_webdataset.py) format and is split into 1040 shards, with each shard containing ~1000 images together with object annotations and camera parameters. Use the following URL template to download a shard (`<SHARD-ID>` is from `000000` to `001039`).
 ```
-https://huggingface.co/datasets/bop-benchmark/megapose/resolve/main/MegaPose-GSO/shard-<SHARD-ID>.tar
+https://huggingface.co/datasets/bop-benchmark/megapose/tree/main/MegaPose-GSO/shard-<SHARD-ID>.tar
 ```
 
 
@@ -23,5 +23,5 @@ https://huggingface.co/datasets/bop-benchmark/megapose/resolve/main/MegaPose-GSO
 - [Mapping from an image key to the index of the shard where it is stored](https://huggingface.co/datasets/bop-benchmark/datasets/resolve/main/MegaPose-ShapeNetCore/key_to_shard.json)
 - The dataset is in the [BOP-webdataset](https://github.com/thodan/bop_toolkit/tree/master/bop_toolkit_lib/dataset/bop_webdataset.py) format and is split into 1040 shards, with each shard containing ~1000 images together with object annotations and camera parameters. Use the following URL template to download a shard (`<SHARD-ID>` is from `000000` to `001039`).
 ```
-https://huggingface.co/datasets/bop-benchmark/megapose/resolve/main/MegaPose-ShapeNetCore/shard-<SHARD-ID>.tar
+https://huggingface.co/datasets/bop-benchmark/megapose/tree/main/MegaPose-ShapeNetCore/shard-<SHARD-ID>.tar
 ```
