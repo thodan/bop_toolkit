@@ -46,38 +46,25 @@ parser.add_argument("--split_type", default=p["split_type"])
 parser.add_argument("--min_visib_gt", default=p["min_visib_gt"])
 args = parser.parse_args()
 
+misc.log(f"Creating pose results from gt for {args.dataset}")
 
-p["results_path"] = str(args.results_path)
-p["results_name"] = str(args.results_name)
-p["targets_filename"] = str(args.targets_filename)
-p["dataset"] = str(args.dataset)
-p["split"] = str(args.split)
-p["split_type"] = str(args.split_type) if args.split_type is not None else None
-p["min_visib_gt"] = float(args.min_visib_gt)
+split_type = str(args.split_type) if args.split_type is not None else None
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
-    p["datasets_path"], p["dataset"], p["split"], p["split_type"]
+    p["datasets_path"], args.dataset, args.split, split_type
 )
 if not os.path.exists(dp_split["base_path"]):
     misc.log(f'Dataset does not exist: {dp_split["base_path"]}')
     exit()
 
-targets_path = os.path.join(p["datasets_path"], p["dataset"], p["targets_filename"])
-targets = inout.load_json(targets_path)
-
-# Load the estimation targets.
-targets = inout.load_json(
-    os.path.join(dp_split["base_path"], p["targets_filename"])
-)
-
-# Organize the targets by scene and image.
-misc.log("Organizing estimation targets...")
-targets_org = {}
-for target in targets:
-    targets_org.setdefault(target["scene_id"], {}).setdefault(target["im_id"], {})
+# Load and organize the estimation targets.
+target_file_path = os.path.join(dp_split["base_path"], args.targets_filename)
+targets = inout.load_json(target_file_path)
+targets_org = misc.reorganize_targets(targets)
 
 results = []
+
 for scene_id in targets_org:
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
@@ -91,7 +78,7 @@ for scene_id in targets_org:
         img_gt_info = scene_gt_info[im_id]
 
         for obj_gt, obj_gt_info in zip(img_gt, img_gt_info):
-            if obj_gt_info['visib_fract'] >= p["min_visib_gt"]:
+            if obj_gt_info['visib_fract'] >= args.min_visib_gt:
                 result = {
                     "scene_id": int(scene_id),
                     "im_id": int(im_id),
@@ -103,10 +90,10 @@ for scene_id in targets_org:
                 }
                 results.append(result)
 
-result_filename = f"{p['results_name']}_{p['dataset']}-{p['split']}_pose.csv"
-if not os.path.exists(p["results_path"]):
-    misc.log(f"Creating dir {p['results_path']}")
-    os.mkdir(p["results_path"])
-results_path = os.path.join(p["results_path"], result_filename)
+result_filename = f"{args.results_name}_{args.dataset}-{args.split}_pose.csv"
+if not os.path.exists(args.results_path):
+    misc.log(f"Creating dir {args.results_path}")
+    os.mkdir(args.results_path)
+results_path = os.path.join(args.results_path, result_filename)
 inout.save_bop_results(results_path, results)
 misc.log(f"Saved {results_path}")
