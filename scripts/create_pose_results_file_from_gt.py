@@ -42,6 +42,8 @@ p = {
     "stdo": 0.0,
     # RNG seed 
     "seed": 0,
+    # keep only the n_first first results, None keeps all results 
+    "n_first": None
 }
 ################################################################################
 
@@ -56,10 +58,12 @@ parser.add_argument("--min_visib_gt", default=p["min_visib_gt"])
 parser.add_argument("--stdt", type=float, default=p["stdt"])
 parser.add_argument("--stdo", type=float, default=p["stdo"])
 parser.add_argument("--seed", type=int, default=p["seed"])
+parser.add_argument("--n_first", default=p["n_first"])
 args = parser.parse_args()
 
 misc.log(f"Creating pose results from gt for {args.dataset}")
 split_type = str(args.split_type) if args.split_type is not None else None
+n_first = int(args.n_first) if args.n_first is not None else None
 
 rng = np.random.default_rng(args.seed)
 
@@ -110,6 +114,11 @@ for scene_id in targets_org:
                     "time": -1.0,
                 }
                 results.append(result)
+
+
+if n_first is not None:
+    results = results[:n_first]
+
 
 result_filename = f"{args.results_name}_{args.dataset}-{args.split}_pose.csv"
 if args.stdt > 0.0 or args.stdo > 0.0:
