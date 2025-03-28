@@ -78,6 +78,7 @@ p = {
     "targets_filename": "test_targets_bop19.json",
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "use_gpu": config.use_gpu,  # Use torch for the calculation of errors.
+    "device": "cuda:0",  # if use_gpu is true, use "device" for torch computations.
 }
 ################################################################################
 
@@ -85,30 +86,27 @@ p = {
 # Command line arguments.
 # ------------------------------------------------------------------------------
 parser = argparse.ArgumentParser()
-parser.add_argument("--renderer_type", default=p["renderer_type"])
+parser.add_argument("--renderer_type", type=str, default=p["renderer_type"])
 parser.add_argument(
     "--result_filenames",
+    type=str,
     default=",".join(p["result_filenames"]),
     help="Comma-separated names of files with results.",
 )
-parser.add_argument("--results_path", default=p["results_path"])
-parser.add_argument("--eval_path", default=p["eval_path"])
-parser.add_argument("--targets_filename", default=p["targets_filename"])
-parser.add_argument("--num_workers", default=p["num_workers"])
-parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
+parser.add_argument("--results_path", type=str, default=p["results_path"])
+parser.add_argument("--eval_path", type=str, default=p["eval_path"])
+parser.add_argument("--targets_filename", type=str, default=p["targets_filename"])
+parser.add_argument("--num_workers", type=int, default=p["num_workers"])
+parser.add_argument("--use_gpu", type=bool, action="store_true", default=p["use_gpu"])
+parser.add_argument("--device", type=str, default=p["device"])
 args = parser.parse_args()
 
-p["renderer_type"] = str(args.renderer_type)
-p["result_filenames"] = args.result_filenames.split(",")
-p["results_path"] = str(args.results_path)
-p["eval_path"] = str(args.eval_path)
-p["targets_filename"] = str(args.targets_filename)
-p["num_workers"] = int(args.num_workers)
+result_filenames = args.result_filenames.split(",")
 
 eval_time_start = time.time()
 # Evaluation.
 # ------------------------------------------------------------------------------
-for result_filename in p["result_filenames"]:
+for result_filename in result_filenames:
     logger.info("===========")
     logger.info("EVALUATING: {}".format(result_filename))
     logger.info("===========")
@@ -124,7 +122,7 @@ for result_filename in p["result_filenames"]:
 
     # Calculate the average estimation time per image.
     ests = inout.load_bop_results(
-        os.path.join(p["results_path"], result_filename), version="bop19"
+        os.path.join(args.results_path, result_filename), version="bop19"
     )
     times = {}
     times_available = True
@@ -151,7 +149,7 @@ for result_filename in p["result_filenames"]:
     # Evaluate the pose estimates.
     for error in p["errors"]:
         # Calculate error of the pose estimates.
-        calc_error_script = misc.get_eval_calc_errors_script_name(p["use_gpu"], error["type"], dataset)
+        calc_error_script = misc.get_eval_calc_errors_script_name(args.use_gpu, error["type"], dataset)
         calc_errors_cmd = [
             "python",
             os.path.join(
@@ -161,14 +159,16 @@ for result_filename in p["result_filenames"]:
             "--n_top={}".format(error["n_top"]),
             "--error_type={}".format(error["type"]),
             "--result_filenames={}".format(result_filename),
-            "--renderer_type={}".format(p["renderer_type"]),
-            "--results_path={}".format(p["results_path"]),
-            "--eval_path={}".format(p["eval_path"]),
-            "--targets_filename={}".format(p["targets_filename"]),
+            "--renderer_type={}".format(args.renderer_type),
+            "--results_path={}".format(args.results_path),
+            "--eval_path={}".format(args.eval_path),
+            "--targets_filename={}".format(args.targets_filename),
             "--max_sym_disc_step={}".format(p["max_sym_disc_step"]),
             "--skip_missing=1",
-            "--num_workers={}".format(p["num_workers"]),
+            "--num_workers={}".format(args.num_workers),
         ]
+        if args.use_gpu:
+            calc_errors_cmd.append(f"--device={args.device}")
         if error["type"] == "vsd":
             vsd_deltas_str = ",".join(
                 ["{}:{}".format(k, v) for k, v in error["vsd_deltas"].items()]
@@ -216,8 +216,8 @@ for result_filename in p["result_filenames"]:
                         "eval_calc_scores.py",
                     ),
                     "--error_dir_paths={}".format(error_dir_path),
-                    "--eval_path={}".format(p["eval_path"]),
-                    "--targets_filename={}".format(p["targets_filename"]),
+                    "--eval_path={}".format(args.eval_path),
+                    "--targets_filename={}".format(args.targets_filename),
                     "--visib_gt_min={}".format(p["visib_gt_min"]),
                 ]
 
@@ -228,13 +228,13 @@ for result_filename in p["result_filenames"]:
                 ]
                 calc_scores_cmds.append(calc_scores_cmd)
 
-        if p["num_workers"] == 1:
+        if args.num_workers == 1:
             for calc_scores_cmd in calc_scores_cmds:
                 logger.info("Running: " + " ".join(calc_scores_cmd))
                 if subprocess.call(calc_scores_cmd) != 0:
                     raise RuntimeError("Calculation of performance scores failed.")
         else:
-            with multiprocessing.Pool(p["num_workers"]) as pool:
+            with multiprocessing.Pool(args.num_workers) as pool:
                 pool.map_async(misc.run_command, calc_scores_cmds)
                 pool.close()
                 pool.join()
@@ -247,7 +247,7 @@ for result_filename in p["result_filenames"]:
 
                 scores_filename = "scores_{}.json".format(score_sign)
                 scores_path = os.path.join(
-                    p["eval_path"], result_name, error_sign, scores_filename
+                    args.eval_path, result_name, error_sign, scores_filename
                 )
 
                 # Load the scores.
@@ -279,7 +279,7 @@ for result_filename in p["result_filenames"]:
     final_scores["bop19_average_time_per_image"] = average_time_per_image
 
     # Save the final scores.
-    final_scores_path = os.path.join(p["eval_path"], result_name, "scores_bop19.json")
+    final_scores_path = os.path.join(args.eval_path, result_name, "scores_bop19.json")
     inout.save_json(final_scores_path, final_scores)
 
     # Print the final scores.
