@@ -97,7 +97,7 @@ parser.add_argument("--results_path", type=str, default=p["results_path"])
 parser.add_argument("--eval_path", type=str, default=p["eval_path"])
 parser.add_argument("--targets_filename", type=str, default=p["targets_filename"])
 parser.add_argument("--num_workers", type=int, default=p["num_workers"])
-parser.add_argument("--use_gpu", type=bool, action="store_true", default=p["use_gpu"])
+parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 parser.add_argument("--device", type=str, default=p["device"])
 args = parser.parse_args()
 
@@ -149,7 +149,7 @@ for result_filename in result_filenames:
     # Evaluate the pose estimates.
     for error in p["errors"]:
         # Calculate error of the pose estimates.
-        calc_error_script = misc.get_eval_calc_errors_script_name(args.use_gpu, error["type"], dataset)
+        calc_error_script, is_gpu_script_used = misc.get_eval_calc_errors_script_name(args.use_gpu, error["type"], dataset)
         calc_errors_cmd = [
             "python",
             os.path.join(
@@ -167,7 +167,7 @@ for result_filename in result_filenames:
             "--skip_missing=1",
             "--num_workers={}".format(args.num_workers),
         ]
-        if args.use_gpu:
+        if is_gpu_script_used:
             calc_errors_cmd.append(f"--device={args.device}")
         if error["type"] == "vsd":
             vsd_deltas_str = ",".join(

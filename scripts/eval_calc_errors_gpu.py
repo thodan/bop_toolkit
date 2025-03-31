@@ -117,7 +117,7 @@ parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--eval_mode", default=p["eval_mode"])
-parser.add_argument("--device", type="str", default=p["device"])
+parser.add_argument("--device", type=str, default=p["device"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -148,11 +148,11 @@ p["eval_mode"] = str(args.eval_mode)
 def is_specific_device_available(device_str):
     if not torch.cuda.is_available():
         return False  # CUDA is not available at all
-    
+
     # Handle "cuda" (defaults to cuda:0)
     if device_str == "cuda":
         return torch.cuda.device_count() >= 1
-    
+
     # Handle "cuda:X"
     if device_str.startswith("cuda:"):
         try:
@@ -160,18 +160,21 @@ def is_specific_device_available(device_str):
             return device_id < torch.cuda.device_count()
         except (ValueError, IndexError):
             return False  # Invalid format
-    
+
     return False  # Not a CUDA device string
 
 
 if is_specific_device_available(args.device):
     device = torch.device(args.device)
 else:
-    logger.error("CUDA is not available!")
+    logger.error(f"###########################################")
+    logger.error(f"CUDA device {args.device} is not available!")
+    logger.error(f"Falling back to 'cpu'")
+    logger.error(f"###########################################\n")
     device = torch.device("cpu")
 
 logger.info("-----------")
-logger.info(f"Using device={device}!")
+logger.info(f"Using device={device}")
 logger.info("Parameters:")
 for k, v in p.items():
     logger.info("- {}: {}".format(k, v))
