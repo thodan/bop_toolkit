@@ -8,6 +8,9 @@ Create POSE result files from ground truth annotation and targets file.
 import os
 import argparse
 
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -33,6 +36,14 @@ p = {
     "datasets_path": config.datasets_path,
     # Minimum visibility of the GT poses to include them in the output result file.
     "min_visib_gt": 0.0,  # bop24 uses 0.1, 0.0 -> all gts are stored
+    # add gaussian noise to the GT translation if stdt > 0, in millimeters (e.g. 5)
+    "stdt": 0.0,
+    # add gaussian noise to the GT orientation if stdo > 0, in radians (e.g. 0.1)
+    "stdo": 0.0,
+    # RNG seed 
+    "seed": 0,
+    # keep only the n_first first results, None keeps all results 
+    "n_first": None
 }
 ################################################################################
 
@@ -44,11 +55,17 @@ parser.add_argument("--dataset", default=p["dataset"])
 parser.add_argument("--split", default=p["split"])
 parser.add_argument("--split_type", default=p["split_type"])
 parser.add_argument("--min_visib_gt", default=p["min_visib_gt"])
+parser.add_argument("--stdt", type=float, default=p["stdt"])
+parser.add_argument("--stdo", type=float, default=p["stdo"])
+parser.add_argument("--seed", type=int, default=p["seed"])
+parser.add_argument("--n_first", default=p["n_first"])
 args = parser.parse_args()
 
 misc.log(f"Creating pose results from gt for {args.dataset}")
-
 split_type = str(args.split_type) if args.split_type is not None else None
+n_first = int(args.n_first) if args.n_first is not None else None
+
+rng = np.random.default_rng(args.seed)
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
@@ -79,18 +96,33 @@ for scene_id in targets_org:
 
         for obj_gt, obj_gt_info in zip(img_gt, img_gt_info):
             if obj_gt_info['visib_fract'] >= args.min_visib_gt:
+                cam_R_m2c = obj_gt["cam_R_m2c"]
+                cam_t_m2c = obj_gt["cam_t_m2c"]
+                if args.stdo > 0.0:
+                    # apply a local perturbation to the rotation matrix
+                    rot_vec_pert = rng.normal(loc=0.0, scale=args.stdo*np.ones(3))
+                    cam_R_m2c = cam_R_m2c @ R.from_rotvec(rot_vec_pert).as_matrix()
+                if args.stdt > 0.0:
+                    cam_t_m2c += rng.normal(loc=0.0, scale=args.stdt*np.ones(3)).reshape((3,1))
                 result = {
                     "scene_id": int(scene_id),
                     "im_id": int(im_id),
                     "obj_id": int(obj_gt["obj_id"]),
                     "score": 1.0,
-                    "R": obj_gt["cam_R_m2c"],
-                    "t": obj_gt["cam_t_m2c"],
+                    "R": cam_R_m2c,
+                    "t": cam_t_m2c,
                     "time": -1.0,
                 }
                 results.append(result)
 
+
+if n_first is not None:
+    results = results[:n_first]
+
+
 result_filename = f"{args.results_name}_{args.dataset}-{args.split}_pose.csv"
+if args.stdt > 0.0 or args.stdo > 0.0:
+    result_filename = f"{args.results_name}_{args.dataset}-{args.split}_stdt={args.stdt}_stdo={args.stdo}_pose.csv"
 if not os.path.exists(args.results_path):
     misc.log(f"Creating dir {args.results_path}")
     os.mkdir(args.results_path)
