@@ -458,14 +458,15 @@ def stop_disable_output(original_stdout):
 
 
 def get_eval_calc_errors_script_name(use_gpu, error_type, dataset):
+    """Return tuple (calc_error_script, is_gpu_script_used"""
     cpu_script = "eval_calc_errors.py"
     gpu_script = "eval_calc_errors_gpu.py"
 
     if use_gpu and error_type in ["mssd", "mspd"]:
         # mspd not supported for gpus for hot3d dataset
         if error_type != "mspd" or dataset != 'hot3d':
-            return gpu_script
-    return cpu_script
+            return gpu_script, True
+    return cpu_script, False
 
 
 def reorganize_targets(targets, organize_by_obj_ids=False):

@@ -6,7 +6,7 @@ import torch
 import gc
 from bop_toolkit_lib import misc_torch as misc
 
-MAX_BATCH_SIZE = 200  # (1.0 GB in average, less than 2 GB for all BOP objects)
+MAX_BATCH_SIZE = 400  # (1.0 GB in average, less than 2 GB for all BOP objects)
 
 
 class BatchedData:
