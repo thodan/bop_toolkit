@@ -221,6 +221,8 @@ for error_dir_path in p["error_dir_paths"]:
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
         tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
+        scene_modality = dataset_params.get_scene_sensor_or_modality(dp_split["eval_modality"], scene_id)
+        scene_sensor = dataset_params.get_scene_sensor_or_modality(dp_split["eval_sensor"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
@@ -234,7 +236,7 @@ for error_dir_path in p["error_dir_paths"]:
         scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
 
         # Handle change of image size location between BOP19 and BOP24 dataset formats
-        scene_im_widths[scene_id] = dataset_params.get_im_size(dp_split, dp_split['eval_modality'], dp_split['eval_sensor'])[0]
+        scene_im_widths[scene_id] = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)[0]
 
         # Keep GT poses only for the selected targets.
         scene_gt_curr = {}
