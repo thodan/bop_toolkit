@@ -230,18 +230,18 @@ for result_fname in p["result_filenames"]:
                     else:
                         rgb = rgb[:,:,:3]  # should we keep this?
 
-            depth = None
-            if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
-                depth_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, "depth")
-                if not depth_available:
-                    misc.log(f"{scene_sensor} has no depth data, skipping depth visualization")
-                    p["vis_depth_diff"] = False
-                    p["vis_rgb_resolve_visib"] = False
-                else:
-                    depth = inout.load_depth(
-                        dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
-                    )
-                    depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+                depth = None
+                if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+                    depth_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, "depth")
+                    if not depth_available:
+                        misc.log(f"{scene_sensor} has no depth data, skipping depth visualization")
+                        p["vis_depth_diff"] = False
+                        p["vis_rgb_resolve_visib"] = False
+                    else:
+                        depth = inout.load_depth(
+                            dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
+                        )
+                        depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
                 # Visualization name.
                 if p["vis_per_obj_id"]:
