@@ -13,7 +13,6 @@ description = "A Python toolkit of the BOP benchmark for 6D object pose estimati
 license = {text = "MIT license"}
 requires-python = ">=3.8,<=3.12"
 dependencies = [
-    "cython==3.0.11",
     "numpy<2.0.0",
     "pillow>=8.2.0,<=9.5.0",
     "pypng>=0.20220715.0",
