@@ -15,11 +15,14 @@ Supported python versions: [3.8-3.12]
 ### Using [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ```bash
-uv sync --python 3.10 # bop_toolkit_lib with core dependencies only
-# with additional dependencies
-uv sync --extra eval_gpu  # enable gpu evaluation 
-uv --extra eval_hot3d  # enable hot3d evaluation
+uv sync
 ```
+This commands sets up a local venv (activate with `source .venv/bin/activate`), install necessary dependencies and bop_toolkit_lib. You may provide additional flags such as:
+
+- `--python 3.10`: specify the venv python version
+- `--extra eval_gpu`: install dependencies for gpu evaluation  
+- `--extra eval_hot3d`: install dependencies for hot3d evaluation
+- `--extra scripts`: install dependencies for utility scripts (e.g. `annotation_tools.py`)
 
 ### Using pip
 ```bash
@@ -28,8 +31,6 @@ pip install .  # bop_toolkit_lib with core dependencies only
 pip install .[eval_gpu]  # enable gpu evaluation 
 pip install .[eval_hot3d]  # enable hot3d evaluation
 ```
-
-Note: the `pip` syntax may be used with uv as: `uv pip install .`
 
 ### Vispy Renderer (default)
 
