@@ -17,7 +17,7 @@ Supported python versions: [3.8-3.12]
 ```bash
 uv sync
 ```
-This commands sets up a local venv (activate with `source .venv/bin/activate`), install necessary dependencies and bop_toolkit_lib. You may provide additional flags such as:
+This commands sets up a local venv (activate with `source .venv/bin/activate`), installs necessary dependencies and bop_toolkit_lib. You may provide additional flags such as:
 
 - `--python 3.10`: specify the venv python version
 - `--extra eval_gpu`: install dependencies for gpu evaluation  
@@ -28,8 +28,9 @@ This commands sets up a local venv (activate with `source .venv/bin/activate`), 
 ```bash
 pip install .  # bop_toolkit_lib with core dependencies only
 # with additional dependencies
-pip install .[eval_gpu]  # enable gpu evaluation 
-pip install .[eval_hot3d]  # enable hot3d evaluation
+pip install .[eval_gpu]  # install dependencies for gpu evaluation
+pip install .[eval_hot3d]  # install dependencies for hot3d evaluation
+uv pip install .[scripts]  # install dependencies for utility scripts (e.g. `annotation_tools.py`)
 ```
 
 ### Vispy Renderer (default)
@@ -118,14 +119,6 @@ Set the dataset and split parameters in the top section of the script.
 ## Manual annotation tool
 
 To annotate a new dataset in BOP format use [this tool](./scripts/annotation_tool.py).
-
-Install with necessary dependencies
-
-```bash
-pip install .[scripts]
-# or
-uv pip install .[scripts]
-```
 
 Edit the file paths in parameters section at the beginning of the file then run:
 
