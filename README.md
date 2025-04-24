@@ -10,17 +10,28 @@ A Python toolkit of the BOP benchmark for 6D object pose estimation
   visualization of 6D object poses etc.
 
 ## Installation
+Supported python versions: [3.8-3.12]
 
-### Python Dependencies
+### Using [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
-To install the required libraries in python 3.8.20:
+```bash
+uv sync
 ```
-pip install numpy==1.24.4
-pip install cython==3.0.11
-pip install -r requirements.txt -e .
-```
+This commands sets up a local venv (activate with `source .venv/bin/activate`), installs necessary dependencies and bop_toolkit_lib. You may provide additional flags such as:
 
-In the case of problems, try to first run: ```pip install --upgrade pip setuptools```
+- `--python 3.10`: specify the venv python version
+- `--extra eval_gpu`: install dependencies for gpu evaluation  
+- `--extra eval_hot3d`: install dependencies for hot3d evaluation
+- `--extra scripts`: install dependencies for utility scripts (e.g. `annotation_tools.py`)
+
+### Using pip
+```bash
+pip install .  # bop_toolkit_lib with core dependencies only
+# with additional dependencies
+pip install .[eval_gpu]  # install dependencies for gpu evaluation
+pip install .[eval_hot3d]  # install dependencies for hot3d evaluation
+uv pip install .[scripts]  # install dependencies for utility scripts (e.g. `annotation_tools.py`)
+```
 
 ### Vispy Renderer (default)
 
@@ -108,12 +119,6 @@ Set the dataset and split parameters in the top section of the script.
 ## Manual annotation tool
 
 To annotate a new dataset in BOP format use [this tool](./scripts/annotation_tool.py).
-
-First install Open3d dependency
-
-```
-pip install open3d==0.15.2
-```
 
 Edit the file paths in parameters section at the beginning of the file then run:
 
