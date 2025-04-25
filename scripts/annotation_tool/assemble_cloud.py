@@ -13,7 +13,7 @@ import open3d as o3d
 import copy
 import numpy as np
 import json
-from scipy.spatial.transform import Rotation as R
+
 import os
 import glob
 from tqdm import tqdm
@@ -30,6 +30,9 @@ p = {
 
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     'dataset_split_type': None,
+
+    # list of scene ids to process
+    'scene_ids': [2],
 
     'show_assembled_cloud': True
 }
@@ -49,7 +52,8 @@ def main():
     dataset_split_path = os.path.join(
         p['dataset_path'],
         p['dataset_split'] + '_' + p['dataset_split_type'] if p['dataset_split_type'] else p['dataset_split'])
-    scenes_paths = glob.glob(dataset_split_path + '/*')
+
+    scenes_paths = [os.path.join(dataset_split_path, f'{scene_id:06d}') for scene_id in p['scene_ids']]
 
     for scene_path in scenes_paths:  # samples are not ordered
         assembled_cloud = o3d.geometry.PointCloud()
@@ -79,10 +83,10 @@ def main():
             rgb = o3d.io.read_image(rgb_img)
             depth = o3d.io.read_image(depth_img)
             # Extract RGDB image from RGB and Depth, intensity is set to false - get colour data (3 Channels)
-            depth_scale = scene_camera_data[str(index)]['depth_scale'] / 1000  # depth scale converts image to meter
-            depth_scale = 1/depth_scale  # depth scale for open3d is the inverse of the depth scale in BOP format
+            depth_scale = 1.0
             # convert depth to meter
             rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=depth_scale,
+                                                                      depth_trunc=5000,
                                                                       convert_rgb_to_intensity=False)  # rgbd in meter
             # get camera intrinsic parameters from scene_camera.json
             height, width, channels = np.asarray(rgb).shape
@@ -92,7 +96,6 @@ def main():
             cy = scene_camera_data[str(index)]['cam_K'][5]
             camera_intrinsics= o3d.camera.PinholeCameraIntrinsic(width=width, height=height, fx=fx, fy=fy, cx=cx, cy=cy)
             pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, camera_intrinsics)
-            pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
             # Open3d expects the inverse of the transform
             world2cam = np.linalg.inv(world2cam)
