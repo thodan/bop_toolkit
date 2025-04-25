@@ -11,9 +11,7 @@ import numpy as np
 import math
 from scipy.cluster.vq import kmeans
 
-from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
-from bop_toolkit_lib import misc
 from bop_toolkit_lib import transform
 
 # Get the base name of the file without the .py extension
