@@ -95,8 +95,8 @@ class BatchRenderer:
         cmds = []
         for worker_id in range(num_workers_used):
             cmd = [
-                "python",
-                "bop_toolkit_lib/call_vsd_worker.py",
+                "python",                
+                os.path.join(os.path.dirname(os.path.realpath(__file__)), "call_vsd_worker.py"),
                 f"--input_dir={self.tmp_dir}",
                 f"--worker_id={worker_id}",
             ]
