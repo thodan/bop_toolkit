@@ -80,9 +80,6 @@ source = { editable = "." }
 dependencies = [
     { name = "imageio", version = "2.35.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "imageio", version = "2.37.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
-    { name = "matplotlib", version = "3.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
-    { name = "matplotlib", version = "3.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "numpy", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "pillow" },
@@ -112,6 +109,9 @@ eval-hot3d = [
     { name = "hand-tracking-toolkit" },
 ]
 scripts = [
+    { name = "matplotlib", version = "3.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "matplotlib", version = "3.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "open3d" },
     { name = "opencv-python" },
 ]
@@ -120,7 +120,7 @@ scripts = [
 requires-dist = [
     { name = "hand-tracking-toolkit", marker = "extra == 'eval-hot3d'", git = "https://github.com/facebookresearch/hand_tracking_toolkit" },
     { name = "imageio", specifier = ">=2.35.1" },
-    { name = "matplotlib", specifier = ">=3.7.5" },
+    { name = "matplotlib", marker = "extra == 'scripts'", specifier = ">=3.7.5" },
     { name = "numpy", specifier = "<2.0.0" },
     { name = "open3d", marker = "extra == 'scripts'", specifier = ">=0.19.0" },
     { name = "opencv-python", marker = "extra == 'scripts'", specifier = ">=4.11.0.86" },
