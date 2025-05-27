@@ -20,7 +20,8 @@ uv sync
 This commands sets up a local venv (activate with `source .venv/bin/activate`), installs necessary dependencies and bop_toolkit_lib. You may provide additional flags such as:
 
 - `--python 3.10`: specify the venv python version
-- `--extra eval_gpu`: install dependencies for gpu evaluation  
+- `--extra eval_coco`: install dependencies for coco evaluation
+- `--extra eval_gpu`: install dependencies for gpu evaluation
 - `--extra eval_hot3d`: install dependencies for hot3d evaluation
 - `--extra scripts`: install dependencies for utility scripts (e.g. `annotation_tools.py`)
 
@@ -28,6 +29,7 @@ This commands sets up a local venv (activate with `source .venv/bin/activate`), 
 ```bash
 pip install .  # bop_toolkit_lib with core dependencies only
 # with additional dependencies
+pip install .[eval_coco]  # install dependencies for coco evaluation
 pip install .[eval_gpu]  # install dependencies for gpu evaluation
 pip install .[eval_hot3d]  # install dependencies for hot3d evaluation
 uv pip install .[scripts]  # install dependencies for utility scripts (e.g. `annotation_tools.py`)
