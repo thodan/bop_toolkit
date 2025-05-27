@@ -86,7 +86,6 @@ dependencies = [
     { name = "numpy", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "pillow" },
-    { name = "pycocotools" },
     { name = "pyopengl" },
     { name = "pypng" },
     { name = "pytz" },
@@ -102,6 +101,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+eval-coco = [
+    { name = "pycocotools" },
+]
 eval-gpu = [
     { name = "torch", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
@@ -123,7 +125,7 @@ requires-dist = [
     { name = "open3d", marker = "extra == 'scripts'", specifier = ">=0.19.0" },
     { name = "opencv-python", marker = "extra == 'scripts'", specifier = ">=4.11.0.86" },
     { name = "pillow", specifier = ">=8.2.0,<=9.5.0" },
-    { name = "pycocotools", git = "https://github.com/MartinSmeyer/cocoapi.git?subdirectory=PythonAPI" },
+    { name = "pycocotools", marker = "extra == 'eval-coco'", git = "https://github.com/MartinSmeyer/cocoapi.git?subdirectory=PythonAPI" },
     { name = "pyopengl", specifier = ">=3.1.0" },
     { name = "pypng", specifier = ">=0.20220715.0" },
     { name = "pytz", specifier = ">=2025.2" },
