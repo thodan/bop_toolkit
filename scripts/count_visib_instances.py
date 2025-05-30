@@ -6,8 +6,6 @@
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
-import os
-import zipfile
 from tqdm import tqdm
 # PARAMETERS.
 ################################################################################

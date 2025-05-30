@@ -55,6 +55,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
         best_gt_id = -1
         best_error = list(error_ths)
         for gt_id, error in e["errors"].items():
+            gt_visib_fract = e["gt_visib_fracts"][gt_id]
             # If the mask of valid GT poses is not provided, consider all valid.
             is_valid = not gt_valid_mask or gt_valid_mask[gt_id]
 
@@ -65,6 +66,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
                 if np.all([error[i] < best_error[i] for i in range(error_num_elems)]):
                     best_gt_id = gt_id
                     best_error = error
+                    gt_visib_fract_of_best_gt_id = gt_visib_fract
 
         if best_gt_id >= 0:
             # Mark the GT pose as matched.
@@ -83,7 +85,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
                     "score": e["score"],
                     "error": best_error,
                     "error_norm": best_errors_normed,
-                    "gt_visib_fract": e["gt_visib_fract"],
+                    "gt_visib_fract": gt_visib_fract_of_best_gt_id,
                 }
             )
 
@@ -91,7 +93,7 @@ def match_poses(errs, error_ths, max_ests_count=0, gt_valid_mask=None):
 
 
 def match_poses_scene(
-    scene_id, scene_gt, scene_gt_valid, scene_errs, correct_th, n_top
+    scene_id, scene_gt, scene_gt_info, scene_gt_valid, scene_errs, correct_th, n_top
 ):
     """Matches the estimated poses to the ground-truth poses in one scene.
 
@@ -124,6 +126,7 @@ def match_poses_scene(
         im_matches = []
 
         for gt_id, gt in enumerate(im_gts):
+            
             im_matches.append(
                 {
                     "scene_id": scene_id,
@@ -135,7 +138,7 @@ def match_poses_scene(
                     "error": -1,
                     "error_norm": -1,
                     "valid": scene_gt_valid[im_id][gt_id],
-                    "gt_visib_fract": -1, # initialize for each gt valid as -1
+                    "gt_visib_fract": scene_gt_info[im_id][gt_id]["visib_fract"], 
                 }
             )
 
@@ -157,7 +160,6 @@ def match_poses_scene(
                     g["score"] = m["score"]
                     g["error"] = m["error"]
                     g["error_norm"] = m["error_norm"]
-                    g["gt_visib_fract"] = m["gt_visib_fract"] # update gt_visib_fract
 
         scene_matches += im_matches
 

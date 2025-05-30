@@ -5,11 +5,7 @@
 import datetime
 import numpy as np
 import datetime
-import time
-from collections import defaultdict
-import copy
 from skimage import measure
-from itertools import groupby
 from bop_toolkit_lib import misc
 
 

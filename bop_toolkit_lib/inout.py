@@ -3,58 +3,59 @@
 
 """I/O functions."""
 
-import os
+import gzip
 import struct
 import numpy as np
-import imageio
+import numpy.typing as npt
+import imageio.v2 as iio
 import png
 import json
 from collections import defaultdict
+from pathlib import Path
+from typing import Union
 
 from bop_toolkit_lib import misc
 
 
-def load_im(path):
+def load_im(path: Union[str,Path]):
     """Loads an image from a file.
 
     :param path: Path to the image file to load.
     :return: ndarray with the loaded image.
     """
-    im = imageio.imread(path)
+    im = iio.imread(path)
     return im
 
 
-def save_im(path, im, jpg_quality=95):
+def save_im(path: Union[str,Path], im: npt.NDArray, jpg_quality: int =95):
     """Saves an image to a file.
 
     :param path: Path to the output image file.
     :param im: ndarray with the image to save.
     :param jpg_quality: Quality of the saved image (applies only to JPEG).
     """
-    ext = os.path.splitext(path)[1][1:]
-    if ext.lower() in ["jpg", "jpeg"]:
-        imageio.imwrite(path, im, quality=jpg_quality)
+    if Path(path).suffix.lower() in ["jpg", "jpeg"]:
+        iio.imwrite(path, im, quality=jpg_quality)
     else:
-        imageio.imwrite(path, im, compression=3)
+        iio.imwrite(path, im, compression=3)
 
 
-def load_depth(path):
+def load_depth(path: Union[str,Path]):
     """Loads a depth image from a file.
 
     :param path: Path to the depth image file to load.
     :return: ndarray with the loaded depth image.
     """
-    d = imageio.imread(path)
-    return d.astype(np.float32)
+    return iio.imread(path).astype(np.float32)
 
 
-def save_depth(path, im):
+def save_depth(path: Union[str,Path], im: npt.NDArray):
     """Saves a depth image (16-bit) to a PNG file.
 
     :param path: Path to the output depth image file.
     :param im: ndarray with the depth image to save.
     """
-    if path.split(".")[-1].lower() != "png":
+    if Path(path).suffix.lower() != ".png":
         raise ValueError("Only PNG format is currently supported.")
 
     im_uint16 = np.round(im).astype(np.uint16)
@@ -65,57 +66,79 @@ def save_depth(path, im):
         w_depth.write(f, np.reshape(im_uint16, (-1, im.shape[1])))
 
 
-def load_json(path, keys_to_int=False):
+def load_json(path: Union[str,Path], keys_to_int=False):
     """Loads content of a JSON file.
 
-    :param path: Path to the JSON file.
+    :param path: Path to the JSON file. If ".json.gz" extension, opens with gzip.
     :return: Content of the loaded JSON file.
     """
+    path = Path(path)
+    assert path.as_posix().endswith(('.json', '.json.gz')), f"{path} should end with .json or .json.gz extension"
 
     # Keys to integers.
     def convert_keys_to_int(x):
         return {int(k) if k.lstrip("-").isdigit() else k: v for k, v in x.items()}
+    
+    # Open+decompress with gzip if ".json.gz" file extension
+    if path.as_posix().endswith('.json.gz'):
+        f = gzip.open(path, "rt", encoding="utf8")
+    else:
+        f = open(path, "r")
+    if keys_to_int:
+        content = json.load(f, object_hook=lambda x: convert_keys_to_int(x))
+    else:
+        content = json.load(f)
 
-    with open(path, "r") as f:
-        if keys_to_int:
-            content = json.load(f, object_hook=lambda x: convert_keys_to_int(x))
-        else:
-            content = json.load(f)
+    f.close()
 
     return content
 
 
-def save_json(path, content):
+def save_json(path: Union[str,Path], content: dict, compress=False, verbose=False):
     """Saves the provided content to a JSON file.
 
     :param path: Path to the output JSON file.
     :param content: Dictionary/list to save.
+    :param compress: Saves as a gzip archive, appends ".gz" extension to filepath.
     """
-    with open(path, "w") as f:
-        if isinstance(content, dict):
-            f.write("{\n")
-            content_sorted = sorted(content.items(), key=lambda x: x[0])
-            for elem_id, (k, v) in enumerate(content_sorted):
-                f.write('  "{}": {}'.format(k, json.dumps(v, sort_keys=True)))
-                if elem_id != len(content) - 1:
-                    f.write(",")
-                f.write("\n")
-            f.write("}")
+    path = Path(path)
+    assert path.as_posix().endswith(('.json', '.json.gz')), f"{path} should end with .json or .json.gz extension"
+    
+    if compress:
+        if path.suffix == '.json':
+            path = path.parent / (path.stem + ".json.gz")
+        f = gzip.open(path, "wt", encoding="utf8")
+    else:
+        f = open(path, "w")
 
-        elif isinstance(content, list):
-            f.write("[\n")
-            for elem_id, elem in enumerate(content):
-                f.write("  {}".format(json.dumps(elem, sort_keys=True)))
-                if elem_id != len(content) - 1:
-                    f.write(",")
-                f.write("\n")
-            f.write("]")
+    if isinstance(content, dict):
+        f.write("{\n")
+        content_sorted = sorted(content.items(), key=lambda x: x[0])
+        for elem_id, (k, v) in enumerate(content_sorted):
+            f.write('  "{}": {}'.format(k, json.dumps(v, sort_keys=True)))
+            if elem_id != len(content) - 1:
+                f.write(",")
+            f.write("\n")
+        f.write("}")
 
-        else:
-            json.dump(content, f, sort_keys=True)
+    elif isinstance(content, list):
+        f.write("[\n")
+        for elem_id, elem in enumerate(content):
+            f.write("  {}".format(json.dumps(elem, sort_keys=True)))
+            if elem_id != len(content) - 1:
+                f.write(",")
+            f.write("\n")
+        f.write("]")
+
+    else:
+        json.dump(content, f, sort_keys=True)
+
+    f.close()
+    if verbose:
+        misc.log(f"Saved {path}")
 
 
-def load_cam_params(path):
+def load_cam_params(path: Union[str,Path]):
     """Loads camera parameters from a JSON file.
 
     :param path: Path to the JSON file.
@@ -139,7 +162,7 @@ def load_cam_params(path):
     return cam
 
 
-def _camera_as_numpy(camera):
+def _camera_as_numpy(camera: dict):
     """Convert fields from scene camera from native python to numpy.
 
     See docs/bop_datasets_format.md for details.
@@ -165,7 +188,7 @@ def _camera_as_numpy(camera):
     return camera
 
 
-def _camera_as_json(camera):
+def _camera_as_json(camera: dict):
     """Convert fields from scene camera from numpy to native python.
 
     See docs/bop_datasets_format.md for details.
@@ -191,7 +214,7 @@ def _camera_as_json(camera):
     return camera
 
 
-def load_scene_camera(path):
+def load_scene_camera(path: Union[str,Path]):
     """Loads content of a JSON file with information about the scene camera.
 
     See docs/bop_datasets_format.md for details.
@@ -206,7 +229,7 @@ def load_scene_camera(path):
     return scene_camera
 
 
-def save_scene_camera(path, scene_camera):
+def save_scene_camera(path: Union[str,Path], scene_camera: dict):
     """Saves information about the scene camera to a JSON file.
 
     See docs/bop_datasets_format.md for details.
@@ -219,7 +242,7 @@ def save_scene_camera(path, scene_camera):
     save_json(path, scene_camera)
 
 
-def _gt_as_numpy(gt):
+def _gt_as_numpy(gt: dict):
     if "cam_R_m2c" in gt.keys():
         gt["cam_R_m2c"] = np.array(gt["cam_R_m2c"], np.float64).reshape((3, 3))
     if "cam_t_m2c" in gt.keys():
@@ -227,7 +250,7 @@ def _gt_as_numpy(gt):
     return gt
 
 
-def _gt_as_json(gt):
+def _gt_as_json(gt: dict):
     if "cam_R_m2c" in gt.keys():
         gt["cam_R_m2c"] = gt["cam_R_m2c"].flatten().tolist()
     if "cam_t_m2c" in gt.keys():
@@ -237,7 +260,7 @@ def _gt_as_json(gt):
     return gt
 
 
-def load_scene_gt(path):
+def load_scene_gt(path: Union[str,Path]):
     """Loads content of a JSON file with ground-truth annotations.
 
     See docs/bop_datasets_format.md for details.
@@ -256,7 +279,7 @@ def load_scene_gt(path):
     return scene_gt
 
 
-def save_scene_gt(path, scene_gt):
+def save_scene_gt(path: Union[str,Path], scene_gt: dict):
     """Saves ground-truth annotations to a JSON file.
 
     See docs/bop_datasets_format.md for details.
@@ -276,7 +299,7 @@ def save_scene_gt(path, scene_gt):
     save_json(path, scene_gt)
 
 
-def load_bop_results(path, version="bop19"):
+def load_bop_results(path: Union[str,Path], version="bop19", max_num_estimates_per_image=None):
     """Loads 6D object pose estimates from a file.
 
     :param path: Path to a file with pose estimates.
@@ -321,10 +344,28 @@ def load_bop_results(path, version="bop19"):
     else:
         raise ValueError("Unknown version of BOP results.")
 
+    # Keep only the top max_num_estimates_per_image estimates for each image.
+    if max_num_estimates_per_image is not None:
+        # Group the results by image
+        im_results = defaultdict(list)
+        for res in results:
+            im_signature = (res["scene_id"], res["im_id"])
+            im_results[im_signature].append(res)
+        # Keep only the top n_top estimates for each image
+        filtered_results = []
+        num_ignored_estimates = 0
+        for im_signature in im_results.keys():
+            im_results[im_signature] = sorted(
+                im_results[im_signature], key=lambda x:x["score"], reverse=True
+            )
+            num_ignored_estimates += max(0, len(im_results[im_signature]) - max_num_estimates_per_image)
+            filtered_results.extend(im_results[im_signature][:max_num_estimates_per_image])
+        results = filtered_results
+        misc.log("Ignored {} estimates.".format(num_ignored_estimates))
     return results
 
 
-def save_bop_results(path, results, version="bop19"):
+def save_bop_results(path: Union[str,Path], results: list[dict], version="bop19"):
     """Saves 6D object pose estimates to a file.
 
     :param path: Path to the output file.
@@ -359,7 +400,7 @@ def save_bop_results(path, results, version="bop19"):
         raise ValueError("Unknown version of BOP results.")
 
 
-def check_bop_results(path, version="bop19"):
+def check_bop_results(path: Union[str,Path], version="bop19"):
     """Checks if the format of BOP results is correct.
 
     :param result_filenames: Path to a file with pose estimates.
@@ -398,11 +439,15 @@ def check_bop_results(path, version="bop19"):
     return check_passed, check_msg
 
 
-def check_coco_results(path, version="bop22", ann_type="segm"):
+def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
     """Checks if the format of extended COCO results is correct.
 
-    :param result_filenames: Path to a file with coco estimates.
+    :param path: Path to a file with coco estimates. If ".json.gz" extension, opens with gzip.
     :param version: Version of the results.
+    :param ann_type: type of annotation expected in the file.
+        "bbox" -> bounding boxes
+        "segm" -> segmentation mask
+    :param enforce_no_segm_if_bbox: prevent the presence of segmentation mask in the file if ann_type is "bbox"
     :return: True if the format is correct, False if it is not correct.
     """
 
@@ -428,6 +473,9 @@ def check_coco_results(path, version="bop22", ann_type="segm"):
                 assert isinstance(result["image_id"], int)
                 assert isinstance(result["category_id"], int)
                 assert isinstance(result["score"], float)
+                if enforce_no_segm_if_bbox:
+                    assert not (ann_type == "bbox" and "segmentation" in result), \
+                           "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
                 if "bbox" in result:
                     assert isinstance(result["bbox"], list)
                 if "segmentation" in result and ann_type == "segm":
@@ -445,7 +493,7 @@ def check_coco_results(path, version="bop22", ann_type="segm"):
     return check_passed, check_msg
 
 
-def save_coco_results(path, results, version="bop22"):
+def save_coco_results(path: Union[str,Path], results: list[dict], version="bop22", compress=False):
     """Saves detections/instance segmentations for each scene in coco format.
 
     "bbox" should be [x,y,w,h] in pixels
@@ -456,7 +504,6 @@ def save_coco_results(path, results, version="bop22"):
     :param version: Version of the results.
     """
 
-    # See docs/bop_challenge_2022.md for details.
     if version == "bop22":
         coco_results = []
         for res in results:
@@ -473,12 +520,12 @@ def save_coco_results(path, results, version="bop22"):
                     "time": res["run_time"] if "run_time" in res else -1,
                 }
             )
-        save_json(path, coco_results)
+        save_json(path, coco_results, compress)
     else:
         raise ValueError("Unknown version of BOP detection results.")
 
 
-def load_ply(path):
+def load_ply(path: Union[str,Path]):
     """Loads a 3D mesh model from a PLY file.
 
     :param path: Path to a PLY file.
@@ -582,6 +629,7 @@ def load_ply(path):
         "float": ("f", 4),
         "double": ("d", 8),
         "int": ("i", 4),
+        "uint": ("I", 4),
         "uchar": ("B", 1),
     }
 
@@ -674,7 +722,7 @@ def load_ply(path):
     return model
 
 
-def save_ply(path, model, extra_header_comments=None):
+def save_ply(path: Union[str,Path], model: dict, extra_header_comments=None):
     """Saves a 3D mesh model to a PLY file.
 
     :param path: Path to a PLY file.
@@ -817,8 +865,20 @@ def save_ply2(
     f.close()
 
 
-def get_im_targets(im_gt, im_gt_info, visib_gt_min, eval_mode="localization"):
+def get_im_targets(im_gt: dict, im_gt_info: dict, visib_gt_min: float, eval_mode="localization"):
+    """
+    From an image gt and gt info, given a minimum visibility, get valid object evaluation targets.
+
+    Output format: dict[obj_id]
+    {
+        <obj_id1>: {'inst_count': <inst_count_1>},
+        <obj_id2>: {'inst_count': <inst_count_2>},
+        ...
+    }
+    """
     im_targets = {}
+    # Objects gt detection are have gt and gt_info have same order.
+    # object id is retrieved from gt and visibility from gt info.
     for gt_id, gt in enumerate(im_gt):
         gt_info = im_gt_info[gt_id]
         obj_id = gt["obj_id"]

@@ -86,6 +86,7 @@ p = {
     ),
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
     "eval_modality": None,  # Options: depends on the dataset, e.g. for hot3d 'rgb'
+    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
 }
 ################################################################################
 
@@ -176,6 +177,9 @@ for error_dir_path in p["error_dir_paths"]:
     # Evaluation signature.
     score_sign = misc.get_score_signature(p["correct_th"][err_type], p["visib_gt_min"])
 
+    if dataset == "xyzibd":
+        p["max_num_estimates_per_image"] = 200
+
     logger.info(
         "Calculating score - error: {}, method: {}, dataset: {}.".format(
             err_type, method, dataset
@@ -195,8 +199,7 @@ for error_dir_path in p["error_dir_paths"]:
 
     # Load the estimation targets to consider.
     targets = inout.load_json(
-        os.path.join(dp_split["base_path"], p["targets_filename"])
-    )
+        os.path.join(dp_split["base_path"], p["targets_filename"]))
 
     # Organize the targets by scene, image and object.
     logger.info("Organizing estimation targets...")
@@ -217,7 +220,9 @@ for error_dir_path in p["error_dir_paths"]:
     for scene_id, scene_targets in targets_org.items():
         logger.info("Processing scene {} of {}...".format(scene_id, dataset))
 
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
+        scene_modality = dataset_params.get_scene_sensor_or_modality(dp_split["eval_modality"], scene_id)
+        scene_sensor = dataset_params.get_scene_sensor_or_modality(dp_split["eval_sensor"], scene_id)
 
         # Load GT poses for the current scene.
         scene_gt = inout.load_scene_gt(
@@ -231,58 +236,54 @@ for error_dir_path in p["error_dir_paths"]:
         scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
 
         # Handle change of image size location between BOP19 and BOP24 dataset formats
-        if "cam_model" in next(iter(scene_camera.items()))[1]:
-            scene_im_widths[scene_id] = scene_camera[0]["cam_model"]["image_width"]
-        else:
-            scene_im_widths[scene_id] = float(dp_split["im_size"][0])
+        scene_im_widths[scene_id] = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)[0]
 
         # Keep GT poses only for the selected targets.
         scene_gt_curr = {}
+        scene_gt_curr_info = {}
         scene_gt_valid = {}
         for im_id, im_targets in scene_targets.items():
 
             # Create im_targets directly from scene_gt and scene_gt_info.
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
+            # We need to re-define the target file for 6D detection tasks because:
+            # We want to consider all GT, not only GT>visib_gt_min since we want to ignore estimation matches with GT < visib_gt_min.  
             if p["eval_mode"] == "detection":
                 im_targets = inout.get_im_targets(im_gt=im_gt, im_gt_info=im_gt_info, visib_gt_min=p["visib_gt_min"], eval_mode=p["eval_mode"])
 
             scene_gt_curr[im_id] = scene_gt[im_id]
-
+            scene_gt_curr_info[im_id] = scene_gt_info[im_id]
             # Determine which GT poses are valid.
             im_gt = scene_gt[im_id]
             im_gt_info = scene_gt_info[im_id]
             scene_gt_valid[im_id] = [True] * len(im_gt)
-            if p["visib_gt_min"] >= 0:
-                # All GT poses visible from at least 100 * p['visib_gt_min'] percent
-                # are considered valid.
-                for gt_id, gt in enumerate(im_gt):
-                    is_target = gt["obj_id"] in im_targets.keys()
-                    is_visib = im_gt_info[gt_id]["visib_fract"] >= p["visib_gt_min"]
-                    is_valid = (
-                        is_target and is_visib
-                        if p["eval_mode"] == "localization"
-                        else is_target
+            # For 6D detection, we consider all GT are valid, scene_gt_valid = True
+            # For 6D localization, a GT is valid when it's in target_file and its visiblity > visib_gt_min
+            if p["eval_mode"] == "localization":
+                if p["visib_gt_min"] >= 0:
+                    for gt_id, gt in enumerate(im_gt):
+                        is_target = gt["obj_id"] in im_targets.keys()
+                        is_visib = im_gt_info[gt_id]["visib_fract"] >= p["visib_gt_min"]
+                        scene_gt_valid[im_id][gt_id] = is_target and is_visib
+                else:
+                    # k most visible GT poses are considered valid, where k is given by
+                    # the "inst_count" item loaded from "targets_filename".
+                    gt_ids_sorted = sorted(
+                        range(len(im_gt)),
+                        key=lambda gt_id: im_gt_info[gt_id]["visib_fract"],
+                        reverse=True,
                     )
-                    scene_gt_valid[im_id][gt_id] = is_valid
-            else:
-                # k most visible GT poses are considered valid, where k is given by
-                # the "inst_count" item loaded from "targets_filename".
-                gt_ids_sorted = sorted(
-                    range(len(im_gt)),
-                    key=lambda gt_id: im_gt_info[gt_id]["visib_fract"],
-                    reverse=True,
-                )
-                to_add = {
-                    obj_id: trg["inst_count"] for obj_id, trg in im_targets.items()
-                }
-                for gt_id in gt_ids_sorted:
-                    obj_id = im_gt[gt_id]["obj_id"]
-                    if obj_id in to_add.keys() and to_add[obj_id] > 0:
-                        scene_gt_valid[im_id][gt_id] = True
-                        to_add[obj_id] -= 1
-                    else:
-                        scene_gt_valid[im_id][gt_id] = False
+                    to_add = {
+                        obj_id: trg["inst_count"] for obj_id, trg in im_targets.items()
+                    }
+                    for gt_id in gt_ids_sorted:
+                        obj_id = im_gt[gt_id]["obj_id"]
+                        if obj_id in to_add.keys() and to_add[obj_id] > 0:
+                            scene_gt_valid[im_id][gt_id] = True
+                            to_add[obj_id] -= 1
+                        else:
+                            scene_gt_valid[im_id][gt_id] = False
 
         # Load pre-calculated errors of the pose estimates w.r.t. the GT poses.
         scene_errs_path = p["error_tpath"].format(
@@ -309,6 +310,7 @@ for error_dir_path in p["error_dir_paths"]:
         matches += pose_matching.match_poses_scene(
             scene_id,
             scene_gt_curr,
+            scene_gt_curr_info,
             scene_gt_valid,
             scene_errs,
             p["correct_th"][err_type],
@@ -331,11 +333,7 @@ for error_dir_path in p["error_dir_paths"]:
             dp_model["obj_ids"],
             matches,
             estimates,
-            n_top,
             visib_gt_min=p["visib_gt_min"],
-            ignore_object_visible_less_than_visib_gt_min=p[
-                "ignore_object_visible_less_than_visib_gt_min"
-            ],
         )
     else:
         raise ValueError("Unknown eval_mode: {}".format(p["eval_mode"]))

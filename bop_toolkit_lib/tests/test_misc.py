@@ -91,6 +91,54 @@ class TestMisc(unittest.TestCase):
             proj_htt[i] = pose_error_htt.project_pts_htt(self.pts, camera, R_np[i], t_np[i])
         self.assertTrue(np.allclose(proj_htt, proj_np, atol=1e-4))
 
+    def test_precomputer(self):
+
+        # precomputer static class start with None attributes
+        self.assertTrue(misc.Precomputer.xs is None)
+        self.assertTrue(misc.Precomputer.ys is None)
+        self.assertTrue(misc.Precomputer.pre_Xs is None)
+        self.assertTrue(misc.Precomputer.pre_Ys is None)
+        self.assertTrue(misc.Precomputer.K is None)
+
+        Ka = np.eye(3)
+        depth_ima = np.ones((10,10))
+
+        pre_Xs1, pre_Ys1 = misc.Precomputer.precompute_lazy(depth_ima, Ka)
+        self.assertEqual(depth_ima.shape, pre_Xs1.shape)
+        self.assertEqual(depth_ima.shape, pre_Ys1.shape)
+
+        # same inputs should return the same internal objects
+        pre_Xs1_bis, pre_Ys1_bis = misc.Precomputer.precompute_lazy(depth_ima, Ka)
+        self.assertEqual(id(pre_Xs1), id(pre_Xs1_bis))
+        self.assertEqual(id(pre_Ys1), id(pre_Ys1_bis))
+        self.assertTrue(np.allclose(pre_Xs1, pre_Xs1_bis, atol=1e-9))
+        self.assertTrue(np.allclose(pre_Ys1, pre_Ys1_bis, atol=1e-9))
+
+        # different intrinsics should trigger recomputation
+        Kb = 2*np.eye(3)
+        pre_Xs2, pre_Ys2 = misc.Precomputer.precompute_lazy(depth_ima, Kb)
+        self.assertNotEqual(id(pre_Xs1), id(pre_Xs2))
+        self.assertNotEqual(id(pre_Ys1), id(pre_Ys2))
+        self.assertFalse(np.allclose(pre_Xs1, pre_Xs2, atol=1e-9))
+        self.assertFalse(np.allclose(pre_Ys1, pre_Ys2, atol=1e-9))
+
+        # different depth image should trigger recomputation 
+        depth_imb = np.ones((20,20))
+        pre_Xs3, pre_Ys3 = misc.Precomputer.precompute_lazy(depth_imb, Kb)
+        self.assertNotEqual(id(pre_Xs2), id(pre_Xs3))
+        self.assertNotEqual(id(pre_Ys2), id(pre_Ys3))
+        self.assertNotEqual(pre_Xs2.shape, pre_Xs3.shape)
+        self.assertNotEqual(pre_Ys2.shape, pre_Ys3.shape)
+
+        # different intrinsics and depth image should trigger recomputation 
+        Kc = 3*np.eye(3)
+        depth_imc = np.ones((30,30))
+        pre_Xs4, pre_Ys4 = misc.Precomputer.precompute_lazy(depth_imc, Kc)
+        self.assertNotEqual(id(pre_Xs3), id(pre_Xs4))
+        self.assertNotEqual(id(pre_Ys3), id(pre_Ys4))
+        self.assertNotEqual(pre_Xs3.shape, pre_Xs4.shape)
+        self.assertNotEqual(pre_Ys3.shape, pre_Ys4.shape)
+
 
 if __name__ == "__main__":
     unittest.main()

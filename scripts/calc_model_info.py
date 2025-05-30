@@ -12,7 +12,7 @@ from bop_toolkit_lib import misc
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "lm",
+    "dataset": "hot3d",
     # Type of input object models.
     "model_type": None,
     # Folder containing the BOP datasets.
@@ -33,19 +33,19 @@ for obj_id in dp_model["obj_ids"]:
     model = inout.load_ply(dp_model["model_tpath"].format(obj_id=obj_id))
 
     # Calculate 3D bounding box.
-    ref_pt = map(float, model["pts"].min(axis=0).flatten())
-    size = map(float, (model["pts"].max(axis=0) - ref_pt).flatten())
+    xs, ys, zs = model["pts"][:,0], model["pts"][:,1], model["pts"][:,2]
+    bbox = misc.calc_3d_bbox(xs, ys, zs)
 
     # Calculated diameter.
     diameter = misc.calc_pts_diameter(model["pts"])
 
     models_info[obj_id] = {
-        "min_x": ref_pt[0],
-        "min_y": ref_pt[1],
-        "min_z": ref_pt[2],
-        "size_x": size[0],
-        "size_y": size[1],
-        "size_z": size[2],
+        "min_x": bbox[0],
+        "min_y": bbox[1],
+        "min_z": bbox[2],
+        "size_x": bbox[3],
+        "size_y": bbox[4],
+        "size_z": bbox[5],
         "diameter": diameter,
     }
 

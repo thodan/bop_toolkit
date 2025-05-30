@@ -83,6 +83,8 @@ p = {
     ),
     "num_workers": config.num_workers,  # Number of parallel workers for the calculation of errors.
     "eval_mode": "localization",  # Options: 'localization', 'detection'.
+    "max_num_estimates_per_image": 100,  # Maximum number of estimates per image. Only used for detection tasks.
+    "device": "cuda:0",  # use "device" for torch computations. If not available, falls back to "cpu".
 }
 ################################################################################
 
@@ -115,6 +117,7 @@ parser.add_argument("--targets_filename", default=p["targets_filename"])
 parser.add_argument("--out_errors_tpath", default=p["out_errors_tpath"])
 parser.add_argument("--num_workers", default=p["num_workers"])
 parser.add_argument("--eval_mode", default=p["eval_mode"])
+parser.add_argument("--device", type=str, default=p["device"])
 args = parser.parse_args()
 
 p["n_top"] = int(args.n_top)
@@ -141,12 +144,37 @@ p["out_errors_tpath"] = str(args.out_errors_tpath)
 p["num_workers"] = int(args.num_workers)
 p["eval_mode"] = str(args.eval_mode)
 
-if not torch.cuda.is_available():
-    logger.error("CUDA is not available!")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+def is_specific_device_available(device_str):
+    if not torch.cuda.is_available():
+        return False  # CUDA is not available at all
+
+    # Handle "cuda" (defaults to cuda:0)
+    if device_str == "cuda":
+        return torch.cuda.device_count() >= 1
+
+    # Handle "cuda:X"
+    if device_str.startswith("cuda:"):
+        try:
+            device_id = int(device_str.split(":")[1])
+            return device_id < torch.cuda.device_count()
+        except (ValueError, IndexError):
+            return False  # Invalid format
+
+    return False  # Not a CUDA device string
+
+
+if is_specific_device_available(args.device):
+    device = torch.device(args.device)
+else:
+    logger.error(f"###########################################")
+    logger.error(f"CUDA device {args.device} is not available!")
+    logger.error(f"Falling back to 'cpu'")
+    logger.error(f"###########################################\n")
+    device = torch.device("cpu")
 
 logger.info("-----------")
-logger.info(f"Using device={device}!")
+logger.info(f"Using device={device}")
 logger.info("Parameters:")
 for k, v in p.items():
     logger.info("- {}: {}".format(k, v))
@@ -174,6 +202,9 @@ for result_filename in p["result_filenames"]:
     dp_split = dataset_params.get_split_params(
         p["datasets_path"], dataset, split, split_type
     )
+
+    if dataset == "xyzibd":
+        p["max_num_estimates_per_image"] = 200
 
     model_type = "eval"
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
@@ -225,7 +256,8 @@ for result_filename in p["result_filenames"]:
 
     # Load pose estimates.
     logger.info("Loading pose estimates...")
-    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename))
+    max_num_estimates_per_image = p["max_num_estimates_per_image"] if p["eval_mode"] == "detection" else None
+    ests = inout.load_bop_results(os.path.join(p["results_path"], result_filename), max_num_estimates_per_image=max_num_estimates_per_image)
 
     # Organize the pose estimates by scene, image and object.
     logger.info("Organizing pose estimates...")
@@ -256,7 +288,7 @@ for result_filename in p["result_filenames"]:
         # for each scene, organize the estimates per object as each object
         est_per_object = copy.deepcopy(estimate_templates)
 
-        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], scene_id)
+        tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
 
         # Load camera and GT poses for the current scene.
         scene_camera = inout.load_scene_camera(
@@ -398,10 +430,11 @@ for result_filename in p["result_filenames"]:
                         "obj_id": obj_id,
                         "est_id": est_id,
                         "score": score,
-                        "gt_visib_fract": gt_visib_fract,
+                        "gt_visib_fracts": {},
                         "errors": {},
                     }
                 scene_errs[key_name]["errors"][gt_id] = [errors[i]]
+                scene_errs[key_name]["gt_visib_fracts"][gt_id] = [gt_visib_fract]
 
         scene_errs = [v for k, v in scene_errs.items()]
         del est_per_object

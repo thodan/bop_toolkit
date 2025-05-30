@@ -1,44 +1,42 @@
-# Unit tests of the BOP toolkit
-
-## Test of 2D detection tasks
+# Testing the evaluation scripts
+The tests verify consistency of AR/AP score between the evaluation scripts output and official bop website scores for a few chosen submissions.   
+## 2D detection tasks
 ```
 python bop_toolkit_lib/tests/eval_bop22_coco_test.py
 ```
 If an error occurs due to missing `scene_gt_coco.json`, run:   
-```python scripts/calc_gt_coco.py --dataset ycbv --dataset_split test```
+```python scripts/calc_gt_coco.py --dataset <dataset_name>```
 
-## Test of 6D localization task with CPU implementation
+## 6D localization task with CPU/GPU implementation
 ```
 python bop_toolkit_lib/tests/eval_bop19_pose_test.py
+python bop_toolkit_lib/tests/eval_bop19_pose_test.py --use_gpu
 ```
 
-## Test of 6D localization task with GPU implementation
-```
-python bop_toolkit_lib/tests/eval_bop19_pose_test_gpu.py
-```
-
-## Test of 6D detection task with CPU implementation
+## 6D detection task with CPU/GPU implementation
 ```
 python bop_toolkit_lib/tests/eval_bop24_pose_test.py
+python bop_toolkit_lib/tests/eval_bop24_pose_test.py --use_gpu
 
 # add more false positive samples
 python bop_toolkit_lib/tests/eval_bop24_pose_test.py --num_false_positives 10000
 ```
 
-## Test of 6D detection task with GPU implementation
+## Testing against ground-truth
+First generate all ground-truth result files:  
 ```
-python bop_toolkit_lib/tests/eval_bop24_pose_test_gpu.py
-
-# add more false positive samples
-python bop_toolkit_lib/tests/eval_bop24_pose_test_gpu.py --num_false_positives 10000
+sh bop_toolkit_lib/tests/create_all_gt_files.sh
 ```
 
-## Test of 6D detetection with only objects visible > 10% in the image
+Run eval test scripts with `--gt_from_datasets` argument, e.g.:
+
 ```
-python scripts/eval_bop24_pose.py --renderer_type=vispy --results_path ./bop_toolkit_lib/tests/data/ --eval_path ./bop_toolkit_lib/tests/data/ --result_filenames unittest-minVisib0_tless-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv --num_worker 10
+python bop_toolkit_lib/tests/eval_bop19_pose_test.py --gt_from_datasets lmo,ycbv,tless,itodd,hb,icbin,tudl
+python bop_toolkit_lib/tests/eval_bop22_coco_test.py --gt_from_datasets lmo,ycbv,tless,itodd,hb,icbin,tudl,hopev2,hot3d,handal,ipd,xyzibd,itoddmv
+python bop_toolkit_lib/tests/eval_bop24_pose_test.py --gt_from_datasets hopev2,hot3d,handal,ipd,xyzibd,itoddmv
 ```
 
-Results:
+## Run time results:
 <p align="center">
   <img src=./run_time_localization_tasks.png width="100%"/>
 </p>
