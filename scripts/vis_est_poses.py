@@ -80,13 +80,7 @@ for result_fname in p["result_filenames"]:
     misc.log("Processing: " + result_fname)
 
     # Parse info about the method and the dataset from the filename.
-    result_name = os.path.splitext(os.path.basename(result_fname))[0]
-    result_info = result_name.split("_")
-    method = result_info[0]
-    dataset_info = result_info[1].split("-")
-    dataset = dataset_info[0]
-    split = dataset_info[1]
-    split_type = dataset_info[2] if len(dataset_info) > 2 else None
+    result_name, method, dataset, split, split_type, _ = inout.parse_result_filename(result_filename)
 
     #######################
     # hot3d specific checks
