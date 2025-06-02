@@ -438,6 +438,9 @@ def check_bop_results(path: Union[str,Path], version="bop19"):
     try:
         results = load_bop_results(path, version)
 
+        if len(results) == 0:
+            return False, "Empty results"
+
         if version == "bop19":
             check_timings, check_msg_timings, times, times_available = check_consistent_timings(results, "im_id")
             if not check_timings:
@@ -469,6 +472,9 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
         check_msg = f"Error when loading BOP coco results: {e}"
         misc.log(check_msg)
         return False, check_msg
+    
+    if len(results) == 0:
+        return False, "Empty results"
 
     if version == "bop22":
         try:

@@ -152,18 +152,7 @@ for result_filename in p["result_filenames"]:
                 dataset_coco_results, scene_coco_results, image_id_offset
             )
 
-    # initialize COCO ground truth api
-    cocoGt = COCO(dataset_coco_ann)
-    cocoDt = cocoGt.loadRes(dataset_coco_results)
-
-    # running evaluation
-    cocoEval = COCOeval(cocoGt, cocoDt, p["ann_type"])
-    cocoEval.params.imgIds = sorted(cocoGt.getImgIds())
-    cocoEval.evaluate()
-    cocoEval.accumulate()
-    cocoEval.summarize()
-
-    res_type = [
+    res_types = [
         "AP",
         "AP50",
         "AP75",
@@ -177,7 +166,22 @@ for result_filename in p["result_filenames"]:
         "AR_medium",
         "AR_large",
     ]
-    coco_scores = {res_type[i]: stat for i, stat in enumerate(cocoEval.stats)}
+
+    # initialize COCO ground truth api
+    cocoGt = COCO(dataset_coco_ann)
+    try:
+        cocoDt = cocoGt.loadRes(dataset_coco_results)
+        # running evaluation
+        cocoEval = COCOeval(cocoGt, cocoDt, p["ann_type"])
+        cocoEval.params.imgIds = sorted(cocoGt.getImgIds())
+        cocoEval.evaluate()
+        cocoEval.accumulate()
+        cocoEval.summarize()
+        coco_scores = {res_types[i]: stat for i, stat in enumerate(cocoEval.stats)}
+
+    except IndexError as e:
+        misc.log(f"Error when loading the result: {e}")
+        coco_scores = {res_type: 0.0 for res_type in res_types}
 
     # Calculate the average estimation time per image.
     check_passed, check_msg, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
