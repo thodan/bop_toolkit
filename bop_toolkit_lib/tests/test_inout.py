@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 import numpy as np
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_almost_equal
 
 
 from bop_toolkit_lib import inout
@@ -11,10 +11,10 @@ from bop_toolkit_lib import inout
 class TestInout(unittest.TestCase):
 
     def setUp(self) -> None:
-        results_dir = Path(__file__).parent / 'data/results_sub'
-        self.csv_6d_path = results_dir / 'cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv'
-        self.json_coco_path = results_dir / 'zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528.json'
-    
+        results_dir = Path(__file__).parent / "data/results_sub"
+        self.csv_6d_path = results_dir / "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv"
+        self.json_coco_path = results_dir / "zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528.json"
+
     def test_load_save_operations(self):
         tmp = Path(__file__).parent / "tmp"
         tmp.mkdir(exist_ok=True)
@@ -45,8 +45,8 @@ class TestInout(unittest.TestCase):
         assert_almost_equal(np.round(depth).astype(np.uint16), depth_loaded)
 
         # json
-        json_coco_bis_path = self.json_coco_path.parent / (self.json_coco_path.stem + '_bis.json')
-        json_coco_gz_path = self.json_coco_path.parent / (self.json_coco_path.stem + '.json.gz')
+        json_coco_bis_path = self.json_coco_path.parent / (self.json_coco_path.stem + "_bis.json")
+        json_coco_gz_path = self.json_coco_path.parent / (self.json_coco_path.stem + ".json.gz")
 
         # load example json coco submission
         coco_res = inout.load_json(self.json_coco_path)
@@ -61,9 +61,9 @@ class TestInout(unittest.TestCase):
 
         self.assertTrue(len(coco_res) == len(coco_res_from_bis) == len(coco_res_from_gz))
         self.assertTrue(coco_res[0].keys() == coco_res_from_bis[0].keys() == coco_res_from_gz[0].keys())
-        self.assertTrue(coco_res[0]['time'] == coco_res_from_bis[0]['time'] == coco_res_from_gz[0]['time'])
-        self.assertTrue(coco_res[0]['score'] == coco_res_from_bis[0]['score'] == coco_res_from_gz[0]['score'])
-        self.assertTrue(coco_res[0]['bbox'] == coco_res_from_bis[0]['bbox'] == coco_res_from_gz[0]['bbox'])
+        self.assertTrue(coco_res[0]["time"] == coco_res_from_bis[0]["time"] == coco_res_from_gz[0]["time"])
+        self.assertTrue(coco_res[0]["score"] == coco_res_from_bis[0]["score"] == coco_res_from_gz[0]["score"])
+        self.assertTrue(coco_res[0]["bbox"] == coco_res_from_bis[0]["bbox"] == coco_res_from_gz[0]["bbox"])
 
 
         # cleanup
