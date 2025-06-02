@@ -418,10 +418,7 @@ def check_consistent_timings(results, im_id_key):
             times_available = False
         if result_key in times:
             if abs(times[result_key] - result["time"]) > 0.001:
-                check_msg = (
-                    f"The running time for scene {scene_id} and image {im_id} is not the same for"
-                    " all estimates."
-                )
+                check_msg = f"The running time for scene {scene_id} and image {im_id} is not the same for all estimates."
                 misc.log(check_msg)
                 return False, check_msg, times, times_available
         else:
@@ -498,8 +495,8 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
                 if "time" in result:
                     assert isinstance(result["time"], (float, int))
 
-        except AssertionError as msg:
-            check_msg = f"Error when checking keys and types: {msg}"
+        except (AssertionError, Exception) as e:
+            check_msg = f"Error when checking keys and types: {e}"
             misc.log(check_msg)
             return False, check_msg
 
