@@ -132,8 +132,6 @@ def plot_recall_curves(recall_dict, p):
         )
 
     plt.show()
-    breakpoint()
-
 
 for result_filename in p["result_filenames"]:
     misc.log("===========")

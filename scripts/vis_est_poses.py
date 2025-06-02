@@ -37,7 +37,7 @@ p = {
     # object in each image.
     "n_top": 0,  # 0 = all estimates, -1 = given by the number of GT poses.
     # True = one visualization for each (im_id, obj_id), False = one per im_id.
-    "vis_per_obj_id": False,
+    "vis_per_obj_id": True,
     # Indicates whether to render RGB image.
     "vis_rgb": True,
     # Indicates whether to resolve visibility in the rendered RGB images (using
