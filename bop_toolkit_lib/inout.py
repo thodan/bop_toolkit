@@ -3,6 +3,7 @@
 
 """I/O functions."""
 
+import os
 import gzip
 import struct
 import numpy as np
@@ -403,7 +404,7 @@ def save_bop_results(path: Union[str,Path], results: list[dict], version="bop19"
 def check_bop_results(path: Union[str,Path], version="bop19"):
     """Checks if the format of BOP results is correct.
 
-    :param result_filenames: Path to a file with pose estimates.
+    :param path: Path to a file with pose estimates.
     :param version: Version of the results.
     :return: True if the format is correct, False if it is not correct.
     """
@@ -892,3 +893,128 @@ def get_im_targets(im_gt: dict, im_gt_info: dict, visib_gt_min: float, eval_mode
             im_targets[obj_id] = {"inst_count": 0}
         im_targets[obj_id]["inst_count"] += 1
     return im_targets
+
+
+def parse_result_filename(result_filename: Union[str,Path]):
+    """
+    Parse result filename to get method, dataset, split and split_type.
+
+    Result file needs to follow one of the valid BOP result file format:
+    - "{method}_{dataset}-{split}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+    - "{method}_{dataset}-{split}-{split_type}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+
+    where the individual elements :
+    - method: name of the method used to produced the results
+    - dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    - split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    - split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    - optional_id: id that may be attached to uniquely identify result file
+    - ext: file extension (e.g. "csv", "json", "json.gz")
+
+    :param result_filename: name or full path of a result file.
+    :return: tuple (result_name, method, dataset, split, split_type, ext)
+    """
+    try:
+        # Split the filename
+        filename_split = os.path.basename(result_filename).split('.')
+        result_name = filename_split[0]
+        ext = '.'.join(filename_split[1:])
+        result_info = result_name.split("_")
+        method = result_info[0]
+        dataset_info = result_info[1].split("-")
+        dataset = dataset_info[0]
+        split = dataset_info[1]
+        split_type = str(dataset_info[2]) if len(dataset_info) > 2 else None
+
+        return result_name, method, dataset, split, split_type, ext
+    
+    except ValueError as e:
+        FILENAME_FORMATS = [
+            "{method}_{dataset}-{split}.{ext}",
+            "{method}_{dataset}-{split}_{optional_id}.{ext}",
+            "{method}_{dataset}-{split}-{split_type}.{ext}",
+            "{method}_{dataset}-{split}_{optional_id}.{ext}",
+        ]
+        formats_str = '\n'.join(FILENAME_FORMATS)
+        error_msg = (
+            f"Wrong format for result file name {result_filename}\n" +
+            f"Should follow one of those formats: \n{formats_str}"
+        )
+        raise ValueError(error_msg)
+
+
+def _create_result_filename(method: str, dataset: str, split: str, ext: str, split_type: Union[str,None], optional_id: Union[str,None]):
+    """Create a result filename. 
+    
+    Filename will following one of the valid formats (depending on args value): 
+    - "{method}_{dataset}-{split}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+    - "{method}_{dataset}-{split}-{split_type}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+
+    :param: method: name of the method used to produced the results
+    :param: dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    :param: split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    :param: ext: file extension (e.g. "csv", "json", "json.gz")
+    :param: split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.). Optional.
+    :param: optional_id: id that may be attached to uniquely identify result file. Optional.
+    """
+
+    if split_type is None and optional_id is None:
+        return f"{method}_{dataset}-{split}.{ext}"
+    elif split_type is None:
+        return f"{method}_{dataset}-{split}_{optional_id}.{ext}"
+    elif optional_id is None:
+        return f"{method}_{dataset}-{split}-{split_type}.{ext}"
+    else:
+        return f"{method}_{dataset}-{split}-{split_type}_{optional_id}.{ext}"
+
+
+def create_coco_result_filename(
+        method: str, 
+        dataset: str, 
+        split: str, 
+        split_type: Union[str,None] = None, 
+        optional_id: Union[str,None] = None
+    ):
+    """Create a coco result filename. 
+    
+    Filename will following one of the valid formats (depending on args value): 
+    - "{method}_{dataset}-{split}.json"
+    - "{method}_{dataset}-{split}_{optional_id}.json"
+    - "{method}_{dataset}-{split}-{split_type}.json"
+    - "{method}_{dataset}-{split}_{optional_id}.json"
+
+    :param: method: name of the method used to produced the results
+    :param: dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    :param: split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    :param: split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.). Optional.
+    :param: optional_id: id that may be attached to uniquely identify result file. Optional.
+    """
+    return _create_result_filename(method, dataset, split, "json", split_type, optional_id)
+
+
+def create_pose_result_filename(
+        method: str, 
+        dataset: str, 
+        split: str, 
+        split_type: Union[str,None] = None, 
+        optional_id: Union[str,None] = None
+    ):
+    """Create a pose result filename. 
+    
+    Filename will following one of the valid formats (depending on args value): 
+    - "{method}_{dataset}-{split}.csv"
+    - "{method}_{dataset}-{split}_{optional_id}.csv"
+    - "{method}_{dataset}-{split}-{split_type}.csv"
+    - "{method}_{dataset}-{split}_{optional_id}.csv"
+
+    :param: method: name of the method used to produced the results
+    :param: dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    :param: split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    :param: split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.). Optional.
+    :param: optional_id: id that may be attached to uniquely identify result file. Optional.
+    """
+    return _create_result_filename(method, dataset, split, "csv", split_type, optional_id)
