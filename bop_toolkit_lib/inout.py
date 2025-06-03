@@ -401,6 +401,34 @@ def save_bop_results(path: Union[str,Path], results: list[dict], version="bop19"
         raise ValueError("Unknown version of BOP results.")
 
 
+def check_consistent_timings(results, im_id_key):
+    """
+    Check if the time for all estimates from the same image are the same.
+
+    :param results: list of pose or coco results
+    :param im_id_key: "im_id" for pose results, "image_id" for coco results
+    "return: tuple (check_passed, check_msg, times, times_available)
+    """
+    times = {}
+    times_available = True
+    for result in results:
+        scene_id, im_id = result["scene_id"], result[im_id_key]
+        result_key = f"{scene_id:06d}_{im_id:06d}"
+        if result["time"] < 0:
+            # negative times are interpreted as not available times
+            times_available = False
+        if result_key in times:
+            if abs(times[result_key] - result["time"]) > 0.001:
+                check_msg = f"The running time for scene {scene_id} and image {im_id} is not the same for all estimates."
+                misc.log(check_msg)
+                return False, check_msg, times, times_available
+        else:
+            times[result_key] = result["time"]
+
+    # all results passed the test
+    return True, "OK", times, times_available
+
+
 def check_bop_results(path: Union[str,Path], version="bop19"):
     """Checks if the format of BOP results is correct.
 
@@ -408,36 +436,23 @@ def check_bop_results(path: Union[str,Path], version="bop19"):
     :param version: Version of the results.
     :return: True if the format is correct, False if it is not correct.
     """
-    check_passed = True
-    check_msg = "OK"
     try:
         results = load_bop_results(path, version)
 
+        if len(results) == 0:
+            return False, "Empty results"
+
         if version == "bop19":
-            # Check if the time for all estimates from the same image are the same.
-            times = {}
-            for result in results:
-                result_key = "{:06d}_{:06d}".format(result["scene_id"], result["im_id"])
-                if result_key in times:
-                    if abs(times[result_key] - result["time"]) > 0.001:
-                        check_passed = False
-                        check_msg = (
-                            "The running time for scene {} and image {} is not the same for"
-                            " all estimates.".format(
-                                result["scene_id"], result["im_id"]
-                            )
-                        )
-                        misc.log(check_msg)
-                        break
-                else:
-                    times[result_key] = result["time"]
+            check_timings, check_msg_timings, times, times_available = check_consistent_timings(results, "im_id")
+            if not check_timings:
+                return False, check_msg_timings
 
     except Exception as e:
-        check_passed = False
-        check_msg = "Error when loading BOP results: {}".format(e)
+        check_msg = f"Error when loading BOP results: {e}"
         misc.log(check_msg)
+        return False, check_msg
 
-    return check_passed, check_msg
+    return True, "OK"
 
 
 def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
@@ -452,16 +467,15 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
     :return: True if the format is correct, False if it is not correct.
     """
 
-    misc.log("Checking coco result format...")
-    check_passed = True
-    check_msg = "OK"
     try:
         results = load_json(path, keys_to_int=True)
     except Exception as e:
-        check_passed = False
-        check_msg = "Error when loading COCO results: {}".format(e)
+        check_msg = f"Error when loading BOP coco results: {e}"
         misc.log(check_msg)
-        raise
+        return False, check_msg
+    
+    if len(results) == 0:
+        return False, "Empty results"
 
     if version == "bop22":
         try:
@@ -487,11 +501,17 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
                     assert "size" in result["segmentation"], "Incorrect RLE format!"
                 if "time" in result:
                     assert isinstance(result["time"], (float, int))
-        except AssertionError as msg:
-            check_msg = "Error when checking keys and types: {}".format(msg)
-            check_passed = False
+
+        except (AssertionError, Exception) as e:
+            check_msg = f"Error when checking keys and types: {e}"
             misc.log(check_msg)
-    return check_passed, check_msg
+            return False, check_msg
+
+        check_timings, check_msg_timings, times, times_available = check_consistent_timings(results, "image_id")
+        if not check_timings:
+            return False, check_msg_timings
+
+    return True, "OK"
 
 
 def save_coco_results(path: Union[str,Path], results: list[dict], version="bop22", compress=False):

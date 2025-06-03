@@ -127,7 +127,6 @@ class TestInout(unittest.TestCase):
         self.assertTrue(coco_res[0]["score"] == coco_res_from_bis[0]["score"] == coco_res_from_gz[0]["score"])
         self.assertTrue(coco_res[0]["bbox"] == coco_res_from_bis[0]["bbox"] == coco_res_from_gz[0]["bbox"])
 
-
         # cleanup
         os.remove(im_path_png)
         os.remove(im_path_jpg)
@@ -136,12 +135,42 @@ class TestInout(unittest.TestCase):
         os.remove(json_coco_bis_path)
         os.remove(json_coco_gz_path)
 
+    def test_loading_and_checking_results(self):
+        ###################
+        # high level checks
+        check_passed, check_msg = inout.check_coco_results(self.json_coco_path) 
+        self.assertTrue(check_passed)
+        check_passed, check_msg = inout.check_bop_results(self.csv_6d_path) 
+        self.assertTrue(check_passed)
 
-    def test_coco_json(self):
-        """
-        Check json loading/savings functions.
-        """
-        inout.check_coco_results(self.json_coco_path)
+        ###################
+        # time checks
+        bop_results = inout.load_bop_results(self.csv_6d_path)
+        check_passed, check_msg, times, times_available = inout.check_consistent_timings(bop_results, "im_id")
+        self.assertTrue(check_passed)
+        self.assertTrue(times_available)
+
+        coco_results = inout.load_json(self.json_coco_path)
+        check_passed, check_msg, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
+        self.assertTrue(check_passed)
+        self.assertTrue(times_available)
+
+        # add unconsistent timings
+        bop_results[0]["time"] = 42.0
+        check_passed, check_msg, times, times_available = inout.check_consistent_timings(bop_results, "im_id")
+        self.assertFalse(check_passed)
+        self.assertTrue(times_available)
+        coco_results[100]["time"] = 42.0
+        check_passed, check_msg, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
+        self.assertFalse(check_passed)
+        self.assertTrue(times_available)
+
+        # in one image, timings were not provide
+        for i in range(15):
+            bop_results[i]["time"] = -1.0
+        check_passed, check_msg, times, times_available = inout.check_consistent_timings(bop_results, "im_id")
+        self.assertTrue(check_passed)
+        self.assertFalse(times_available)
 
         # ISSUE: save_coco_results and check_coco_results not compatible
         # # create fake coco results with save_coco_results format 
@@ -156,8 +185,6 @@ class TestInout(unittest.TestCase):
         # inout.save_coco_results(json_coco_bis_path, coco_res_remap)
         # inout.save_coco_results(self.json_coco_path, coco_res_remap, compress=True)
         # inout.check_coco_results(json_coco_gz_path)
-
-
 
 
 if __name__ == "__main__":

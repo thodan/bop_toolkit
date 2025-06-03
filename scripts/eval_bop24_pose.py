@@ -111,31 +111,13 @@ for result_filename in result_filenames:
     if dataset == "xyzibd":
         p["max_num_estimates_per_image"] = 200
 
-    # Calculate the average estimation time per image.
-    ests = inout.load_bop_results(
-        os.path.join(args.results_path, result_filename), version="bop19", max_num_estimates_per_image=p["max_num_estimates_per_image"]
-    )
-    times = {}
-    times_available = True
-    for est in ests:
-        result_key = "{:06d}_{:06d}".format(est["scene_id"], est["im_id"])
-        if est["time"] < 0:
-            # All estimation times must be provided.
-            times_available = False
-            break
-        elif result_key in times:
-            if abs(times[result_key] - est["time"]) > 0.001:
-                raise ValueError(
-                    "The running time for scene {} and image {} is not the same for "
-                    "all estimates.".format(est["scene_id"], est["im_id"])
-                )
-        else:
-            times[result_key] = est["time"]
-
-    if times_available:
-        average_time_per_image = np.mean(list(times.values()))
-    else:
-        average_time_per_image = -1.0
+    # Load and check results, calculate the average estimation time per image.
+    result_path = os.path.join(args.results_path, result_filename)
+    ests = inout.load_bop_results(result_path, version="bop19", max_num_estimates_per_image=p["max_num_estimates_per_image"])
+    check_passed, check_msg, times, times_available = inout.check_consistent_timings(ests, "im_id")
+    if not check_passed:
+        raise ValueError(check_msg)
+    average_time_per_image = np.mean(list(times.values())) if times_available else -1.0
 
     # Loop 1: Over the error types (mssd, mspd)
     mAP_per_error_type = {}
