@@ -57,6 +57,7 @@ p["targets_filename"] = str(args.targets_filename)
 p["ann_type"] = str(args.ann_type)
 p["bbox_type"] = str(args.bbox_type)
 
+
 # Evaluation.
 # ------------------------------------------------------------------------------
 for result_filename in p["result_filenames"]:
@@ -82,23 +83,18 @@ for result_filename in p["result_filenames"]:
     dp_model = dataset_params.get_model_params(p["datasets_path"], dataset, model_type)
 
     # Checking coco result file
-    check_passed, _ = inout.check_coco_results(
-        os.path.join(p["results_path"], result_filename), ann_type=p["ann_type"]
-    )
+    results_path = os.path.join(p["results_path"], result_filename)
+    check_passed, check_msg = inout.check_coco_results(results_path, ann_type=p["ann_type"])
     if not check_passed:
-        misc.log("Please correct the coco result format of {}".format(result_filename))
-        exit()
+        raise ValueError(check_msg)
 
     # Load coco resultsZ
     misc.log("Loading coco results...")
-    coco_results = inout.load_json(
-        os.path.join(p["results_path"], result_filename), keys_to_int=True
-    )
+    coco_results = inout.load_json(results_path, keys_to_int=True)
 
     # Load the estimation targets.
-    targets = inout.load_json(
-        os.path.join(dp_split["base_path"], p["targets_filename"])
-    )
+    targets_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+    targets = inout.load_json(targets_path)
 
     # Organize the targets by scene and image.
     misc.log("Organizing estimation targets...")
@@ -156,18 +152,7 @@ for result_filename in p["result_filenames"]:
                 dataset_coco_results, scene_coco_results, image_id_offset
             )
 
-    # initialize COCO ground truth api
-    cocoGt = COCO(dataset_coco_ann)
-    cocoDt = cocoGt.loadRes(dataset_coco_results)
-
-    # running evaluation
-    cocoEval = COCOeval(cocoGt, cocoDt, p["ann_type"])
-    cocoEval.params.imgIds = sorted(cocoGt.getImgIds())
-    cocoEval.evaluate()
-    cocoEval.accumulate()
-    cocoEval.summarize()
-
-    res_type = [
+    res_types = [
         "AP",
         "AP50",
         "AP75",
@@ -181,29 +166,31 @@ for result_filename in p["result_filenames"]:
         "AR_medium",
         "AR_large",
     ]
-    coco_scores = {res_type[i]: stat for i, stat in enumerate(cocoEval.stats)}
 
-    # Calculate the average estimation time per image.
-    times = {}
-    times_available = True
-    for result in coco_results:
-        result_key = "{:06d}_{:06d}".format(result["scene_id"], result["image_id"])
-        if result["time"] < 0:
-            # All estimation times must be provided.
-            times_available = False
-            break
-        elif result_key in times:
-            if abs(times[result_key] - result["time"]) > 0.001:
-                raise ValueError(
-                    "The running time for scene {} and image {} is not the same for "
-                    "all estimates.".format(result["scene_id"], result["image_id"])
-                )
-        else:
-            times[result_key] = result["time"]
+    # Recover all timings, check consistency
+    _, _, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
 
-    if times_available:
-        coco_scores["average_time_per_image"] = np.mean(list(times.values()))
-    else:
+    # initialize COCO ground truth api
+    cocoGt = COCO(dataset_coco_ann)
+    try:
+        cocoDt = cocoGt.loadRes(dataset_coco_results)
+        # running evaluation
+        cocoEval = COCOeval(cocoGt, cocoDt, p["ann_type"])
+        cocoEval.params.imgIds = sorted(cocoGt.getImgIds())
+        cocoEval.evaluate()
+        cocoEval.accumulate()
+        cocoEval.summarize()
+        coco_scores = {res_types[i]: stat for i, stat in enumerate(cocoEval.stats)}
+
+        # Calculate the average estimation time per image.
+        coco_scores["average_time_per_image"] = np.mean(list(times.values())) if times_available else -1.0
+
+    except IndexError as e:
+        # A problem happened during evaluation
+        # - empty results
+        # - a result scene_id/image_id pair does not match with ground truth
+        misc.log(f"Error when loading the result: {e}")
+        coco_scores = {res_type: -1.0 for res_type in res_types}
         coco_scores["average_time_per_image"] = -1.0
 
     # Save the final scores.
