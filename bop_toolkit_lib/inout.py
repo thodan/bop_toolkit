@@ -13,7 +13,7 @@ import png
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 from bop_toolkit_lib import misc
 
@@ -366,7 +366,7 @@ def load_bop_results(path: Union[str,Path], version="bop19", max_num_estimates_p
     return results
 
 
-def save_bop_results(path: Union[str,Path], results: list[dict], version="bop19"):
+def save_bop_results(path: Union[str,Path], results: List[dict], version="bop19"):
     """Saves 6D object pose estimates to a file.
 
     :param path: Path to the output file.
@@ -514,7 +514,7 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
     return True, "OK"
 
 
-def save_coco_results(path: Union[str,Path], results: list[dict], version="bop22", compress=False):
+def save_coco_results(path: Union[str,Path], results: List[dict], version="bop22", compress=False):
     """Saves detections/instance segmentations for each scene in coco format.
 
     "bbox" should be [x,y,w,h] in pixels
