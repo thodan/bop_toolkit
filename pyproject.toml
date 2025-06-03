@@ -14,7 +14,7 @@ license = {text = "MIT license"}
 requires-python = ">=3.8,<=3.12"
 dependencies = [
     "numpy<2.0.0",
-    "pillow>=8.2.0,<=9.5.0",
+    "pillow>=8.2.0,<=9.5.0",  # versions <10.0.0: load uint16 png as float32, FreeTypeFont API change, etc.
     "pypng>=0.20220715.0",
     "pytz>=2025.2",
     "webdataset>=0.2.100",

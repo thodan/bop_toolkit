@@ -2,7 +2,7 @@ import os
 import unittest
 from pathlib import Path
 import numpy as np
-from numpy.testing import assert_almost_equal, assert_equal
+from numpy.testing import assert_almost_equal
 
 
 from bop_toolkit_lib import inout
@@ -11,10 +11,72 @@ from bop_toolkit_lib import inout
 class TestInout(unittest.TestCase):
 
     def setUp(self) -> None:
-        results_dir = Path(__file__).parent / 'data/results_sub'
-        self.csv_6d_path = results_dir / 'cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv'
-        self.json_coco_path = results_dir / 'zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528.json'
-    
+        results_dir = Path(__file__).parent / "data/results_sub"
+        self.csv_6d_path = results_dir / "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4.csv"
+        self.json_coco_path = results_dir / "zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528.json"
+
+    def test_parse_result_filename(self):
+        # works with full path .csv
+        result_name, method, dataset, split, split_type, ext = inout.parse_result_filename(self.csv_6d_path)
+        self.assertEqual(result_name, "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4")
+        self.assertEqual(method, "cnos-fastsammegapose")
+        self.assertEqual(dataset, "icbin")
+        self.assertEqual(split, "test")
+        self.assertIsNone(split_type)
+        self.assertEqual(ext, "csv")
+
+        # or filename only .csv
+        result_name, method, dataset, split, split_type, ext = inout.parse_result_filename(self.csv_6d_path.name)
+        self.assertEqual(result_name, "cnos-fastsammegapose_icbin-test_7c9f443f-b900-41bb-af01-09b8eddfc2c4")
+        self.assertEqual(method, "cnos-fastsammegapose")
+        self.assertEqual(dataset, "icbin")
+        self.assertEqual(split, "test")
+        self.assertIsNone(split_type)
+        self.assertEqual(ext, "csv")
+
+        # .json too
+        result_name, method, dataset, split, split_type, ext = inout.parse_result_filename(self.json_coco_path)
+        self.assertEqual(result_name, "zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528")
+        self.assertEqual(method, "zebraposesat-effnetb4")
+        self.assertEqual(dataset, "ycbv")
+        self.assertEqual(split, "test")
+        self.assertIsNone(split_type)
+        self.assertEqual(ext, "json")
+
+        # and .json.gz
+        result_name, method, dataset, split, split_type, ext = inout.parse_result_filename(self.json_coco_path.as_posix() + ".gz")
+        self.assertEqual(result_name, "zebraposesat-effnetb4_ycbv-test_5ed0eecc-96f8-498b-9438-d586d4d92528")
+        self.assertEqual(method, "zebraposesat-effnetb4")
+        self.assertEqual(dataset, "ycbv")
+        self.assertEqual(split, "test")
+        self.assertIsNone(split_type)
+        self.assertEqual(ext, "json.gz")
+
+    def test_create_result_filename(self):
+        method = "zebraposesat-effnetb4"
+        dataset = "ycbv"
+        split = "test"
+        split_type = None
+        optional_id = "5ed0eecc-96f8-498b-9438-d586d4d92528"
+        result_filename = inout.create_coco_result_filename(method, dataset, split, split_type, optional_id)
+        self.assertEqual(result_filename, self.json_coco_path.name)
+
+        method = "some-method"
+        dataset = "tless"
+        split = "val"
+        split_type = "primesense"
+        optional_id = None
+        result_filename = inout.create_coco_result_filename(method, dataset, split, split_type, optional_id)
+        self.assertEqual(result_filename, "some-method_tless-val-primesense.json")
+        optional_id = "5ed0eecc-96f8-498b-9438-d586d4d92528"
+        result_filename = inout.create_coco_result_filename(method, dataset, split, split_type, optional_id)
+        self.assertEqual(result_filename, "some-method_tless-val-primesense_5ed0eecc-96f8-498b-9438-d586d4d92528.json")
+
+        result_filename = inout.create_pose_result_filename(method, dataset, split, optional_id=optional_id)
+        self.assertEqual(result_filename, "some-method_tless-val_5ed0eecc-96f8-498b-9438-d586d4d92528.csv")
+        result_filename = inout.create_pose_result_filename(method, dataset, split)
+        self.assertEqual(result_filename, "some-method_tless-val.csv")
+
     def test_load_save_operations(self):
         tmp = Path(__file__).parent / "tmp"
         tmp.mkdir(exist_ok=True)
@@ -45,8 +107,8 @@ class TestInout(unittest.TestCase):
         assert_almost_equal(np.round(depth).astype(np.uint16), depth_loaded)
 
         # json
-        json_coco_bis_path = self.json_coco_path.parent / (self.json_coco_path.stem + '_bis.json')
-        json_coco_gz_path = self.json_coco_path.parent / (self.json_coco_path.stem + '.json.gz')
+        json_coco_bis_path = self.json_coco_path.parent / (self.json_coco_path.stem + "_bis.json")
+        json_coco_gz_path = self.json_coco_path.parent / (self.json_coco_path.stem + ".json.gz")
 
         # load example json coco submission
         coco_res = inout.load_json(self.json_coco_path)
@@ -61,9 +123,9 @@ class TestInout(unittest.TestCase):
 
         self.assertTrue(len(coco_res) == len(coco_res_from_bis) == len(coco_res_from_gz))
         self.assertTrue(coco_res[0].keys() == coco_res_from_bis[0].keys() == coco_res_from_gz[0].keys())
-        self.assertTrue(coco_res[0]['time'] == coco_res_from_bis[0]['time'] == coco_res_from_gz[0]['time'])
-        self.assertTrue(coco_res[0]['score'] == coco_res_from_bis[0]['score'] == coco_res_from_gz[0]['score'])
-        self.assertTrue(coco_res[0]['bbox'] == coco_res_from_bis[0]['bbox'] == coco_res_from_gz[0]['bbox'])
+        self.assertTrue(coco_res[0]["time"] == coco_res_from_bis[0]["time"] == coco_res_from_gz[0]["time"])
+        self.assertTrue(coco_res[0]["score"] == coco_res_from_bis[0]["score"] == coco_res_from_gz[0]["score"])
+        self.assertTrue(coco_res[0]["bbox"] == coco_res_from_bis[0]["bbox"] == coco_res_from_gz[0]["bbox"])
 
         # cleanup
         os.remove(im_path_png)

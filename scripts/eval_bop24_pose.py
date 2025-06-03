@@ -106,8 +106,8 @@ for result_filename in result_filenames:
     mAP = {}
 
     # Name of the result and the dataset.
-    result_name = os.path.splitext(os.path.basename(result_filename))[0]
-    dataset = str(result_name.split("_")[1].split("-")[0])
+    result_name, _, dataset, _, _, _ = inout.parse_result_filename(result_filename)
+
     if dataset == "xyzibd":
         p["max_num_estimates_per_image"] = 200
 

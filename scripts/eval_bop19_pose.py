@@ -117,8 +117,7 @@ for result_filename in result_filenames:
     average_recalls = {}
 
     # Name of the result and the dataset.
-    result_name = os.path.splitext(os.path.basename(result_filename))[0]
-    dataset = str(result_name.split("_")[1].split("-")[0])
+    result_name, _, dataset, _, _, _ = inout.parse_result_filename(result_filename)
 
     # Load and check results, calculate the average estimation time per image.
     result_path = os.path.join(args.results_path, result_filename)
