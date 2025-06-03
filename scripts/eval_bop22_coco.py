@@ -167,6 +167,9 @@ for result_filename in p["result_filenames"]:
         "AR_large",
     ]
 
+    # Recover all timings, check consistency
+    _, _, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
+
     # initialize COCO ground truth api
     cocoGt = COCO(dataset_coco_ann)
     try:
@@ -179,13 +182,16 @@ for result_filename in p["result_filenames"]:
         cocoEval.summarize()
         coco_scores = {res_types[i]: stat for i, stat in enumerate(cocoEval.stats)}
 
-    except IndexError as e:
-        misc.log(f"Error when loading the result: {e}")
-        coco_scores = {res_type: 0.0 for res_type in res_types}
+        # Calculate the average estimation time per image.
+        coco_scores["average_time_per_image"] = np.mean(list(times.values())) if times_available else -1.0
 
-    # Calculate the average estimation time per image.
-    check_passed, check_msg, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
-    coco_scores["average_time_per_image"] = np.mean(list(times.values())) if times_available else -1.0
+    except IndexError as e:
+        # A problem happened during evaluation
+        # - empty results
+        # - a result scene_id/image_id pair does not match with ground truth
+        misc.log(f"Error when loading the result: {e}")
+        coco_scores = {res_type: -1.0 for res_type in res_types}
+        coco_scores["average_time_per_image"] = -1.0
 
     # Save the final scores.
     os.makedirs(os.path.join(p["eval_path"], result_name), exist_ok=True)
