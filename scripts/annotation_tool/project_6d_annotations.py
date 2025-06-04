@@ -1,7 +1,7 @@
 """
 This script will read the "scene_gt_world.json" file and project the annotations from the world frame to each camera frame.
 
-This script is supposed to be used after the annotations have been manually refined in the annotation tool.
+This script is supposed to be used after the annotations have been manually done in the annotation tool.
 """
 
 import os

@@ -1,18 +1,18 @@
 # Author: Anas Gouda (anas.gouda@tu-dortmund.de)
 # FLW, TU Dortmund, Germany
 
-"""Manual annotation tool for datasets with BOP format
-
-Using RGB, Depth and Models the tool will generate the "scene_gt.json" annotation file
-
-Other annotations can be generated using other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
+"""Manual annotation tool for datasets with BOP format - works only with RGB-D datasets in classic BOP format.
 
 The tool has two modes:
-1- 'individual' mode: annotate all samples and frame individually
-2- 'sequence' mode: annotate a whole sample by annotating first frame.
-                    This is the case for most bop datasets (LM, T-Less).
+1- 'individual' mode: annotate each frame individually. This will save the annotations in the "scene_gt.json" file.
+2- 'sequence' mode: annotate a whole sample by annotating assembled point cloud in the world frame.
+                    This is the case for most bop datasets (ex. LM, T-Less).
                     assemble_cloud.py script must be called first to assemble point cloud for the whole scene.
-                    call project_6D_annotations.py after annotating to projects the annotations to other frames.
+                    This will save the annotations in the "scene_gt_world.json" file. Which is not the BOP standard.
+                    call project_6D_annotations.py after annotating to projects the annotations to other frames and save
+                    them in the "scene_gt.json" file.
+
+Other annotations can be generated using other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
 
 original repo: https://github.com/FLW-TUDO/3d_annotation_tool was made for annotating the DoPose dataset.
 
@@ -42,25 +42,28 @@ p = {
     'dataset_path': '/path/to/dataset',
 
     # Dataset split. Options: 'train', 'test'.
-    'dataset_split': 'val',
+    'dataset_split': 'test',
 
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     'dataset_split_type': None,
 
     # scene number to open tool on
-    'start_scene_num': 1,
+    'start_scene_num': 0,
 
     # image number inside scene to open tool on
     'start_image_num': 0
 
-    # TODO add ICP parameters here
-    # TODO add moving object parameters here (dist, deg)
-    # add assembled_cloud_downsample parameter here
+    # moving object parameters
+    'small_distance': 1, # mm
+    'large_distance': 50, # mm
+    'small_angle': 1, # degrees
+    'large_angle': 90, # degrees
+
+    # ICP parameters
+    'max_correspondence_distance': 10,  # mm
+    'voxel_size': 1, # mm
 }
 ################################################################################
-
-dist = 0.5  # mm
-deg = 0.5
 
 
 class Dataset:
@@ -99,7 +102,7 @@ class Settings:
 
     def __init__(self):
         self.bg_color = gui.Color(1, 1, 1)
-        self.show_axes = False  # TODO change to show axes by default
+        self.show_axes = False
         self.highlight_obj = True
         self.cam_follow_obj = False
 
@@ -330,11 +333,11 @@ class AppWindow:
         global dist, deg
         if event.key == gui.KeyName.LEFT_CONTROL:
             if event.type == gui.KeyEvent.DOWN:
-                dist = 50  # mm
-                deg = 90
+                dist = p['large_distance']  # mm
+                deg = p['large_angle']  # degrees
             elif event.type == gui.KeyEvent.UP:
-                dist = 1  # mm
-                deg = 1
+                dist = p['small_distance']  # mm
+                deg = p['small_angle']  # degrees
             return gui.Widget.EventCallbackResult.HANDLED
 
         # if no active_mesh selected print error
@@ -483,6 +486,10 @@ class AppWindow:
         bbox.scale(1.1, center=bbox.get_center())
         # crop the target point cloud with the scaled bounding box
         target = target.crop(bbox)
+        # if target is empty (no points), print error and do nothing
+        if len(target.points) == 0:
+            self._on_error("Target point cloud is empty after cropping around the refinement area. No points to register.")
+            return gui.Widget.EventCallbackResult.HANDLED
 
         trans_init = np.eye(4)
 
@@ -499,9 +506,8 @@ class AppWindow:
             criteria = treg.ICPConvergenceCriteria(relative_fitness=0.00001,
                                                    relative_rmse=0.00001,
                                                    max_iteration=300)
-            max_correspondence_distance = 1 # mm
-            voxel_size = 1  # TODO test with 0.5 mm voxel size
-            # TODO if source or target is empty, print error and do nothing
+            max_correspondence_distance = p['max_correspondence_distance']  # mm
+            voxel_size = p['voxel_size']  # mm
             target_cloud_t = cloud_gpu(target, color_available)
             source_cloud_t = cloud_gpu(source, color_available)
             if color_available:
@@ -515,12 +521,11 @@ class AppWindow:
             icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
         else:
             # no color ICP without CUDA
-            threshold = 4  # mm
             ICP_method = o3d.pipelines.registration.TransformationEstimationPointToPlane()
             # set up parameters for CPU ICP
             if color_available:
                 print("Colored ICP is not implemented without CUDA, using PointToPoint ICP")
-            reg = o3d.pipelines.registration.registration_icp(source, target, threshold, trans_init, ICP_method,
+            reg = o3d.pipelines.registration.registration_icp(source, target, p['max_correspondence_distance'], trans_init, ICP_method,
                                                               o3d.pipelines.registration.ICPConvergenceCriteria(
                                                                   relative_fitness=0.00001,
                                                                   relative_rmse=0.00001,
@@ -566,7 +571,7 @@ class AppWindow:
                 }
                 view_angle_data.append(obj_data)
             gt_6d_pose_data[str(image_num)] = view_angle_data
-            json.dump(gt_6d_pose_data, gt_scene)
+            json.dump(gt_6d_pose_data, gt_scene, indent=4)
 
         self._annotation_changed = False
 
@@ -887,10 +892,11 @@ class AppWindow:
         if self._check_changes():
             return
 
-        if self._annotation_scene.scene_num + 1 > len(
-                next(os.walk(self.scenes.scenes_path))[1]):  # 1 for how many folder (dataset scenes) inside the path
-            self._on_error("There is no next scene.")
+        # check if next scene exists in the next number sequence
+        if not os.path.exists(os.path.join(self.scenes.scenes_path, f'{self._annotation_scene.scene_num + 1:06}')):
+            self._on_error("There is no next scene with number " + f'{self._annotation_scene.scene_num + 1:06}')
             return
+
         self.scene_load(self.scenes.scenes_path, self._annotation_scene.scene_num + 1,
                         0)  # open next scene on the first image
 
@@ -899,7 +905,7 @@ class AppWindow:
             return
 
         if self._annotation_scene.scene_num - 1 < 1:
-            self._on_error("There is no scene number before scene 1.")
+            self._on_error("There is no scene number before scene " + f'{self._annotation_scene.scene_num:06}')
             return
         self.scene_load(self.scenes.scenes_path, self._annotation_scene.scene_num - 1,
                         0)  # open next scene on the first image

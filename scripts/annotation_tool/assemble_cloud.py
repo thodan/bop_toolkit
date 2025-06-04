@@ -26,13 +26,16 @@ p = {
     'dataset_path': '/path/to/dataset',
 
     # Dataset split. Options: 'train', 'test'.
-    'dataset_split': 'train',
+    'dataset_split': 'test',
 
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     'dataset_split_type': None,
 
-    # list of scene ids to process
-    'scene_ids': [2],
+    # list of scene ids to process, if None all scenes in the dataset split are processed
+    'scene_ids': None,
+
+    # downsample the assembled point cloud to this voxel size in mm
+    'voxel_size': 3,  # in mm
 
     'show_assembled_cloud': True
 }
@@ -83,10 +86,10 @@ def main():
             rgb = o3d.io.read_image(rgb_img)
             depth = o3d.io.read_image(depth_img)
             # Extract RGDB image from RGB and Depth, intensity is set to false - get colour data (3 Channels)
-            depth_scale = 1.0
+            depth_scale = 1/scene_camera_data[str(index)]['depth_scale']  # depth scale in mm - open3d need inverse of BOP depth scale
             # convert depth to meter
             rgbd = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb, depth, depth_scale=depth_scale,
-                                                                      depth_trunc=5000,
+                                                                      depth_trunc=20000,  # override default value by something big
                                                                       convert_rgb_to_intensity=False)  # rgbd in meter
             # get camera intrinsic parameters from scene_camera.json
             height, width, channels = np.asarray(rgb).shape
@@ -104,7 +107,7 @@ def main():
 
             assembled_cloud += transformed_cloud
 
-        assembled_cloud = assembled_cloud.voxel_down_sample(voxel_size=3)
+        assembled_cloud = assembled_cloud.voxel_down_sample(voxel_size=p['voxel_size'])
 
         if p['show_assembled_cloud']:
             o3d.visualization.draw_geometries([assembled_cloud])
