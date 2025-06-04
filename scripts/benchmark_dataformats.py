@@ -5,20 +5,18 @@ import json
 import time
 import webdataset as wds
 
-from bop_toolkit_lib.dataset import (
-    bop_imagewise,
-    bop_scenewise,
-    bop_webdataset
-)
+from bop_toolkit_lib.dataset import bop_imagewise, bop_scenewise, bop_webdataset
 
 
 def print_summary(timings):
     mean = np.mean(timings)
     std = np.std(timings)
-    print(f"""{mean:.2f} ms ± {std:.2f} ms
+    print(
+        f"""{mean:.2f} ms ± {std:.2f} ms
 min: {np.min(timings):.2f} ms, max: {np.max(timings):.2f} ms
 ({len(timings)} samples)
-""")
+"""
+    )
 
 
 def benchmark_wds_sequential(shard_path, n_images=1000):
@@ -55,8 +53,7 @@ def benchmark_wds_sequential(shard_path, n_images=1000):
 
 
 def benchmark_wds_random(wds_dir, n_images=100):
-
-    key_to_shard = json.loads((wds_dir / 'key_to_shard.json').read_text())
+    key_to_shard = json.loads((wds_dir / "key_to_shard.json").read_text())
     keys = list(key_to_shard.keys())
     np.random.RandomState(0).shuffle(keys)
     keys = keys[:n_images]
@@ -66,7 +63,7 @@ def benchmark_wds_random(wds_dir, n_images=100):
     for key in keys:
         shard_id = key_to_shard[key]
         bop_webdataset.load_image_data(
-            wds_dir / f'shard-{shard_id:06d}.tar',
+            wds_dir / f"shard-{shard_id:06d}.tar",
             key,
             load_rgb=True,
             load_gray=False,
@@ -82,8 +79,8 @@ def benchmark_wds_random(wds_dir, n_images=100):
 
 
 def benchmark_imwise(imwise_dir, n_images=1000):
-    imwise_file_paths = imwise_dir.glob('*')
-    keys = set([p.name.split('.')[0] for p in imwise_file_paths])
+    imwise_file_paths = imwise_dir.glob("*")
+    keys = set([p.name.split(".")[0] for p in imwise_file_paths])
     keys = list(keys)
     np.random.RandomState(0).shuffle(keys)
 
@@ -107,9 +104,8 @@ def benchmark_imwise(imwise_dir, n_images=1000):
 
 
 def benchmark_scenewise(scene_dir, n_images=100):
-    scene_infos = bop_scenewise.read_scene_infos(
-        scene_dir, read_image_ids=True)
-    image_ids = scene_infos['image_ids']
+    scene_infos = bop_scenewise.read_scene_infos(scene_dir, read_image_ids=True)
+    image_ids = scene_infos["image_ids"]
     np.random.RandomState(0).shuffle(image_ids)
     image_ids = image_ids[:n_images]
 
@@ -132,11 +128,10 @@ def benchmark_scenewise(scene_dir, n_images=100):
     return timings
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.RawTextHelpFormatter)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
-        '--root',
+        "--root",
         help="""Root directory containing a dataset \
 in the three following formats: scenewise, imagewise, webdataset.
 For example if the argument is --root ./ycbv \
@@ -145,34 +140,33 @@ then the following structure is assumed:
     ├─ train_pbr
     ├─ train_pbr_imwise
     ├─ train_pbr_web
-"""
+""",
     )
     args = parser.parse_args()
     root_dir = pathlib.Path(args.root)
 
     timings = benchmark_wds_sequential(
-        root_dir / 'train_pbr_web' / f'shard-{0:06d}.tar',
-        n_images=1000
+        root_dir / "train_pbr_web" / f"shard-{0:06d}.tar", n_images=1000
     )
     print("# WebDataset, Sequential access")
     print_summary(timings[5:])
 
     timings = benchmark_wds_random(
-        root_dir / 'train_pbr_web',
+        root_dir / "train_pbr_web",
         n_images=100,
     )
     print("# WebDataset, Random access")
     print_summary(timings[5:])
 
     timings = benchmark_imwise(
-        root_dir / 'train_pbr_imwise',
+        root_dir / "train_pbr_imwise",
         n_images=1000,
     )
     print("# Imagewise format, Random access")
     print_summary(timings[5:])
 
     timings = benchmark_scenewise(
-        root_dir / 'train_pbr' / f'{0:06d}',
+        root_dir / "train_pbr" / f"{0:06d}",
         n_images=100,
     )
     print("# Scenewise format, Random access")

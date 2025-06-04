@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bop_toolkit_lib"
+authors = [
+   {"name" = "Tomas Hodan"},  
+   {"name" = "Martin Sundermeyer"},  
+]
+version = "0.1.0"
+description = "A Python toolkit of the BOP benchmark for 6D object pose estimation (http://bop.felk.cvut.cz)."
+license = {text = "MIT license"}
+requires-python = ">=3.8,<=3.12"
+dependencies = [
+    "numpy<2.0.0",
+    "pillow>=8.2.0,<=9.5.0",  # versions <10.0.0: load uint16 png as float32, FreeTypeFont API change, etc.
+    "pypng>=0.20220715.0",
+    "pytz>=2025.2",
+    "webdataset>=0.2.100",
+    "pyopengl>=3.1.0",
+    "imageio>=2.35.1",
+    "scikit-image>=0.21.0",
+    "scipy>=1.10.1",
+    "vispy>=0.14.2",
+]
+
+
+[project.optional-dependencies]
+eval_coco = ["pycocotools@git+https://github.com/MartinSmeyer/cocoapi.git#subdirectory=PythonAPI"]
+eval_gpu = ["torch"]
+eval_hot3d = ["hand_tracking_toolkit@git+https://github.com/facebookresearch/hand_tracking_toolkit"]
+scripts = [
+    "open3d>=0.19.0", 
+    "opencv-python>=4.11.0.86",
+    "matplotlib>=3.7.5",
+]
+
+[tool.setuptools.package-data]
+bop_toolkit_lib = ["*"]
+
+[tool.setuptools]
+packages = {find = {exclude = ["docs"]}}
+
+[tool.setuptools.data-files]
+"share/ament_index/resource_index/packages" = ["resource/bop_toolkit_lib"]
+"share/bop_toolkit_lib" = ["package.xml"]

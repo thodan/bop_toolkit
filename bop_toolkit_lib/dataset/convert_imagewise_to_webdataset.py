@@ -41,7 +41,7 @@ def parse_args():
         "--shuffle",
         action="store_true",
         help="""Randomly shuffle the images before creating
-        the shards."""
+        the shards.""",
     )
     parser.add_argument(
         "--seed",
@@ -64,10 +64,10 @@ def make_key_to_shard_map(
     wds_dir,
 ):
     key_to_shard = dict()
-    for shard_path in wds_dir.glob('shard-*.tar'):
-        shard_id = int(re.findall('\d+', shard_path.name)[0])
+    for shard_path in wds_dir.glob("shard-*.tar"):
+        shard_id = int(re.findall("\d+", shard_path.name)[0])
         names = tarfile.TarFile(shard_path).getnames()
-        keys = set([name.split('.')[0] for name in names])
+        keys = set([name.split(".")[0] for name in names])
         for key in keys:
             key_to_shard[key] = shard_id
     return key_to_shard
@@ -82,54 +82,45 @@ def convert_imagewise_to_webdataset(
 ):
     wds_dir.mkdir(exist_ok=True)
     shard_writer = wds.ShardWriter(
-        pattern=str(wds_dir / 'shard-%06d.tar'),
+        pattern=str(wds_dir / "shard-%06d.tar"),
         start_shard=start_shard,
         maxcount=maxcount,
-        encoder=False
+        encoder=False,
     )
-    infos = bop_imagewise.load_image_infos(
-        input_dir, image_keys[0])
+    infos = bop_imagewise.load_image_infos(input_dir, image_keys[0])
 
     for key in image_keys:
 
         def _file_path(ext):
-            return input_dir / f'{key}.{ext}'
+            return input_dir / f"{key}.{ext}"
 
         obj = {
-            '__key__': key,
+            "__key__": key,
         }
 
-        if infos['has_rgb']:
-            rgb_name = 'rgb' + infos['rgb_suffix']
-            obj[rgb_name] = open(
-                _file_path(rgb_name), 'rb').read()
+        if infos["has_rgb"]:
+            rgb_name = "rgb" + infos["rgb_suffix"]
+            obj[rgb_name] = open(_file_path(rgb_name), "rb").read()
 
-        if infos['has_depth']:
-            obj['depth.png'] = open(
-                _file_path('depth.png'), 'rb').read()
+        if infos["has_depth"]:
+            obj["depth.png"] = open(_file_path("depth.png"), "rb").read()
 
-        if infos['has_gray']:
-            obj['gray.tiff'] = open(
-                _file_path('gray.tiff'), 'rb').read()
+        if infos["has_gray"]:
+            obj["gray.tiff"] = open(_file_path("gray.tiff"), "rb").read()
 
-        if infos['has_mask']:
-            obj['mask.json'] = open(
-                _file_path('mask.json'), 'rb').read()
+        if infos["has_mask"]:
+            obj["mask.json"] = open(_file_path("mask.json"), "rb").read()
 
-        if infos['has_mask_visib']:
-            obj['mask_visib.json'] = open(
-                _file_path('mask_visib.json'), 'rb').read()
+        if infos["has_mask_visib"]:
+            obj["mask_visib.json"] = open(_file_path("mask_visib.json"), "rb").read()
 
-        if infos['has_gt']:
-            obj['gt.json'] = open(
-                _file_path('gt.json'), 'rb').read()
+        if infos["has_gt"]:
+            obj["gt.json"] = open(_file_path("gt.json"), "rb").read()
 
-        if infos['has_gt_info']:
-            obj['gt_info.json'] = open(
-                _file_path('gt_info.json'), 'rb').read()
+        if infos["has_gt_info"]:
+            obj["gt_info.json"] = open(_file_path("gt_info.json"), "rb").read()
 
-        obj['camera.json'] = open(
-            _file_path('camera.json'), 'rb').read()
+        obj["camera.json"] = open(_file_path("camera.json"), "rb").read()
 
         shard_writer.write(obj)
 
@@ -140,8 +131,8 @@ def main():
     input_dir = pathlib.Path(args.input)
     wds_dir = pathlib.Path(args.output)
 
-    input_file_paths = input_dir.glob('*')
-    keys = set([p.name.split('.')[0] for p in input_file_paths])
+    input_file_paths = input_dir.glob("*")
+    keys = set([p.name.split(".")[0] for p in input_file_paths])
     keys = list(keys)
 
     if args.shuffle:
@@ -152,35 +143,16 @@ def main():
         _args = []
         start_shard = 0
         for keys_split in keys_splits:
-            _args.append(
-                (
-                    input_dir,
-                    wds_dir,
-                    keys_split,
-                    start_shard,
-                    args.maxcount
-                )
-            )
+            _args.append((input_dir, wds_dir, keys_split, start_shard, args.maxcount))
             n_shards = np.ceil(len(keys_split) / args.maxcount)
             start_shard += n_shards
         with multiprocessing.Pool(processes=args.nprocs) as pool:
-            pool.starmap(
-                convert_imagewise_to_webdataset,
-                iterable=_args
-            )
+            pool.starmap(convert_imagewise_to_webdataset, iterable=_args)
     else:
-        convert_imagewise_to_webdataset(
-            input_dir,
-            wds_dir,
-            keys,
-            0,
-            args.maxcount
-        )
-    key_to_shard = make_key_to_shard_map(
-        wds_dir
-    )
-    (wds_dir / 'key_to_shard.json').write_text(json.dumps(key_to_shard))
+        convert_imagewise_to_webdataset(input_dir, wds_dir, keys, 0, args.maxcount)
+    key_to_shard = make_key_to_shard_map(wds_dir)
+    (wds_dir / "key_to_shard.json").write_text(json.dumps(key_to_shard))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
