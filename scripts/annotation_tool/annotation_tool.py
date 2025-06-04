@@ -42,7 +42,7 @@ p = {
     'dataset_path': '/path/to/dataset',
 
     # Dataset split. Options: 'train', 'test'.
-    'dataset_split': 'test',
+    'dataset_split': 'train',
 
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     'dataset_split_type': None,
