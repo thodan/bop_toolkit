@@ -179,8 +179,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     gray_ext = ".png"
     depth_ext = ".png"
 
-    if split_type == "pbr":
-        # The photorealistic synthetic images are provided in the JPG format.
+    if split_type == "pbr" or dataset_name == "handal":
+        # The photorealistic synthetic images or HANDAL's images are provided in the JPG format.
         rgb_ext = ".jpg"
     elif dataset_name == "itodd":
         gray_ext = ".tif"
