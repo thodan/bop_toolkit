@@ -321,6 +321,10 @@ class AppWindow:
 
         self._left_shift_modifier = False
 
+        # set default interface scales
+        self.dist = p['small_distance']  # mm
+        self.deg = p['small_angle']  # degrees
+
     def _update_scene_numbers(self):
         self._scene_number.text = "Scene: " + f'{self._annotation_scene.scene_num:06}'
         if p['tool_model'] == 'individual':
@@ -338,14 +342,13 @@ class AppWindow:
             return gui.Widget.EventCallbackResult.HANDLED
 
         # if ctrl is pressed then increase translation and angle values
-        global dist, deg
         if event.key == gui.KeyName.LEFT_CONTROL:
             if event.type == gui.KeyEvent.DOWN:
-                dist = p['large_distance']  # mm
-                deg = p['large_angle']  # degrees
+                self.dist = p['large_distance']  # mm
+                self.deg = p['large_angle']  # degrees
             elif event.type == gui.KeyEvent.UP:
-                dist = p['small_distance']  # mm
-                deg = p['small_angle']  # degrees
+                self.dist = p['small_distance']  # mm
+                self.deg = p['small_angle']  # degrees
             return gui.Widget.EventCallbackResult.HANDLED
 
         # if no active_mesh selected print error
@@ -401,85 +404,85 @@ class AppWindow:
                 if not self._left_shift_modifier:
                     if event.key == gui.KeyName.K:
                         print("K pressed: translate in +ve X direction")
-                        move(dist, 0, 0, 0, 0, 0)
+                        move(self.dist, 0, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.J:
                         print("J pressed: translate in -ve X direction")
-                        move(-dist, 0, 0, 0, 0, 0)
+                        move(-self.dist, 0, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.H:
                         print("H pressed: translate in +ve Y direction")
-                        move(0, dist, 0, 0, 0, 0)
+                        move(0, self.dist, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.L:
                         print("L pressed: translate in -ve Y direction")
-                        move(0, -dist, 0, 0, 0, 0)
+                        move(0, -self.dist, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.I:
                         print("I pressed: translate in +ve Z direction")
-                        move(0, 0, dist, 0, 0, 0)
+                        move(0, 0, self.dist, 0, 0, 0)
                     elif event.key == gui.KeyName.COMMA:
                         print("Comma pressed: translate in -ve Z direction")
-                        move(0, 0, -dist, 0, 0, 0)
+                        move(0, 0, -self.dist, 0, 0, 0)
                 # Rotation - keystrokes are not in same order as translation to make movement more human intuitive
                 else:
                     print("Left-Shift is clicked; rotation mode")
                     if event.key == gui.KeyName.L:
                         print("L pressed: rotate around +ve X direction")
-                        move(0, 0, 0, deg * np.pi / 180, 0, 0)
+                        move(0, 0, 0, self.deg * np.pi / 180, 0, 0)
                     elif event.key == gui.KeyName.H:
                         print("H pressed: rotate around -ve X direction")
-                        move(0, 0, 0, -deg * np.pi / 180, 0, 0)
+                        move(0, 0, 0, -self.deg * np.pi / 180, 0, 0)
                     elif event.key == gui.KeyName.I:
                         print("I pressed: rotate around +ve Y direction")
-                        move(0, 0, 0, 0, deg * np.pi / 180, 0)
+                        move(0, 0, 0, 0, self.deg * np.pi / 180, 0)
                     elif event.key == gui.KeyName.COMMA:
                         print("Comma pressed: rotate around -ve Y direction")
-                        move(0, 0, 0, 0, -deg * np.pi / 180, 0)
+                        move(0, 0, 0, 0, -self.deg * np.pi / 180, 0)
                     elif event.key == gui.KeyName.J:
                         print("J pressed: rotate around +ve Z direction")
-                        move(0, 0, 0, 0, 0, deg * np.pi / 180)
+                        move(0, 0, 0, 0, 0, self.deg * np.pi / 180)
                     elif event.key == gui.KeyName.K:
                         print("K pressed: rotate around -ve Z direction")
-                        move(0, 0, 0, 0, 0, -deg * np.pi / 180)
+                        move(0, 0, 0, 0, 0, -self.deg * np.pi / 180)
             elif p['tool_model'] == 'individual':
                 # Translation
                 if not self._left_shift_modifier:
                     if event.key == gui.KeyName.L:
                         print("L pressed: translate in +ve X direction")
-                        move(dist, 0, 0, 0, 0, 0)
+                        move(self.dist, 0, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.H:
                         print("H pressed: translate in -ve X direction")
-                        move(-dist, 0, 0, 0, 0, 0)
+                        move(-self.dist, 0, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.COMMA:
                         print("Comma pressed: translate in +ve Y direction")
-                        move(0, dist, 0, 0, 0, 0)
+                        move(0, self.dist, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.I:
                         print("I pressed: translate in -ve Y direction")
-                        move(0, -dist, 0, 0, 0, 0)
+                        move(0, -self.dist, 0, 0, 0, 0)
                     elif event.key == gui.KeyName.K:
                         print("K pressed: translate in +ve Z direction")
-                        move(0, 0, dist, 0, 0, 0)
+                        move(0, 0, self.dist, 0, 0, 0)
                     elif event.key == gui.KeyName.J:
                         print("J pressed: translate in -ve Z direction")
-                        move(0, 0, -dist, 0, 0, 0)
+                        move(0, 0, -self.dist, 0, 0, 0)
                 # Rotation - keystrokes are not in same order as translation to make movement more human intuitive
                 else:
                     print("Left-Shift is clicked; rotation mode")
                     if event.key == gui.KeyName.COMMA:
                         print("Comma pressed: rotate around +ve X direction")
-                        move(0, 0, 0, deg * np.pi / 180, 0, 0)
+                        move(0, 0, 0, self.deg * np.pi / 180, 0, 0)
                     elif event.key == gui.KeyName.I:
                         print("I pressed: rotate around -ve X direction")
-                        move(0, 0, 0, -deg * np.pi / 180, 0, 0)
+                        move(0, 0, 0, -self.deg * np.pi / 180, 0, 0)
                     elif event.key == gui.KeyName.K:
                         print("K pressed: rotate around +ve Y direction")
-                        move(0, 0, 0, 0, deg * np.pi / 180, 0)
+                        move(0, 0, 0, 0, self.deg * np.pi / 180, 0)
                     elif event.key == gui.KeyName.J:
                         print("J pressed: rotate around -ve Y direction")
-                        move(0, 0, 0, 0, -deg * np.pi / 180, 0)
+                        move(0, 0, 0, 0, -self.deg * np.pi / 180, 0)
                     elif event.key == gui.KeyName.L:
                         print("L pressed: rotate around +ve Z direction")
-                        move(0, 0, 0, 0, 0, deg * np.pi / 180)
+                        move(0, 0, 0, 0, 0, self.deg * np.pi / 180)
                     elif event.key == gui.KeyName.H:
                         print("H pressed: rotate around -ve Z direction")
-                        move(0, 0, 0, 0, 0, -deg * np.pi / 180)
+                        move(0, 0, 0, 0, 0, -self.deg * np.pi / 180)
 
         return gui.Widget.EventCallbackResult.HANDLED
 
