@@ -6,11 +6,7 @@ Other annotations can be generated using other scripts like `calc_gt_info.py`, `
 ![teaser](images/teaser.gif)
 
 ### Installation
-First install Open3d dependency as it not installed by default when installing the bop_toolkit:
-
-```
-pip install open3d==0.19.0 torch
-```
+Install `bop_toolkit_lib` with the `scripts` flag (see [main README](../../README.md#installation))
 
 ### Modes
 
@@ -21,6 +17,10 @@ The tool has two modes:
 Annotate each frame individually. This will save the annotations in the `scene_gt.json` file.
 You only need to run the `annotation_tool.py` script and go through each frame of the dataset.
 
+```
+python scripts/annotation_tool/annotation_tool.py
+```
+
 2. sequence mode:
 
 Annotate a whole sample by annotating the assembled point cloud in the world frame.
@@ -30,10 +30,9 @@ This is the case for most BOP datasets (e.g., LM, T-Less).
 This will save the annotations in the `scene_gt_world.json` file, which is not the BOP standard.  
 Call `project_6D_annotations.py` after annotating to project the annotations to other frames and save them in the `scene_gt.json` file.
 
-Other annotations can be generated using other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
-
 ```
-python scripts/annotation_tool.py
+python scripts/annotation_tool/assemble_cloud.py
+python scripts/annotation_tool/project_6D_annotations.py
 ```
 
 ### Interface:
