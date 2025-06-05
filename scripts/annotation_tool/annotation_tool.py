@@ -828,7 +828,8 @@ class AppWindow:
                 geometry.estimate_normals()
             geometry.normalize_normals()
         else:
-            print("[WARNING] Failed to read points")
+            print("[WARNING] Failed to read points. Exiting...")
+            exit()
 
         self._scene.scene.add_geometry("annotation_scene", geometry, self.settings.scene_material,
                                        add_downsampled_copy_for_fast_rendering=True)
