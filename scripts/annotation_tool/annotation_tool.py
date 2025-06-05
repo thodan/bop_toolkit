@@ -40,16 +40,18 @@ p = {
 
     # Folder containing the BOP datasets.
     "dataset_path": "/path/to/dataset",
+
     # Dataset split. Options: 'train', 'test'.
     'dataset_split': 'train',
 
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     "dataset_split_type": None,
+
     # scene number to open tool on
     'start_scene_num': 0,
 
     # image number inside scene to open tool on
-    'start_image_num': 0
+    'start_image_num': 0,
 
     # moving object parameters
     'small_distance': 1, # mm

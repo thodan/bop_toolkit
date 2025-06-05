@@ -56,6 +56,12 @@ def main():
         p['dataset_path'],
         p['dataset_split'] + '_' + p['dataset_split_type'] if p['dataset_split_type'] else p['dataset_split'])
 
+    # if scene_ids is None, get all scene ids from the dataset split
+    if p['scene_ids'] is None:
+        scenes_paths = glob.glob(dataset_split_path + '/*')
+        p['scene_ids'] = [int(os.path.basename(scene_path)) for scene_path in scenes_paths]
+        p['scene_ids'].sort()
+
     scenes_paths = [os.path.join(dataset_split_path, f'{scene_id:06d}') for scene_id in p['scene_ids']]
 
     for scene_path in scenes_paths:  # samples are not ordered
