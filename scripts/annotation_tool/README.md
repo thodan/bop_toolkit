@@ -3,7 +3,7 @@
 This tool is used to annotate the 6D poses of objects in BOP datasets.
 Other annotations can be generated using other scripts like `calc_gt_info.py`, `calc_gt_masks.py`, etc.
 
-![teaser](scripts/annotation_tool/images/teaser.png)
+![teaser](images/teaser.gif)
 
 ### Installation
 First install Open3d dependency as it not installed by default when installing the bop_toolkit:
@@ -41,7 +41,7 @@ python scripts/annotation_tool.py
 ##### individual mode
 This image shows the interface of the annotation tool in the individual mode:
 
-![interface](scripts/annotation_tool/images/keyboard.png)
+![interface](images/keyboard.png)
 
 Control the object pose with the following keys
 
