@@ -120,25 +120,5 @@ Set the dataset and split parameters in the top section of the script.
 
 ## Manual annotation tool
 
-To annotate a new dataset in BOP format use [this tool](./scripts/annotation_tool.py).
+To annotate a new dataset or change an existing dataset in the BOP format please refer to the annotation tool [README](scripts/annotation_tool/README.md).
 
-Edit the file paths in parameters section at the beginning of the file then run:
-
-```
-python scripts/annotation_tool.py
-```
-
-### Interface:
-
-Control the object pose with the following keys
-`i`: up, `,`: down, `j`: front, `k`:back, `h`:left, `l`:right
-
-Translation/rotation mode:
-- Shift not clicked: translation mode
-- Shift clicked: rotation model
-
-Distance/angle big or small:
-- Ctrl not clicked: small distance(1mm) / angle(2deg)
-- Ctrl clicked: big distance(5cm) / angle(90deg)
-
-R or "Refine" button will call ICP algorithm to do local refinement of the annotation

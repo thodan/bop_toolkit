@@ -1,44 +1,69 @@
 # Author: Anas Gouda (anas.gouda@tu-dortmund.de)
 # FLW, TU Dortmund, Germany
 
-"""Manual annotation tool for datasets with BOP format
+"""Manual annotation tool for datasets with BOP format - works only with RGB-D datasets in classic BOP format.
 
-Using RGB, Depth and Models the tool will generate the "scene_gt.json" annotation file
+The tool has two modes:
+1- 'individual' mode: annotate each frame individually. This will save the annotations in the "scene_gt.json" file.
+2- 'sequence' mode: annotate a whole sample by annotating assembled point cloud in the world frame.
+                    This is the case for most bop datasets (ex. LM, T-Less).
+                    assemble_cloud.py script must be called first to assemble point cloud for the whole scene.
+                    This will save the annotations in the "scene_gt_world.json" file. Which is not the BOP standard.
+                    call project_6D_annotations.py after annotating to projects the annotations to other frames and save
+                    them in the "scene_gt.json" file.
 
-Other annotations can be generated usign other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
+Other annotations can be generated using other scripts [calc_gt_info.py, calc_gt_masks.py, ....]
 
-original repo: https://github.com/FLW-TUDO/3d_annotation_tool
+original repo: https://github.com/FLW-TUDO/3d_annotation_tool was made for annotating the DoPose dataset.
 
 """
 
 import glob
+import copy
+
 import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
+import open3d.t.pipelines.registration as treg
 import os
 import json
 import cv2
-import warnings
+import trimesh
+import torch  # remove torch later and use open3d.cuda.is_available() instead
 
 # PARAMETERS.
 ################################################################################
 p = {
+    # Mode of the annotation tool. Options: 'individual' or 'sequence':
+    'tool_model': 'individual',
+
     # Folder containing the BOP datasets.
     "dataset_path": "/path/to/dataset",
+
     # Dataset split. Options: 'train', 'test'.
-    "dataset_split": "val",
+    'dataset_split': 'train',
+
     # Dataset split type. Options: 'synt', 'real', None = default. See dataset_params.py for options.
     "dataset_split_type": None,
+
     # scene number to open tool on
-    "start_scene_num": 1,
+    'start_scene_num': 0,
+
     # image number inside scene to open tool on
-    "start_image_num": 0,
+    'start_image_num': 0,
+
+    # moving object parameters
+    'small_distance': 1, # mm
+    'large_distance': 50, # mm
+    'small_angle': 1, # degrees
+    'large_angle': 90, # degrees
+
+    # ICP parameters
+    'max_correspondence_distance': 10,  # mm
+    'voxel_size': 1, # mm
 }
 ################################################################################
-
-dist = 0.002
-deg = 1
 
 
 class Dataset:
@@ -81,6 +106,7 @@ class Settings:
         self.bg_color = gui.Color(1, 1, 1)
         self.show_axes = False
         self.highlight_obj = True
+        self.cam_follow_obj = False
 
         self.apply_material = True  # clear to False after processing
 
@@ -121,6 +147,7 @@ class AppWindow:
 
         self._show_axes.checked = self.settings.show_axes
         self._highlight_obj.checked = self.settings.highlight_obj
+        self._camera_follow_object.checked = self.settings.cam_follow_obj
         self._point_size.double_value = self.settings.scene_material.point_size
 
     def _on_layout(self, layout_context):
@@ -190,7 +217,10 @@ class AppWindow:
         annotation_objects.set_is_open(True)
         self._meshes_available = gui.ListView()
         # mesh_available.set_items(["bottle", "can"])
+        self._camera_follow_object = gui.Checkbox("Change camera to object")
+        self._camera_follow_object.set_on_checked(self._set_change_cam_to_object)
         self._meshes_used = gui.ListView()
+        self._meshes_used.set_on_selection_changed(self._change_cam_to_object)
         # mesh_used.set_items(["can_0", "can_1", "can_1", "can_1"])
         add_mesh_button = gui.Button("Add Mesh")
         remove_mesh_button = gui.Button("Remove Mesh")
@@ -198,6 +228,7 @@ class AppWindow:
         remove_mesh_button.set_on_clicked(self._remove_mesh)
         annotation_objects.add_child(self._meshes_available)
         annotation_objects.add_child(add_mesh_button)
+        annotation_objects.add_child(self._camera_follow_object)
         annotation_objects.add_child(self._meshes_used)
         annotation_objects.add_child(remove_mesh_button)
         self._settings_panel.add_child(annotation_objects)
@@ -210,14 +241,15 @@ class AppWindow:
         self._images_buttons_label = gui.Label("Images:")
         self._samples_buttons_label = gui.Label("Scene: ")
 
-        self._pre_image_button = gui.Button("Previous")
-        self._pre_image_button.horizontal_padding_em = 0.8
-        self._pre_image_button.vertical_padding_em = 0
-        self._pre_image_button.set_on_clicked(self._on_previous_image)
-        self._next_image_button = gui.Button("Next")
-        self._next_image_button.horizontal_padding_em = 0.8
-        self._next_image_button.vertical_padding_em = 0
-        self._next_image_button.set_on_clicked(self._on_next_image)
+        if p['tool_model'] == 'individual':
+            self._pre_image_button = gui.Button("Previous")
+            self._pre_image_button.horizontal_padding_em = 0.8
+            self._pre_image_button.vertical_padding_em = 0
+            self._pre_image_button.set_on_clicked(self._on_previous_image)
+            self._next_image_button = gui.Button("Next")
+            self._next_image_button.horizontal_padding_em = 0.8
+            self._next_image_button.vertical_padding_em = 0
+            self._next_image_button.set_on_clicked(self._on_next_image)
         self._pre_sample_button = gui.Button("Previous")
         self._pre_sample_button.horizontal_padding_em = 0.8
         self._pre_sample_button.vertical_padding_em = 0
@@ -226,14 +258,15 @@ class AppWindow:
         self._next_sample_button.horizontal_padding_em = 0.8
         self._next_sample_button.vertical_padding_em = 0
         self._next_sample_button.set_on_clicked(self._on_next_scene)
-        # 2 rows for sample and scene control
-        h = gui.Horiz(0.4 * em)  # row 1
-        h.add_stretch()
-        h.add_child(self._images_buttons_label)
-        h.add_child(self._pre_image_button)
-        h.add_child(self._next_image_button)
-        h.add_stretch()
-        self._scene_control.add_child(h)
+        if p['tool_model'] == 'individual':
+            # 2 rows for sample and scene control
+            h = gui.Horiz(0.4 * em)  # row 1
+            h.add_stretch()
+            h.add_child(self._images_buttons_label)
+            h.add_child(self._pre_image_button)
+            h.add_child(self._next_image_button)
+            h.add_stretch()
+            self._scene_control.add_child(h)
         h = gui.Horiz(0.4 * em)  # row 2
         h.add_stretch()
         h.add_child(self._samples_buttons_label)
@@ -288,9 +321,14 @@ class AppWindow:
 
         self._left_shift_modifier = False
 
+        # set default interface scales
+        self.dist = p['small_distance']  # mm
+        self.deg = p['small_angle']  # degrees
+
     def _update_scene_numbers(self):
-        self._scene_number.text = "Scene: " + f"{self._annotation_scene.scene_num:06}"
-        self._image_number.text = "Image: " + f"{self._annotation_scene.image_num:06}"
+        self._scene_number.text = "Scene: " + f'{self._annotation_scene.scene_num:06}'
+        if p['tool_model'] == 'individual':
+            self._image_number.text = "Image: " + f'{self._annotation_scene.image_num:06}'
 
     def _transform(self, event):
         if event.is_repeat:
@@ -304,14 +342,13 @@ class AppWindow:
             return gui.Widget.EventCallbackResult.HANDLED
 
         # if ctrl is pressed then increase translation and angle values
-        global dist, deg
         if event.key == gui.KeyName.LEFT_CONTROL:
             if event.type == gui.KeyEvent.DOWN:
-                dist = 0.05
-                deg = 90
+                self.dist = p['large_distance']  # mm
+                self.deg = p['large_angle']  # degrees
             elif event.type == gui.KeyEvent.UP:
-                dist = 0.005
-                deg = 1
+                self.dist = p['small_distance']  # mm
+                self.deg = p['small_angle']  # degrees
             return gui.Widget.EventCallbackResult.HANDLED
 
         # if no active_mesh selected print error
@@ -360,47 +397,92 @@ class AppWindow:
             # Refine
             if event.key == gui.KeyName.R:
                 self._on_refine()
-            # Translation
-            if not self._left_shift_modifier:
-                if event.key == gui.KeyName.L:
-                    print("L pressed: translate in +ve X direction")
-                    move(dist, 0, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.H:
-                    print("H pressed: translate in -ve X direction")
-                    move(-dist, 0, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.J:
-                    print("Comma pressed: translate in +ve Y direction")
-                    move(0, dist, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.K:
-                    print("I pressed: translate in -ve Y direction")
-                    move(0, -dist, 0, 0, 0, 0)
-                elif event.key == gui.KeyName.COMMA:
-                    print("K pressed: translate in +ve Z direction")
-                    move(0, 0, dist, 0, 0, 0)
-                elif event.key == gui.KeyName.I:
-                    print("J pressed: translate in -ve Z direction")
-                    move(0, 0, -dist, 0, 0, 0)
-            # Rotation - keystrokes are not in same order as translation to make movement more human intuitive
-            else:
-                print("Left-Shift is clicked; rotation mode")
-                if event.key == gui.KeyName.K:
-                    print("L pressed: rotate around +ve X direction")
-                    move(0, 0, 0, 0, 0, deg * np.pi / 180)
-                elif event.key == gui.KeyName.J:
-                    print("H pressed: rotate around -ve X direction")
-                    move(0, 0, 0, 0, 0, -deg * np.pi / 180)
-                elif event.key == gui.KeyName.H:
-                    print("K pressed: rotate around +ve Y direction")
-                    move(0, 0, 0, 0, deg * np.pi / 180, 0)
-                elif event.key == gui.KeyName.L:
-                    print("J pressed: rotate around -ve Y direction")
-                    move(0, 0, 0, 0, -deg * np.pi / 180, 0)
-                elif event.key == gui.KeyName.COMMA:
-                    print("Comma pressed: rotate around +ve Z direction")
-                    move(0, 0, 0, deg * np.pi / 180, 0, 0)
-                elif event.key == gui.KeyName.I:
-                    print("I pressed: rotate around -ve Z direction")
-                    move(0, 0, 0, -deg * np.pi / 180, 0, 0)
+            # keyboad control is different for sequence and individual mode
+            # sequence mode moves object as in real world (x front, y left, z up)
+            if p['tool_model'] == 'sequence':
+                # Translation
+                if not self._left_shift_modifier:
+                    if event.key == gui.KeyName.K:
+                        print("K pressed: translate in +ve X direction")
+                        move(self.dist, 0, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.J:
+                        print("J pressed: translate in -ve X direction")
+                        move(-self.dist, 0, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.H:
+                        print("H pressed: translate in +ve Y direction")
+                        move(0, self.dist, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.L:
+                        print("L pressed: translate in -ve Y direction")
+                        move(0, -self.dist, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.I:
+                        print("I pressed: translate in +ve Z direction")
+                        move(0, 0, self.dist, 0, 0, 0)
+                    elif event.key == gui.KeyName.COMMA:
+                        print("Comma pressed: translate in -ve Z direction")
+                        move(0, 0, -self.dist, 0, 0, 0)
+                # Rotation - keystrokes are not in same order as translation to make movement more human intuitive
+                else:
+                    print("Left-Shift is clicked; rotation mode")
+                    if event.key == gui.KeyName.L:
+                        print("L pressed: rotate around +ve X direction")
+                        move(0, 0, 0, self.deg * np.pi / 180, 0, 0)
+                    elif event.key == gui.KeyName.H:
+                        print("H pressed: rotate around -ve X direction")
+                        move(0, 0, 0, -self.deg * np.pi / 180, 0, 0)
+                    elif event.key == gui.KeyName.I:
+                        print("I pressed: rotate around +ve Y direction")
+                        move(0, 0, 0, 0, self.deg * np.pi / 180, 0)
+                    elif event.key == gui.KeyName.COMMA:
+                        print("Comma pressed: rotate around -ve Y direction")
+                        move(0, 0, 0, 0, -self.deg * np.pi / 180, 0)
+                    elif event.key == gui.KeyName.J:
+                        print("J pressed: rotate around +ve Z direction")
+                        move(0, 0, 0, 0, 0, self.deg * np.pi / 180)
+                    elif event.key == gui.KeyName.K:
+                        print("K pressed: rotate around -ve Z direction")
+                        move(0, 0, 0, 0, 0, -self.deg * np.pi / 180)
+            elif p['tool_model'] == 'individual':
+                # Translation
+                if not self._left_shift_modifier:
+                    if event.key == gui.KeyName.L:
+                        print("L pressed: translate in +ve X direction")
+                        move(self.dist, 0, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.H:
+                        print("H pressed: translate in -ve X direction")
+                        move(-self.dist, 0, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.COMMA:
+                        print("Comma pressed: translate in +ve Y direction")
+                        move(0, self.dist, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.I:
+                        print("I pressed: translate in -ve Y direction")
+                        move(0, -self.dist, 0, 0, 0, 0)
+                    elif event.key == gui.KeyName.K:
+                        print("K pressed: translate in +ve Z direction")
+                        move(0, 0, self.dist, 0, 0, 0)
+                    elif event.key == gui.KeyName.J:
+                        print("J pressed: translate in -ve Z direction")
+                        move(0, 0, -self.dist, 0, 0, 0)
+                # Rotation - keystrokes are not in same order as translation to make movement more human intuitive
+                else:
+                    print("Left-Shift is clicked; rotation mode")
+                    if event.key == gui.KeyName.COMMA:
+                        print("Comma pressed: rotate around +ve X direction")
+                        move(0, 0, 0, self.deg * np.pi / 180, 0, 0)
+                    elif event.key == gui.KeyName.I:
+                        print("I pressed: rotate around -ve X direction")
+                        move(0, 0, 0, -self.deg * np.pi / 180, 0, 0)
+                    elif event.key == gui.KeyName.K:
+                        print("K pressed: rotate around +ve Y direction")
+                        move(0, 0, 0, 0, self.deg * np.pi / 180, 0)
+                    elif event.key == gui.KeyName.J:
+                        print("J pressed: rotate around -ve Y direction")
+                        move(0, 0, 0, 0, -self.deg * np.pi / 180, 0)
+                    elif event.key == gui.KeyName.L:
+                        print("L pressed: rotate around +ve Z direction")
+                        move(0, 0, 0, 0, 0, self.deg * np.pi / 180)
+                    elif event.key == gui.KeyName.H:
+                        print("H pressed: rotate around -ve Z direction")
+                        move(0, 0, 0, 0, 0, -self.deg * np.pi / 180)
 
         return gui.Widget.EventCallbackResult.HANDLED
 
@@ -412,50 +494,85 @@ class AppWindow:
             self._on_error("No objects are highlighted in scene meshes")
             return gui.Widget.EventCallbackResult.HANDLED
 
+        # use GPU or CPU for ICP? if cuda available
+        cuda_available = torch.cuda.is_available()
+        # use Colored or PointToPoint ICP? if color exist
+        color_available = self._obj_meshes_colored
+
         target = self._annotation_scene.annotation_scene
         objects = self._annotation_scene.get_objects()
         active_obj = objects[self._meshes_used.selected_index]
         source = active_obj.obj_geometry
+        # crop the target point cloud to the bounding box + 10% margin of the object
+        # get the bounding box of the annotation object (source)
+        bbox = source.get_axis_aligned_bounding_box()
+        # scale the bounding box by 1.1 to get a margin around the object
+        bbox.scale(1.1, center=bbox.get_center())
+        # crop the target point cloud with the scaled bounding box
+        target = target.crop(bbox)
+        # if target is empty (no points), print error and do nothing
+        if len(target.points) == 0:
+            self._on_error("Target point cloud is empty after cropping around the refinement area. No points to register.")
+            return gui.Widget.EventCallbackResult.HANDLED
 
-        trans_init = np.identity(4)
-        threshold = 0.004
-        radius = 0.002
-        target.estimate_normals(
-            o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30)
-        )
-        source.estimate_normals(
-            o3d.geometry.KDTreeSearchParamHybrid(radius=radius * 2, max_nn=30)
-        )
-        reg = o3d.pipelines.registration.registration_icp(
-            source,
-            target,
-            threshold,
-            trans_init,
-            o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-            o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=50),
-        )
+        trans_init = np.eye(4)
 
-        active_obj.obj_geometry.transform(reg.transformation)
+        if cuda_available:
+            def cloud_gpu(cloud, color_available):
+                cloud_copy = copy.deepcopy(cloud)
+                cloud_t = o3d.t.geometry.PointCloud.from_legacy(cloud_copy)
+                if color_available:
+                    cloud_t.point["colors"] = cloud_t.point["colors"].to(o3d.core.Dtype.Float32) / 255.0
+                cloud_t = cloud_t.cuda(0)
+                return cloud_t
+
+            # set up parameters for GPU ICP
+            criteria = treg.ICPConvergenceCriteria(relative_fitness=0.00001,
+                                                   relative_rmse=0.00001,
+                                                   max_iteration=300)
+            max_correspondence_distance = p['max_correspondence_distance']  # mm
+            voxel_size = p['voxel_size']  # mm
+            target_cloud_t = cloud_gpu(target, color_available)
+            source_cloud_t = cloud_gpu(source, color_available)
+            if color_available:
+                estimation = treg.TransformationEstimationForColoredICP()
+            else:
+                estimation = treg.TransformationEstimationPointToPlane()
+            reg_transform = treg.icp(source_cloud_t,target_cloud_t,
+                                     max_correspondence_distance,trans_init,
+                                     estimation,criteria,
+                                     voxel_size)
+            icp_transform = reg_transform.transformation.cpu().numpy() # Convert tensor to numpy array
+        else:
+            # no color ICP without CUDA
+            ICP_method = o3d.pipelines.registration.TransformationEstimationPointToPlane()
+            # set up parameters for CPU ICP
+            if color_available:
+                print("Colored ICP is not implemented without CUDA, using PointToPoint ICP")
+            reg = o3d.pipelines.registration.registration_icp(source, target, p['max_correspondence_distance'], trans_init, ICP_method,
+                                                              o3d.pipelines.registration.ICPConvergenceCriteria(
+                                                                  relative_fitness=0.00001,
+                                                                  relative_rmse=0.00001,
+                                                                  max_iteration=50))
+            icp_transform = reg.transformation
+
+        active_obj.obj_geometry.transform(icp_transform)
         # active_obj.obj_geometry.paint_uniform_color([0,1,0])  # Debug
         self._scene.scene.remove_geometry(active_obj.obj_name)
-        self._scene.scene.add_geometry(
-            active_obj.obj_name,
-            active_obj.obj_geometry,
-            self.settings.annotation_obj_material,
-            add_downsampled_copy_for_fast_rendering=True,
-        )
-        active_obj.transform = np.matmul(reg.transformation, active_obj.transform)
+        self._scene.scene.add_geometry(active_obj.obj_name, active_obj.obj_geometry,
+                                       self.settings.annotation_obj_material,
+                                       add_downsampled_copy_for_fast_rendering=True)
+        active_obj.transform = np.matmul(icp_transform, active_obj.transform)
 
     def _on_generate(self):
-        image_num = self._annotation_scene.image_num
-        model_names = self.load_model_names()
+        if p['tool_model'] == 'individual':
+            image_num = self._annotation_scene.image_num
+            scene_gt_path = 'scene_gt.json'
+        elif p['tool_model'] == 'sequence':
+            image_num = 'w'
+            scene_gt_path = 'scene_gt_world.json'
 
-        json_6d_path = os.path.join(
-            self.scenes.scenes_path,
-            f"{self._annotation_scene.scene_num:06}",
-            "scene_gt.json",
-        )
-
+        json_6d_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_path)
         if os.path.exists(json_6d_path):
             with open(json_6d_path, "r") as gt_scene:
                 gt_6d_pose_data = json.load(gt_scene)
@@ -467,23 +584,19 @@ class AppWindow:
             view_angle_data = list()
             for obj in self._annotation_scene.get_objects():
                 transform_cam_to_object = obj.transform
-                translation = list(
-                    transform_cam_to_object[0:3, 3] * 1000
-                )  # convert meter to mm
+                translation = list(transform_cam_to_object[0:3, 3])  # distance in mm
                 model_names = self.load_model_names()
                 obj_id = (
                     model_names.index(obj.obj_name[:-2]) + 1
                 )  # assuming max number of object of same object 10
                 obj_data = {
-                    "cam_R_m2c": transform_cam_to_object[
-                        0:3, 0:3
-                    ].tolist(),  # rotation matrix
+                    "cam_R_m2c": transform_cam_to_object[0:3, 0:3].flatten().tolist(),  # rotation matrix
                     "cam_t_m2c": translation,  # translation
                     "obj_id": obj_id,
                 }
                 view_angle_data.append(obj_data)
             gt_6d_pose_data[str(image_num)] = view_angle_data
-            json.dump(gt_6d_pose_data, gt_scene)
+            json.dump(gt_6d_pose_data, gt_scene, indent=4)
 
         self._annotation_changed = False
 
@@ -566,6 +679,20 @@ class AppWindow:
     def _on_about_ok(self):
         self.window.close_dialog()
 
+    def _change_cam_to_object(self, new_sel_val, is_dbl_click):
+        if self.settings.cam_follow_obj:
+            meshes = self._annotation_scene.get_objects()
+            selected_obj = meshes[self._meshes_used.selected_index]
+            bounds = selected_obj.obj_geometry.get_axis_aligned_bounding_box()
+            self._scene.setup_camera(60, bounds, bounds.get_center())
+            center = selected_obj.obj_geometry.get_center()
+            eye = center + np.array([-500, 0, 500])
+            up = np.array([0, 0, 1])
+            self._scene.look_at(center, eye, up)
+
+    def _set_change_cam_to_object(self, checked):
+        self.settings.cam_follow_obj = checked
+
     def _obj_instance_count(self, mesh_to_add, meshes):
         types = [
             i[:-2] for i in meshes
@@ -583,39 +710,20 @@ class AppWindow:
     def _add_mesh(self):
         meshes = self._annotation_scene.get_objects()
         meshes = [i.obj_name for i in meshes]
-
-        object_geometry = o3d.io.read_point_cloud(
-            self.scenes.objects_path
-            + "/obj_"
-            + f"{self._meshes_available.selected_index + 1:06}"
-            + ".ply"
-        )
-        object_geometry.points = o3d.utility.Vector3dVector(
-            np.array(object_geometry.points) / 1000
-        )  # convert mm to meter
-        init_trans = np.identity(4)
-        center = self._annotation_scene.annotation_scene.get_center()
-        center[2] -= 0.2
-        init_trans[0:3, 3] = center
-        object_geometry.transform(init_trans)
-        new_mesh_instance = self._obj_instance_count(
-            self._meshes_available.selected_value, meshes
-        )
-        new_mesh_name = (
-            str(self._meshes_available.selected_value) + "_" + str(new_mesh_instance)
-        )
-        self._scene.scene.add_geometry(
-            new_mesh_name,
-            object_geometry,
-            self.settings.annotation_obj_material,
-            add_downsampled_copy_for_fast_rendering=True,
-        )
-        self._annotation_scene.add_obj(
-            object_geometry, new_mesh_name, new_mesh_instance, transform=init_trans
-        )
-        meshes = (
-            self._annotation_scene.get_objects()
-        )  # update list after adding current object
+        obj_mesh_path = self.scenes.objects_path + '/obj_' + f'{self._meshes_available.selected_index + 1:06}' + '.ply'
+        object_geometry, obj_mesh_colored = self._load_object(obj_mesh_path)
+        self._obj_meshes_colored = all([self._obj_meshes_colored, obj_mesh_colored])
+        cam_trans = self._scene.scene.camera.get_model_matrix()
+        infront_of_cam_trans = np.eye(4)
+        infront_of_cam_trans[2,3] += -500  # drop object 50 mm in front of the camera
+        obj_trans = cam_trans@infront_of_cam_trans
+        object_geometry.transform(obj_trans)
+        new_mesh_instance = self._obj_instance_count(self._meshes_available.selected_value, meshes)
+        new_mesh_name = str(self._meshes_available.selected_value) + '_' + str(new_mesh_instance)
+        self._scene.scene.add_geometry(new_mesh_name, object_geometry, self.settings.annotation_obj_material,
+                                       add_downsampled_copy_for_fast_rendering=True)
+        self._annotation_scene.add_obj(object_geometry, new_mesh_name, new_mesh_instance, transform=obj_trans)
+        meshes = self._annotation_scene.get_objects()  # update list after adding current object
         meshes = [i.obj_name for i in meshes]
         self._meshes_used.set_items(meshes)
         self._meshes_used.selected_index = len(meshes) - 1
@@ -653,8 +761,30 @@ class AppWindow:
             rgb_img_o3d, depth_img_o3d, depth_scale=1, convert_rgb_to_intensity=False
         )
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd, intrinsic)
+        pcd.points = o3d.utility.Vector3dVector(np.asarray(pcd.points) * 1000)  # convert point cloud to mm
 
         return pcd
+
+    def _load_object(self, obj_mesh_path):
+        # load object using trimesh
+        trimesh_mesh = trimesh.load(obj_mesh_path, process=False)
+
+        #obj_mesh_colored = trimesh_mesh.has_colors()
+        obj_mesh_colored = bool(trimesh_mesh.visual.kind)
+
+        #if trimesh_mesh.vertices > 1000:  # sample to point cloud
+        samples, face_index, colors = trimesh.sample.sample_surface(trimesh_mesh, 500000, sample_color=True)
+        samples, face_index, colors = samples.view(np.ndarray), face_index.view(np.ndarray), colors.view(np.ndarray)
+
+        obj_geometry = o3d.geometry.PointCloud()
+        obj_geometry.points = o3d.utility.Vector3dVector(samples)
+
+        if obj_mesh_colored:
+            obj_geometry.colors = o3d.utility.Vector3dVector(colors[:, :3] / 255)
+            obj_mesh_colored = True
+        elif not obj_mesh_colored:
+            obj_mesh_colored = False
+        return  obj_geometry, obj_mesh_colored
 
     def scene_load(self, scenes_path, scene_num, image_num):
         self._annotation_changed = False
@@ -664,23 +794,36 @@ class AppWindow:
 
         scene_path = os.path.join(scenes_path, f"{scene_num:06}")
 
-        camera_params_path = os.path.join(scene_path, "scene_camera.json")
-        with open(camera_params_path) as f:
-            data = json.load(f)
-            cam_K = data[str(image_num)]["cam_K"]
-            cam_K = np.array(cam_K).reshape((3, 3))
-            depth_scale = data[str(image_num)]["depth_scale"]
-
-        rgb_path = os.path.join(scene_path, "rgb", f"{image_num:06}" + ".png")
-        rgb_img = cv2.imread(rgb_path)
-        depth_path = os.path.join(scene_path, "depth", f"{image_num:06}" + ".png")
-        depth_img = cv2.imread(depth_path, -1)
-        depth_img = np.float32(depth_img * depth_scale / 1000)
-
         try:
-            geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)
+            if p['tool_model'] == 'individual':
+                camera_params_path = os.path.join(scene_path, 'scene_camera.json')
+                with open(camera_params_path) as f:
+                    data = json.load(f)
+                    cam_K = data[str(image_num)]['cam_K']
+                    cam_K = np.array(cam_K).reshape((3, 3))
+                    depth_scale = data[str(image_num)]['depth_scale']
+
+                # read rgb image with whatever extension it has (png or jpg)
+                if os.path.exists(os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')):
+                    rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.png')
+                elif os.path.exists(os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.jpg')):
+                    rgb_path = os.path.join(scene_path, 'rgb', f'{image_num:06}' + '.jpg')
+                rgb_img = cv2.imread(rgb_path)
+                depth_path = os.path.join(scene_path, 'depth', f'{image_num:06}' + '.png')
+                depth_img = cv2.imread(depth_path, -1)
+                depth_img = np.float32(depth_img * depth_scale / 1000)  # convet depth to meter - convert it later to mm after making point cloud in open3d
+
+                geometry = self._make_point_cloud(rgb_img, depth_img, cam_K)  # point cloud in mm
+            elif p['tool_model'] == 'sequence':
+                point_cloud_path = os.path.join(scene_path, 'assembled_cloud_world.pcd')
+                #point_cloud_path  = '/home/gouda/tmp/assembled_cloud_world.pcd'
+                geometry = o3d.io.read_point_cloud(point_cloud_path)
+                image_num = 'w'  # represent 6D annotations in the world coordinate system
+            else:
+                print(p['tool_model'], " is not valid. Exiting ...")
+                exit()
         except Exception:
-            print("Failed to load scene.")
+            print("Failed to load scene ", scene_path)
 
         if geometry is not None:
             print("[Info] Successfully read scene ", scene_num)
@@ -688,82 +831,81 @@ class AppWindow:
                 geometry.estimate_normals()
             geometry.normalize_normals()
         else:
-            print("[WARNING] Failed to read points")
+            print("[WARNING] Failed to read points. Exiting...")
+            exit()
 
-        try:
-            self._scene.scene.add_geometry(
-                "annotation_scene",
-                geometry,
-                self.settings.scene_material,
-                add_downsampled_copy_for_fast_rendering=True,
-            )
+        self._scene.scene.add_geometry("annotation_scene", geometry, self.settings.scene_material,
+                                       add_downsampled_copy_for_fast_rendering=True)
+        # setting scene camera
+        if p['tool_model'] == 'sequence':
             bounds = geometry.get_axis_aligned_bounding_box()
             self._scene.setup_camera(60, bounds, bounds.get_center())
-            center = np.array([0, 0, 0])
-            eye = center + np.array([0, 0, -0.5])
+            center = geometry.get_center()
+            eye = center + np.array([-500, 0, 500])
+            up = np.array([0, 0, 1])
+            self._scene.look_at(center, eye, up)
+        elif p['tool_model'] == 'individual':
+            bounds = geometry.get_axis_aligned_bounding_box()
+            self._scene.setup_camera(60, bounds, np.array([0, 0, 0]))
+            eye = np.array([0, 0, 500])
+            center = eye + np.array([0, 0, 2000])
             up = np.array([0, -1, 0])
             self._scene.look_at(center, eye, up)
 
-            self._annotation_scene = AnnotationScene(geometry, scene_num, image_num)
-            self._meshes_used.set_items([])  # clear list from last loaded scene
+        self._annotation_scene = AnnotationScene(geometry, scene_num, image_num)
+        self._meshes_used.set_items([])  # clear list from last loaded scene
 
-            # load values if an annotation already exists
+        # load values if an annotation already exists
 
-            model_names = self.load_model_names()
+        model_names = self.load_model_names()
 
-            scene_gt_path = os.path.join(
-                self.scenes.scenes_path,
-                f"{self._annotation_scene.scene_num:06}",
-                "scene_gt.json",
-            )
-            # if os.path.exists(json_path):
+        if p['tool_model'] == 'individual':
+            scene_gt_filename = 'scene_gt.json'
+        elif p['tool_model'] == 'sequence':
+            scene_gt_filename = 'scene_gt_world.json'
+        scene_gt_path = os.path.join(self.scenes.scenes_path, f"{self._annotation_scene.scene_num:06}", scene_gt_filename)
+        active_meshes = list()
+        # if scene_gt.json does not exist, then create an new empty json file
+        if not os.path.exists(scene_gt_path):
+            with open(scene_gt_path, 'w') as f:
+                json.dump({}, f)
+        else:  # if scene_gt.json exists, load the annotation
             with open(scene_gt_path) as scene_gt_file:
                 data = json.load(scene_gt_file)
-                scene_data = data[str(image_num)]
-                active_meshes = list()
-                for obj in scene_data:
-                    # add object to annotation_scene object
-                    obj_geometry = o3d.io.read_point_cloud(
-                        os.path.join(
-                            self.scenes.objects_path,
-                            "obj_" + f"{int(obj['obj_id']):06}" + ".ply",
-                        )
-                    )
-                    obj_geometry.points = o3d.utility.Vector3dVector(
-                        np.array(obj_geometry.points) / 1000
-                    )  # convert mm to meter
-                    model_name = model_names[int(obj["obj_id"]) - 1]
-                    obj_instance = self._obj_instance_count(model_name, active_meshes)
-                    obj_name = model_name + "_" + str(obj_instance)
-                    translation = (
-                        np.array(np.array(obj["cam_t_m2c"]), dtype=np.float64) / 1000
-                    )  # convert to meter
-                    orientation = np.array(np.array(obj["cam_R_m2c"]), dtype=np.float64)
-                    transform = np.concatenate(
-                        (orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1
-                    )
-                    transform_cam_to_obj = np.concatenate(
-                        (transform, np.array([0, 0, 0, 1]).reshape(1, 4))
-                    )  # homogeneous transform
+                # if data doesn't contain annotations for the current image
+                if not str(image_num) in data:
+                    self._obj_meshes_colored = True  # default to colored ICP
+                else:  # if data contains annotations for the current image
+                    scene_data = data[str(image_num)]
+                    obj_meshes_colored = []
+                    for obj in scene_data:  # add object to annotation_scene object
+                        # load object mesh
+                        obj_mesh_path = os.path.join(self.scenes.objects_path, 'obj_' + f"{int(obj['obj_id']):06}" + '.ply')
+                        # assert normals exist
+                        #assert not obj_geometry.has_normals(), "Object mesh does not have normals. Exiting ..."
 
-                    self._annotation_scene.add_obj(
-                        obj_geometry, obj_name, obj_instance, transform_cam_to_obj
-                    )
-                    # adding object to the scene
-                    obj_geometry.translate(transform_cam_to_obj[0:3, 3])
-                    center = obj_geometry.get_center()
-                    obj_geometry.rotate(transform_cam_to_obj[0:3, 0:3], center=center)
-                    self._scene.scene.add_geometry(
-                        obj_name,
-                        obj_geometry,
-                        self.settings.annotation_obj_material,
-                        add_downsampled_copy_for_fast_rendering=True,
-                    )
-                    active_meshes.append(obj_name)
-            self._meshes_used.set_items(active_meshes)
+                        obj_geometry, obj_mesh_colored = self._load_object(obj_mesh_path)
 
-        except Exception as e:
-            print(e)
+                        obj_meshes_colored.append(obj_mesh_colored)
+
+                        #obj_geometry.points = o3d.utility.Vector3dVector(np.array(obj_geometry.points))  # object point cloud in mm
+                        model_name = model_names[int(obj['obj_id']) - 1]
+                        obj_instance = self._obj_instance_count(model_name, active_meshes)
+                        obj_name = model_name + '_' + str(obj_instance)
+                        translation = np.array(np.array(obj['cam_t_m2c']), dtype=np.float64)  # distance in mm
+                        orientation = np.array(np.array(obj['cam_R_m2c']), dtype=np.float64)
+                        transform = np.concatenate((orientation.reshape((3, 3)), translation.reshape(3, 1)), axis=1)
+                        transform_cam_to_obj = np.concatenate(
+                            (transform, np.array([0, 0, 0, 1]).reshape(1, 4)))  # homogeneous transform
+
+                        self._annotation_scene.add_obj(obj_geometry, obj_name, obj_instance, transform_cam_to_obj)
+                        # adding object to the scene
+                        obj_geometry.transform(transform_cam_to_obj)
+                        self._scene.scene.add_geometry(obj_name, obj_geometry, self.settings.annotation_obj_material,
+                                                       add_downsampled_copy_for_fast_rendering=True)
+                        active_meshes.append(obj_name)
+                    self._obj_meshes_colored = all(obj_meshes_colored)  # this is used to determine which ICP to use (colored ir PointToPoint)
+        self._meshes_used.set_items(active_meshes)
 
         self._update_scene_numbers()
 
@@ -772,23 +914,8 @@ class AppWindow:
         self._meshes_available.set_items(model_names)
 
     def load_model_names(self):
-        path = self.scenes.objects_path + "/models_names.json"
-        if os.path.exists(path):
-            with open(path) as f:
-                data = json.load(f)
-                model_names = [data[x]["name"] for x in data]
-        else:  # model names file doesn't exist
-            warnings.warn(
-                "models_names.json doesn't exist. Objects will be loaded with their literal id (obj_000001, obj_000002, ...)"
-            )
-            no_of_models = len(
-                [
-                    os.path.basename(x)[:-4]
-                    for x in glob.glob(self.scenes.objects_path + "/*.ply")
-                ]
-            )
-            model_names = ["obj_" + f"{i + 1:06}" for i in range(no_of_models)]
-
+        no_of_models = len([os.path.basename(x)[:-4] for x in glob.glob(self.scenes.objects_path + '/*.ply')])
+        model_names = ['obj_' + f'{i + 1:06}' for i in range(no_of_models)]
         return model_names
 
     def _check_changes(self):
@@ -805,21 +932,20 @@ class AppWindow:
         if self._check_changes():
             return
 
-        if self._annotation_scene.scene_num + 1 > len(
-            next(os.walk(self.scenes.scenes_path))[1]
-        ):  # 1 for how many folder (dataset scenes) inside the path
-            self._on_error("There is no next scene.")
+        # check if next scene exists in the next number sequence
+        if not os.path.exists(os.path.join(self.scenes.scenes_path, f'{self._annotation_scene.scene_num + 1:06}')):
+            self._on_error("There is no next scene with number " + f'{self._annotation_scene.scene_num + 1:06}')
             return
-        self.scene_load(
-            self.scenes.scenes_path, self._annotation_scene.scene_num + 1, 0
-        )  # open next scene on the first image
+
+        self.scene_load(self.scenes.scenes_path, self._annotation_scene.scene_num + 1,
+                        0)  # open next scene on the first image
 
     def _on_previous_scene(self):
         if self._check_changes():
             return
 
         if self._annotation_scene.scene_num - 1 < 1:
-            self._on_error("There is no scene number before scene 1.")
+            self._on_error("There is no scene number before scene " + f'{self._annotation_scene.scene_num:06}')
             return
         self.scene_load(
             self.scenes.scenes_path, self._annotation_scene.scene_num - 1, 0
