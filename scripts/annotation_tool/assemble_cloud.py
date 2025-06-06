@@ -111,7 +111,8 @@ def main():
             transformed_cloud = pcd.transform(world2cam)
             transformed_cloud.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=10, max_nn=30))  # TODO recheck radius
 
-            assembled_cloud += transformed_cloud
+            # assembled_cloud += transformed_cloud
+            assembled_cloud += transformed_cloud.voxel_down_sample(voxel_size=p['voxel_size'])
 
         assembled_cloud = assembled_cloud.voxel_down_sample(voxel_size=p['voxel_size'])
 
