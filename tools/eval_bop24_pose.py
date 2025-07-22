@@ -9,6 +9,7 @@ import argparse
 import multiprocessing
 import subprocess
 import numpy as np
+import pandas as pd
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
@@ -60,6 +61,8 @@ p = {
     "results_path": config.results_path,
     # Folder for the calculated pose errors and performance scores.
     "eval_path": config.eval_path,
+    # Folder containing the BOP datasets.
+    "datasets_path": config.datasets_path,
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
     "targets_filename": "test_targets_bop24.json",
@@ -85,6 +88,7 @@ parser.add_argument(
 parser.add_argument("--results_path", type=str, default=p["results_path"])
 parser.add_argument("--eval_path", type=str, default=p["eval_path"])
 parser.add_argument("--targets_filename", type=str, default=p["targets_filename"])
+parser.add_argument("--datasets_path", type=str, default=p["datasets_path"])
 parser.add_argument("--num_workers", type=int, default=p["num_workers"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 parser.add_argument("--device", type=str, default=p["device"])
@@ -139,6 +143,7 @@ for result_filename in result_filenames:
             "--renderer_type={}".format(args.renderer_type),
             "--results_path={}".format(args.results_path),
             "--eval_path={}".format(args.eval_path),
+            "--datasets_path={}".format(args.datasets_path),
             "--targets_filename={}".format(args.targets_filename),
             "--max_sym_disc_step={}".format(p["max_sym_disc_step"]),
             "--skip_missing=1",
@@ -171,6 +176,7 @@ for result_filename in result_filenames:
                     ),
                     "--error_dir_paths={}".format(error_dir_path),
                     "--eval_path={}".format(args.eval_path),
+                    "--datasets_path={}".format(args.datasets_path),
                     "--targets_filename={}".format(args.targets_filename),
                     "--visib_gt_min={}".format(p["visib_gt_min"]),
                     "--eval_mode=detection",
@@ -209,18 +215,17 @@ for result_filename in result_filenames:
         # Loop 3: Iterate over the each threshold of correctness (~ IoU in COCO)
         # For a given (error type, object ID, threshold of correctness), compute mAP with recall range (0, 1, 0.01)
         # COCO reference for loop 4: https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py#L507
-        num_object_ids_ignored = []
         for error_sign, error_dir_path in error_dir_paths.items():
             mAP_scores_per_object = {}
+            thresholds = error["correct_th"]
+
             # Loop 3: Over the each threshold of correctness
-            for correct_th in error["correct_th"]:
+            for idx, correct_th in enumerate(thresholds):
                 # Path to file with calculated scores.
                 score_sign = misc.get_score_signature(correct_th, p["visib_gt_min"])
 
-                scores_filename = "scores_{}.json".format(score_sign)
-                scores_path = os.path.join(
-                    args.eval_path, result_name, error_sign, scores_filename
-                )
+                scores_filename = f"scores_{score_sign}.json"
+                scores_path = os.path.join(args.eval_path, result_name, error_sign, scores_filename)
 
                 # Load the scores and number of instances.
                 logger.info("Loading calculated scores from: {}".format(scores_path))
@@ -228,41 +233,40 @@ for result_filename in result_filenames:
                 num_instances_per_object = inout.load_json(scores_path)[
                     "num_targets_per_object"
                 ]
-                for obj_id in scores:
-                    if num_instances_per_object[obj_id] > 0:
-                        mAP_scores_per_object.setdefault(obj_id, []).append(scores[obj_id])
-                    else:
-                        mAP_scores_per_object.setdefault(obj_id, []).append(0)
-                        num_object_ids_ignored.append(obj_id)
-                        logger.warning(
-                            f"Object {obj_id} not found in the dataset. Skipping object {obj_id} in mAP calculation."
-                        )
-            # Loop 2: Over the object IDs
-            if len(num_object_ids_ignored) == 0:
-                logger.info("Considering all objects for mAP calculation.")
-            else:
-                logger.info(
-                    f"WARNING: Ignoring {len(num_object_ids_ignored)} objects: {num_object_ids_ignored} in mAp calculation!!!"
-                )
-            mAP_over_correct_ths = []
-            for obj_id in mAP_scores_per_object:
-                # if the object has zero instance, it means it was not among the targets
-                # and should not be considered for final AP computation
-                if num_instances_per_object[obj_id] == 0:
-                    continue
+                for obj_id, obj_score in scores.items():
+                    if obj_id not in mAP_scores_per_object:
+                        mAP_scores_per_object.setdefault(obj_id, [np.nan] * len(thresholds))
+                    if num_instances_per_object[obj_id] > 0: 
+                        mAP_scores_per_object[obj_id][idx] = obj_score
 
-                mAP_over_correct_th = np.mean(mAP_scores_per_object[obj_id])
-                logger.info(
-                    f"mAP, {error['type']}, {obj_id}: {mAP_over_correct_th:.3f}"
-                )
-                mAP_over_correct_ths.append(mAP_over_correct_th)
-            if "threshold_unit" in error:
-                error["type"] = error["type"] + "_" + error["threshold_unit"]
-                
-            mAP_per_error_type[error["type"]] = np.mean(mAP_over_correct_ths)
-            logger.info(
-                f"{error['type']}, Final mAP: {mAP_per_error_type[error['type']]:.3f}"
+            mAP_scores_df = pd.DataFrame.from_dict(
+                mAP_scores_per_object,
+                orient="index",
+                columns=[float(th[0]) for th in thresholds],
             )
+            # Check if any object has no score
+            num_missing_scores = mAP_scores_df.isna().sum().sum() 
+            if num_missing_scores > 0:
+                logger.warning(f"Ignoring {num_missing_scores} missing scores in mAP calculation.")
+
+            # mAP over threshold and overall 
+            mAP_scores_df["mean_ths"] = mAP_scores_df.mean(axis=1, skipna=True) # Ignore NaN values
+            mAP_error = mAP_scores_df["mean_ths"].mean()
+
+            if "threshold_unit" in error: 
+                error["type"] += f"_{error['threshold_unit']}"
+            mAP_per_error_type[error["type"]] = mAP_error
+
+            # Logging 
+            for obj_id, obj_mAP in mAP_scores_df["mean_ths"].items():
+                logger.info(
+                    f"mAP, {error['type']}, {obj_id}: {obj_mAP:.3f}"
+                )
+            logger.info(
+                f"{error['type']}, Final mAP: {mAP_error:.3f}"
+            )
+            # Save per object mAP scores
+            mAP_scores_df.to_csv(os.path.join(args.eval_path, result_name, f"mAP_{error['type']}.csv"))
 
     time_total = time.time() - time_start
     logger.info("Evaluation of {} took {}s.".format(result_filename, time_total))
