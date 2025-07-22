@@ -135,7 +135,7 @@ requires-dist = [
     { name = "opencv-python", marker = "extra == 'scripts'", specifier = ">=4.11.0.86" },
     { name = "pandas", specifier = ">=2.0.3" },
     { name = "pycocotools", marker = "extra == 'eval-coco'", git = "https://github.com/MartinSmeyer/cocoapi.git?subdirectory=PythonAPI" },
-    { name = "pyopengl", specifier = "==3.1.0" },
+    { name = "pyopengl", specifier = ">=3.1.9" },
     { name = "pypng", specifier = ">=0.20220715.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "pytz", specifier = ">=2025.2" },
@@ -2966,9 +2966,12 @@ dependencies = [
 
 [[package]]
 name = "pyopengl"
-version = "3.1.0"
+version = "3.1.9"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9c/1d/4544708aaa89f26c97cc09450bb333a23724a320923e74d73e028b3560f9/PyOpenGL-3.1.0.tar.gz", hash = "sha256:9b47c5c3a094fa518ca88aeed35ae75834d53e4285512c61879f67a48c94ddaf", size = 1172688, upload-time = "2014-06-26T14:51:25.571Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/42/71080db298df3ddb7e3090bfea8fd7c300894d8b10954c22f8719bd434eb/pyopengl-3.1.9.tar.gz", hash = "sha256:28ebd82c5f4491a418aeca9672dffb3adbe7d33b39eada4548a5b4e8c03f60c8", size = 1913642, upload-time = "2025-01-20T02:17:53.263Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/44/8634af40b0db528b5b37e901c0dc67321354880d251bf8965901d57693a5/PyOpenGL-3.1.9-py3-none-any.whl", hash = "sha256:15995fd3b0deb991376805da36137a4ae5aba6ddbb5e29ac1f35462d130a3f77", size = 3190341, upload-time = "2025-01-20T02:17:50.913Z" },
+]
 
 [[package]]
 name = "pyparsing"
