@@ -405,17 +405,19 @@ def check_consistent_timings(results, im_id_key):
     """
     Check if the time for all estimates from the same image are the same.
 
+    Timings should be present in every result dictionary in the key "time". 
+    If not, or if a value -1 is used, 'times_available' is returned false.
+
     :param results: list of pose or coco results
     :param im_id_key: "im_id" for pose results, "image_id" for coco results
-    "return: tuple (check_passed, check_msg, times, times_available)
+    :return: tuple (check_passed, check_msg, times, times_available).
     """
     times = {}
     times_available = True
     for result in results:
         scene_id, im_id = result["scene_id"], result[im_id_key]
         result_key = f"{scene_id:06d}_{im_id:06d}"
-        if result["time"] < 0:
-            # negative times are interpreted as not available times
+        if "time" not in result or result["time"] < 0:
             times_available = False
         if result_key in times:
             if abs(times[result_key] - result["time"]) > 0.001:
@@ -474,29 +476,43 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
         misc.log(check_msg)
         return False, check_msg
     
+    return check_coco_results_(results, version, ann_type, enforce_no_segm_if_bbox)
+
+
+def check_coco_results_(results: List, version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
+    """Checks if the format of extended COCO results is correct.
+
+    :param results: List of results loaded from file.
+    :param version: Version of the results.
+    :param ann_type: type of annotation expected in the file.
+        "bbox" -> bounding boxes
+        "segm" -> segmentation mask
+    :param enforce_no_segm_if_bbox: prevent the presence of segmentation mask in the file if ann_type is "bbox"
+    :return: True if the format is correct, False if it is not correct.
+    """
+
     if len(results) == 0:
         return False, "Empty results"
 
     if version == "bop22":
         try:
             for result in results:
-                assert "scene_id" in result, "scene_id key missing"
-                assert "image_id" in result, "image_id key missing"
-                assert "category_id" in result, "category_id key missing"
-                assert "score" in result, "score key missing"
-                assert isinstance(result["scene_id"], int)
-                assert isinstance(result["image_id"], int)
-                assert isinstance(result["category_id"], int)
-                assert isinstance(result["score"], float)
-                if enforce_no_segm_if_bbox:
-                    assert not (ann_type == "bbox" and "segmentation" in result), \
-                           "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
-                if "bbox" in result:
-                    assert isinstance(result["bbox"], list)
-                if "segmentation" in result and ann_type == "segm":
-                    assert isinstance(
-                        result["segmentation"], dict
-                    ), "Segmentation not in RLE format!"
+                assert "scene_id" in result, "'scene_id' key missing"
+                assert "image_id" in result, "'image_id' key missing"
+                assert "category_id" in result, "'category_id' key missing"
+                assert "score" in result, "'score' key missing"
+                assert isinstance(result["scene_id"], int), "'scene_id' value should be of type 'int'"
+                assert isinstance(result["image_id"], int), "'image_id' value should be of type 'int'"
+                assert isinstance(result["category_id"], int), "'category_id' value should be of type 'int'"
+                assert isinstance(result["score"], (float,int)), "'score' value should be of type 'float' or 'int'"
+                if ann_type == "bbox":
+                    assert "bbox" in result, "ann_type 'bbox' should contain 'bbox' key in all results"
+                    assert isinstance(result["bbox"], list), "result['bbox'] should be a list"
+                    if enforce_no_segm_if_bbox:
+                        assert "segmentation" in result, "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
+                if ann_type == "segm":
+                    assert "segmentation" in result, "ann_type 'segm' should contain 'segmentation' key in all results"
+                    assert isinstance(result["segmentation"], dict), "Segmentation not in RLE format!"
                     assert "counts" in result["segmentation"], "Incorrect RLE format!"
                     assert "size" in result["segmentation"], "Incorrect RLE format!"
                 if "time" in result:

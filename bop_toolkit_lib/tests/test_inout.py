@@ -135,6 +135,30 @@ class TestInout(unittest.TestCase):
         os.remove(json_coco_bis_path)
         os.remove(json_coco_gz_path)
 
+    def test_check_coco(self):
+        result_bbox = {"bbox": [], "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
+        result_segm = {"segmentation": {"counts": 2, "size": 2}, "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
+
+        self.assertTrue(inout.check_coco_results_(3*[result_bbox], ann_type="bbox")[0])
+        self.assertTrue(inout.check_coco_results_(3*[result_segm], ann_type="segm")[0])
+        
+        # Invalid results: 
+        # - common_keys and bbox/segmentation keys should not be missing
+        # - common_keys should be of the correct type (not str)
+        common_keys = ["scene_id", "image_id", "category_id", "score", "time"]
+        for k in ["bbox"]+common_keys:
+            r_bbox = result_bbox.copy()
+            r_bbox[k] = "wrong_type"
+            self.assertFalse(inout.check_coco_results_([r_bbox], ann_type="bbox")[0])
+            del r_bbox[k]
+            self.assertFalse(inout.check_coco_results_([r_bbox], ann_type="bbox")[0])
+        for k in ["segmentation"]+common_keys:
+            r_segm = result_segm.copy()
+            r_segm[k] = "wrong_type"
+            self.assertFalse(inout.check_coco_results_([r_segm], ann_type="segm")[0])
+            del r_segm[k]
+            self.assertFalse(inout.check_coco_results_([r_segm], ann_type="segm")[0])
+
     def test_loading_and_checking_results(self):
         ###################
         # high level checks
