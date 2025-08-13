@@ -138,14 +138,18 @@ class TestInout(unittest.TestCase):
     def test_check_coco(self):
         result_bbox = {"bbox": [], "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
         result_segm = {"segmentation": {"counts": 2, "size": 2}, "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
+        result_bbox_segm = {"bbox": [], "segmentation": {"counts": 2, "size": 2}, "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
 
         self.assertTrue(inout.check_coco_results_(3*[result_bbox], ann_type="bbox")[0])
+        self.assertTrue(inout.check_coco_results_(3*[result_bbox_segm], ann_type="bbox")[0])
+        self.assertTrue(inout.check_coco_results_(3*[result_bbox_segm], ann_type="segm")[0])
+        self.assertFalse(inout.check_coco_results_(3*[result_bbox_segm], ann_type="bbox", enforce_no_segm_if_bbox=True)[0])
         self.assertTrue(inout.check_coco_results_(3*[result_segm], ann_type="segm")[0])
         
         # Invalid results: 
         # - common_keys and bbox/segmentation keys should not be missing
         # - common_keys should be of the correct type (not str)
-        common_keys = ["scene_id", "image_id", "category_id", "score", "time"]
+        common_keys = ["scene_id", "image_id", "category_id", "score"]
         for k in ["bbox"]+common_keys:
             r_bbox = result_bbox.copy()
             r_bbox[k] = "wrong_type"
