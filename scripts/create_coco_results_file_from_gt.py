@@ -107,6 +107,8 @@ result_filename = f"{args.results_name}_{args.dataset}-{p['split']}_coco.json"
 results_path = os.path.join(args.results_path, result_filename)
 inout.save_json(results_path, results, args.compress, verbose=True)
 result_file_path = os.path.join(args.results_path, result_filename)
+if args.compress:
+    result_file_path += '.gz'
 check_passed, _ = inout.check_coco_results(result_file_path, ann_type=args.ann_type)
 if not check_passed:
     misc.log(f"Please correct the coco result format of {result_filename}")
