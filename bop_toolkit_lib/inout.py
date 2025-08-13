@@ -419,6 +419,7 @@ def check_consistent_timings(results, im_id_key):
         result_key = f"{scene_id:06d}_{im_id:06d}"
         if "time" not in result or result["time"] < 0:
             times_available = False
+            continue
         if result_key in times:
             if abs(times[result_key] - result["time"]) > 0.001:
                 check_msg = f"The running time for scene {scene_id} and image {im_id} is not the same for all estimates."
