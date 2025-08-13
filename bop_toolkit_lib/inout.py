@@ -509,7 +509,7 @@ def check_coco_results_(results: List, version="bop22", ann_type="segm", enforce
                     assert "bbox" in result, "ann_type 'bbox' should contain 'bbox' key in all results"
                     assert isinstance(result["bbox"], list), "result['bbox'] should be a list"
                     if enforce_no_segm_if_bbox:
-                        assert "segmentation" in result, "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
+                        assert "segmentation" not in result, "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
                 if ann_type == "segm":
                     assert "segmentation" in result, "ann_type 'segm' should contain 'segmentation' key in all results"
                     assert isinstance(result["segmentation"], dict), "Segmentation not in RLE format!"
