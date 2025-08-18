@@ -101,9 +101,9 @@ for scene_id in targets_org:
             results.append(result)
 
 if not os.path.exists(args.results_path):
-    misc.log(f"Creating dir {p['results_path']}")
+    misc.log(f"Creating dir {args.results_path}")
     os.mkdir(args.results_path)
-result_filename = f"{args.results_name}_{args.dataset}-{p['split']}_coco.json"
+result_filename = f"{args.results_name}_{args.dataset}-{args.split}_coco.json"
 results_path = os.path.join(args.results_path, result_filename)
 inout.save_json(results_path, results, args.compress, verbose=True)
 result_file_path = os.path.join(args.results_path, result_filename)
