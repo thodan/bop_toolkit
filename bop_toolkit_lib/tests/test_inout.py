@@ -137,9 +137,12 @@ class TestInout(unittest.TestCase):
 
     def test_check_coco(self):
         result_bbox = {"bbox": [], "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
+        result_bbox_bad_ts = {"bbox": [], "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 49.0}
         result_segm = {"segmentation": {"counts": 2, "size": 2}, "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
         result_bbox_segm = {"bbox": [], "segmentation": {"counts": 2, "size": 2}, "scene_id": 1, "image_id": 1, "category_id": 1, "score": 1.0, "time": 1.0}
 
+        self.assertFalse(inout.check_coco_results_([], ann_type="bbox")[0])
+        self.assertFalse(inout.check_coco_results_(3*[result_bbox]+[result_bbox_bad_ts], ann_type="bbox")[0])
         self.assertTrue(inout.check_coco_results_(3*[result_bbox], ann_type="bbox")[0])
         self.assertTrue(inout.check_coco_results_(3*[result_bbox_segm], ann_type="bbox")[0])
         self.assertTrue(inout.check_coco_results_(3*[result_bbox_segm], ann_type="segm")[0])
@@ -193,7 +196,7 @@ class TestInout(unittest.TestCase):
         self.assertFalse(check_passed)
         self.assertTrue(times_available)
 
-        # in one image, timings were not provide
+        # in one image, timings were not provided
         for i in range(15):
             bop_results[i]["time"] = -1.0
         check_passed, check_msg, times, times_available = inout.check_consistent_timings(bop_results, "im_id")
