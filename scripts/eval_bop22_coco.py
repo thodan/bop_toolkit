@@ -164,6 +164,10 @@ for result_filename in p["result_filenames"]:
 
     # initialize COCO ground truth api
     cocoGt = COCO(dataset_coco_ann)
+
+    if p["ann_type"] == "segm":
+        pycoco_utils.ensure_rle_binary(dataset_coco_results, cocoGt)
+
     try:
         cocoDt = cocoGt.loadRes(dataset_coco_results)
         # running evaluation
