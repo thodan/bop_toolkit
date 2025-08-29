@@ -35,6 +35,9 @@ pip install .[eval_hot3d]  # install dependencies for hot3d evaluation
 uv pip install .[scripts]  # install dependencies for utility scripts (e.g. `annotation_tools.py`)
 ```
 
+### Unittests
+`python -m unittest discover bop_toolkit_lib/tests`
+
 ### Vispy Renderer (default)
 
 The Python based headless renderer with egl backend is implemented using [Vispy](https://github.com/vispy/vispy).
