@@ -11,7 +11,7 @@ authors = [
 version = "0.1.0"
 description = "A Python toolkit of the BOP benchmark for 6D object pose estimation (http://bop.felk.cvut.cz)."
 license = {text = "MIT license"}
-requires-python = ">=3.8,<=3.12"
+requires-python = ">=3.8,<3.13"
 dependencies = [
     "numpy<2.0.0",
     "pillow>=8.2.0,<=9.5.0", # versions <10.0.0: load uint16 png as float32, FreeTypeFont API change, etc.
