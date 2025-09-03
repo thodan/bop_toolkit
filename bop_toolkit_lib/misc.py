@@ -23,17 +23,11 @@ logging.basicConfig()
 def log(s):
     """A logging function.
 
-    :param s: String to print (with the current date and time).
+    :param s: String to print (with the current UTC date and time).
     """
-    # Use UTC time for logging.
-    utc_now = pytz.utc.localize(datetime.datetime.utcnow())
-    # pst_now = utc_now.astimezone(pytz.timezone("America/Los_Angeles"))
-    utc_now_str = "{}/{}|{:02d}:{:02d}:{:02d}".format(
-        utc_now.month, utc_now.day, utc_now.hour, utc_now.minute, utc_now.second
-    )
-
-    # sys.stdout.write('{}: {}\n'.format(time.strftime('%m/%d|%H:%M:%S'), s))
-    sys.stdout.write("{}: {}\n".format(utc_now_str, s))
+    now = datetime.datetime.now(datetime.UTC)
+    utc_now_str = f"{now.month}/{now.day}|{now.hour:02d}:{now.minute:02d}:{now.second:02d}"
+    sys.stdout.write(f"{utc_now_str}: {s}\n")
     sys.stdout.flush()
 
 
