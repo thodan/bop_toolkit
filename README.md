@@ -78,7 +78,7 @@ Estimate poses and save them in one .csv file per dataset ([format description](
 
 ### 3. Configure the BOP Toolkit
 
-In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py), set paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for the evaluation output. The other parameters are necessary only if you want to visualize results or run the C++ Renderer.
+In [bop_toolkit_lib/config.py](https://github.com/thodan/bop_toolkit/blob/master/bop_toolkit_lib/config.py), set paths to the BOP datasets, to a folder with results to be evaluated, and to a folder for the evaluation output. These may be specified as environement variables or in modified in `config.default_paths`.
 
 ### 4. Evaluate the pose estimates for 6D detection task
 ```

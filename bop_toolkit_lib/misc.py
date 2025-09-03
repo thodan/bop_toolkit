@@ -6,11 +6,13 @@
 import os
 import sys
 import datetime
-import pytz
 import math
 import subprocess
-import numpy as np
 import logging
+import argparse
+
+import pytz
+import numpy as np
 from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
@@ -488,3 +490,9 @@ def reorganize_targets(targets, organize_by_obj_ids=False):
             targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     return targets_org
+
+
+def add_argument_bool(parser: argparse.ArgumentParser, arg_name: str, default: bool):
+    parser.add_argument(f"--{arg_name}", action="store_true")
+    parser.add_argument(f"--no_{arg_name}", dest=f"{arg_name}", action="store_false")
+    parser.set_defaults(**{f"{arg_name}": default})
