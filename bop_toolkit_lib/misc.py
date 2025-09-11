@@ -25,7 +25,7 @@ def log(s):
 
     :param s: String to print (with the current UTC date and time).
     """
-    now = datetime.datetime.now(datetime.UTC)
+    now = datetime.datetime.now(datetime.timezone.utc)
     utc_now_str = f"{now.month}/{now.day}|{now.hour:02d}:{now.minute:02d}:{now.second:02d}"
     sys.stdout.write(f"{utc_now_str}: {s}\n")
     sys.stdout.flush()
