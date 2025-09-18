@@ -503,7 +503,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     elif dataset_name == "xyzibd":
         sensor_modalities_have_separate_annotations = {"photoneo": False, "xyz": False, "realsense": False}
         p["im_modalities"] = {"photoneo": ["gray", "depth"], "xyz": ["gray", "depth"], "realsense": ["rgb", "depth"]}
-        val_scene_ids = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 54, 60, 65, 70]
+        val_scene_ids = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
         missing_pbr_scene_ids = [6, 7, 8, 18, 19, 20]
         p["scene_ids"] = {
             "test": [i for i in range(1, 75) if i not in val_scene_ids],
