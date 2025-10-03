@@ -60,6 +60,8 @@ p = {
     "results_path": config.results_path,
     # Folder for the calculated pose errors and performance scores.
     "eval_path": config.eval_path,
+    # Folder containing the BOP datasets.
+    "datasets_path": config.datasets_path,
     # File with a list of estimation targets to consider. The file is assumed to
     # be stored in the dataset folder.
     "targets_filename": "test_targets_bop24.json",
