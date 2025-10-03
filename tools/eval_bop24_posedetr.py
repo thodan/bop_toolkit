@@ -40,22 +40,34 @@ p = {
             "type": "mspd",
             "correct_th": [[th] for th in np.arange(5, 51, 5)],
         },
-        # Added ADD-(S) AUC for PoseDETR
+        # PoseDETR specific: 
         # Following: https://github.com/thodan/bop_toolkit/issues/37
-        # AUC ADD-(S) 0.1d
+        # ADD-(S) AUC @ 0.1d
         {
             "n_top": 0, 
             "type": "ad",
             "correct_th": [[0.1]] # 10% of objects diameter
-            # "correct_th": [[th] for th in np.arange(0.05, 0.51, 0.05)]
         },
-        # AUC ADD-(S) 10cm
+        # ADD-S AUC @ 0.1d
+        {
+            "n_top": 0, 
+            "type": "adi",
+            "correct_th": [[0.1]] # 10% of objects diameter
+        },
+        # ADD-(S) AUC @ 10cm
         {
             "n_top": 0,
             "type": "ad",
-            "correct_th": [[100]], 
+            "correct_th": [[100]], # 10cm 
             "threshold_unit": "mm"
-        }
+        }, 
+        # ADD-S AUC @ 10cm        
+        {
+            "n_top": 0,
+            "type": "adi",
+            "correct_th": [[100]], # 10cm 
+            "threshold_unit": "mm"
+        }, 
     ],
     # Minimum visible surface fraction of a valid GT pose.
     # by default, we consider only objects that are at least 10% visible
