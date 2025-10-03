@@ -40,7 +40,7 @@ p = {
             "type": "mspd",
             "correct_th": [[th] for th in np.arange(5, 51, 5)],
         },
-        # PoseDETR specific: 
+        # LM-(O) specific metrics:
         # Following: https://github.com/thodan/bop_toolkit/issues/37
         # ADD-(S) AUC @ 0.1d
         {
@@ -53,21 +53,7 @@ p = {
             "n_top": 0, 
             "type": "adi",
             "correct_th": [[0.1]] # 10% of objects diameter
-        },
-        # ADD-(S) AUC @ 10cm
-        {
-            "n_top": 0,
-            "type": "ad",
-            "correct_th": [[100]], # 10cm 
-            "threshold_unit": "mm"
-        }, 
-        # ADD-S AUC @ 10cm        
-        {
-            "n_top": 0,
-            "type": "adi",
-            "correct_th": [[100]], # 10cm 
-            "threshold_unit": "mm"
-        }, 
+        }
     ],
     # Minimum visible surface fraction of a valid GT pose.
     # by default, we consider only objects that are at least 10% visible
