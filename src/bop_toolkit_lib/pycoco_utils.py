@@ -278,3 +278,46 @@ def compute_ious(gt, dt, iou_type):
         )
         ious = intersections / unions
     return ious
+
+
+def ensure_rle_binary(dataset_coco_results, cocoGt):
+    """
+    Ensure that all segmentation annotations are in binary RLE format.
+
+    This is required by pycocotools only in the case that a "bbox" annotation
+    is not provided along the segmentation.
+
+    :param dataset_coco_results: coco results, will be modified in place
+    :param cocoGt: pycocotools.coco.COCO object containing the ground-truth annotation
+    """
+
+    for ann in dataset_coco_results:
+        if 'bbox' not in ann:
+            t = cocoGt.imgs[ann['image_id']]
+            ann["segmentation"] = annotation_to_binary_rle(ann, t['height'], t['width'])
+
+
+def annotation_to_binary_rle(ann, h, w):
+    """
+    Convert annotation which can be polygons, uncompressed RLE to RLE.
+
+    :param ann: detection annotation containing a "segmentation" and "size" key
+    :param h: image height
+    :param w: image width
+    :return: binary mask (numpy 2D array)
+    """
+    from pycocotools import mask as maskUtils
+
+    segm = ann['segmentation']
+    if type(segm) == list:
+        # polygon -- a single object might consist of multiple parts
+        # we merge all parts into one mask rle code
+        rles = maskUtils.frPyObjects(segm, h, w)
+        rle = maskUtils.merge(rles)
+    elif type(segm['counts']) == list:
+        # uncompressed RLE
+        rle = maskUtils.frPyObjects(segm, h, w)
+    else:
+        # rle
+        rle = ann['segmentation']
+    return rle

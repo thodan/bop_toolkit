@@ -7,6 +7,9 @@ The script visualize datasets in the classical BOP19 format as well as the HOT3D
 """
 
 import os
+import argparse
+from pathlib import Path
+
 import numpy as np
 
 from bop_toolkit_lib import config
@@ -35,7 +38,7 @@ except ImportError as e:
 ################################################################################
 p = {
     # See dataset_params.py for options.
-    "dataset": "xyzibd",
+    "dataset": "ycbv",
     # Dataset split. Options: 'train', 'val', 'test'.
     "dataset_split": "test",
     # Dataset split type. None = default. See dataset_params.py for options.
@@ -43,8 +46,8 @@ p = {
     # File with a list of estimation targets used to determine the set of images
     # for which the GT poses will be visualized. The file is assumed to be stored
     # in the dataset folder. None = all images.
-    # 'targets_filename': 'test_targets_bop19.json',
-    "targets_filename": None,
+    'targets_filename': 'test_targets_bop19.json',
+    # "targets_filename": None,  # TODO: allow this option in argparse
     # Select ID's of scenes, images and GT poses to be processed.
     # Empty list [] means that all ID's will be used.
     "scene_ids": [],
@@ -96,24 +99,41 @@ p = {
 }
 ################################################################################
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", type=str, default=p["dataset"])
+parser.add_argument("--dataset_split", type=str, default=p["dataset_split"])
+parser.add_argument("--dataset_split_type", type=str, default=p["dataset_split_type"])
+misc.add_argument_bool(parser, "vis_rgb", p["vis_rgb"])
+misc.add_argument_bool(parser, "vis_rgb_resolve_visib", p["vis_rgb_resolve_visib"])
+misc.add_argument_bool(parser, "vis_depth_diff", p["vis_depth_diff"])
+misc.add_argument_bool(parser, "vis_orig_color", p["vis_orig_color"])
+parser.add_argument("--renderer_type", type=str, default=p["renderer_type"])
+parser.add_argument("--datasets_path", type=str, default=p["datasets_path"])
+parser.add_argument("--vis_path", type=str, default=p["vis_path"])
+args = parser.parse_args()
+
+# might be overriden if dataset is hot3d
+vis_rgb_resolve_visib = args.vis_rgb_resolve_visib
+vis_depth_diff = args.vis_depth_diff
+
 #######################
 # hot3d specific checks
-if p["dataset"] == "hot3d" and not htt_available:
+if args.dataset == "hot3d" and not htt_available:
     raise ImportError("Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset.")
 
-if p["dataset"] == "hot3d" and p["renderer_type"] != "htt":
+if args.dataset == "hot3d" and args.renderer_type != "htt":
     raise ValueError("'htt' renderer_type is mandatory for HOT3D dataset.")
 
 # hot3d does not contain depth modality, some visualizations are not available
-if p["dataset"] in ["hot3d"]:
-    p["vis_rgb"] = True
-    p["vis_rgb_resolve_visib"] = False
-    p["vis_depth_diff"] = False
+if args.dataset in ["hot3d"]:
+    vis_rgb_resolve_visib = False
+    vis_depth_diff = False
 #######################
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(
-    p["datasets_path"], p["dataset"], p["dataset_split"], p["dataset_split_type"]
+    args.datasets_path, args.dataset, args.dataset_split, args.dataset_split_type
 )
 if p["modality"] is None:
     p["modality"] = dp_split["eval_modality"]
@@ -122,7 +142,7 @@ if p["sensor"] is None:
     p["sensor"] = dp_split["eval_sensor"]
 
 model_type = "eval"  # None = default.
-dp_model = dataset_params.get_model_params(p["datasets_path"], p["dataset"], model_type)
+dp_model = dataset_params.get_model_params(args.datasets_path, args.dataset, model_type)
 
 # Load colors.
 colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
@@ -143,12 +163,14 @@ else:
 scene_ids_curr = dp_split["scene_ids"]
 if p["scene_ids"]:
     scene_ids_curr = set(scene_ids_curr).intersection(p["scene_ids"])
+    if len(scene_ids_curr) == 0:
+        misc.log(f"Dataset scene ids {dp_split['scene_ids']} do not overlap with chosen scene ids {p['scene_ids']}")
 
 # Rendering mode.
 renderer_modalities = []
-if p["vis_rgb"]:
+if args.vis_rgb:
     renderer_modalities.append("rgb")
-if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+if vis_depth_diff or (args.vis_rgb and vis_rgb_resolve_visib):
     renderer_modalities.append("depth")
 renderer_mode = "+".join(renderer_modalities)
 
@@ -165,16 +187,16 @@ for scene_id in scene_ids_curr:
     scene_width, scene_height = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)
     if (width, height) != (scene_width, scene_height):
         width, height = scene_width, scene_height
-        misc.log(f"Creating renderer of type {p['renderer_type']}")
+        misc.log(f"Creating renderer of type {args.renderer_type}")
         ren = renderer.create_renderer(
-            width, height, p["renderer_type"], mode=renderer_mode, shading="flat"
+            width, height, args.renderer_type, mode=renderer_mode, shading="flat"
         )
         # Load object models in the new renderer.
         for obj_id in dp_model["obj_ids"]:
             misc.log(f"Loading 3D model of object {obj_id}...")
             model_path = dp_model["model_tpath"].format(obj_id=obj_id)
             model_color = None
-            if not p["vis_orig_color"]:
+            if not args.vis_orig_color:
                 model_color = tuple(colors[(obj_id - 1) % len(colors)])
             ren.add_object(obj_id, model_path, surf_color=model_color)
 
@@ -194,7 +216,7 @@ for scene_id in scene_ids_curr:
         if im_counter % 10 == 0:
             misc.log(
                 "Visualizing GT poses - dataset: {}, scene: {}, im: {}/{}".format(
-                    p["dataset"], scene_id, im_counter, len(im_ids)
+                    args.dataset, scene_id, im_counter, len(im_ids)
                 )
             )
 
@@ -233,7 +255,7 @@ for scene_id in scene_ids_curr:
 
         # Load the color and depth images and prepare images for rendering.
         rgb = None
-        if p["vis_rgb"]:
+        if args.vis_rgb:
             # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
             im_tpath = tpath_keys["rgb_tpath"]
             # check for BOP classic (itodd)
@@ -251,12 +273,12 @@ for scene_id in scene_ids_curr:
                 rgb = rgb[:,:,:3]  # should we keep this?
 
         depth = None
-        if p["vis_depth_diff"] or (p["vis_rgb"] and p["vis_rgb_resolve_visib"]):
+        if vis_depth_diff or (args.vis_rgb and vis_rgb_resolve_visib):
             depth_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, "depth")
             if not depth_available:
                 misc.log(f"{scene_sensor} has no depth data, skipping depth visualization")
-                p["vis_depth_diff"] = False
-                p["vis_rgb_resolve_visib"] = False
+                vis_depth_diff = False
+                vis_rgb_resolve_visib = False
             else:
                 depth = inout.load_depth(
                     dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
@@ -264,12 +286,12 @@ for scene_id in scene_ids_curr:
                 depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
         # Path to the output RGB visualization.
-        split = "{}_{}".format(p["dataset_split"], scene_sensor) if scene_sensor else p["dataset_split"] 
+        split = "{}_{}".format(args.dataset_split, scene_sensor) if scene_sensor else args.dataset_split 
         vis_rgb_path = None
-        if p["vis_rgb"]:
+        if args.vis_rgb:
             vis_rgb_path = p["vis_rgb_tpath"].format(
-                vis_path=p["vis_path"],
-                dataset=p["dataset"],
+                vis_path=args.vis_path,
+                dataset=args.dataset,
                 split=split,
                 scene_id=scene_id,
                 im_id=im_id,
@@ -277,10 +299,10 @@ for scene_id in scene_ids_curr:
 
         # Path to the output depth difference visualization.
         vis_depth_diff_path = None
-        if p["vis_depth_diff"]:
+        if vis_depth_diff:
             vis_depth_diff_path = p["vis_depth_diff_tpath"].format(
-                vis_path=p["vis_path"],
-                dataset=p["dataset"],
+                vis_path=args.vis_path,
+                dataset=args.dataset,
                 split=split,
                 scene_id=scene_id,
                 im_id=im_id,
@@ -295,7 +317,12 @@ for scene_id in scene_ids_curr:
             depth=depth,
             vis_rgb_path=vis_rgb_path,
             vis_depth_diff_path=vis_depth_diff_path,
-            vis_rgb_resolve_visib=p["vis_rgb_resolve_visib"],
+            vis_rgb_resolve_visib=vis_rgb_resolve_visib,
         )
-
+    if args.vis_rgb:
+        vis_scene_folder = Path(vis_rgb_path).parent
+        print(f"Scene {scene_id} visualizations saved in {vis_scene_folder}")
+    elif vis_depth_diff:
+        vis_scene_folder = Path(vis_depth_diff_path).parent
+        print(f"Scene {scene_id} visualizations saved in {vis_scene_folder}")
 misc.log("Done.")

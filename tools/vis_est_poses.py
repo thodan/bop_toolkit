@@ -37,7 +37,7 @@ p = {
     # object in each image.
     "n_top": 0,  # 0 = all estimates, -1 = given by the number of GT poses.
     # True = one visualization for each (im_id, obj_id), False = one per im_id.
-    "vis_per_obj_id": True,
+    "vis_per_obj_id": False,
     # Indicates whether to render RGB image.
     "vis_rgb": True,
     # Indicates whether to resolve visibility in the rendered RGB images (using
@@ -69,11 +69,11 @@ p = {
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_top", type=int, default=p["n_top"])
-parser.add_argument("--vis_per_obj_id", type=bool, default=p["vis_per_obj_id"])
-parser.add_argument("--vis_rgb", type=bool, default=p["vis_rgb"])
-parser.add_argument("--vis_rgb_resolve_visib", type=bool, default=p["vis_rgb_resolve_visib"])
-parser.add_argument("--vis_depth_diff", type=bool, default=p["vis_depth_diff"])
-parser.add_argument("--vis_orig_color", type=bool, default=p["vis_orig_color"])
+misc.add_argument_bool(parser, "vis_per_obj_id", p["vis_per_obj_id"])
+misc.add_argument_bool(parser, "vis_rgb", p["vis_rgb"])
+misc.add_argument_bool(parser, "vis_rgb_resolve_visib", p["vis_rgb_resolve_visib"])
+misc.add_argument_bool(parser, "vis_depth_diff", p["vis_depth_diff"])
+misc.add_argument_bool(parser, "vis_orig_color", p["vis_orig_color"])
 parser.add_argument("--renderer_type", type=str, default=p["renderer_type"])
 parser.add_argument(
     "--result_filenames",
@@ -162,7 +162,7 @@ for result_filename in result_filenames:
         scene_width, scene_height = dataset_params.get_im_size(dp_split, scene_modality, scene_sensor)
         if (width, height) != (scene_width, scene_height):
             width, height = scene_width, scene_height
-            misc.log(f"Creating renderer of type {p['renderer_type']}")
+            misc.log(f"Creating renderer of type {args.renderer_type}")
             ren = renderer.create_renderer(
                 width, height, args.renderer_type, mode=renderer_mode, shading="flat"
             )
