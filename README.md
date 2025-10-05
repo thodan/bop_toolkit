@@ -4,7 +4,7 @@ A Python toolkit of the BOP benchmark for 6D object pose estimation
 (http://bop.felk.cvut.cz).
 
 - **bop_toolkit_lib** - The core Python library for i/o operations, calculation of pose errors, etc.
-- **bop_vis_toolkit** - Visualization of 6D pose predictions and groundtruths.
+- **bop_viz_toolkit** - Visualization of 6D pose predictions and groundtruths.
 - **docs** - Documentation and conventions.
 - **scripts** - Scripts for evaluation, rendering of training images,
   visualization of 6D object poses etc.
