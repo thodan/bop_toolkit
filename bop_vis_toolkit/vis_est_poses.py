@@ -8,6 +8,8 @@ import argparse
 import numpy as np
 import itertools
 
+import yaml
+
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
@@ -85,6 +87,11 @@ parser.add_argument("--results_path", type=str, default=p["results_path"])
 parser.add_argument("--datasets_path", type=str, default=p["datasets_path"])
 parser.add_argument("--vis_path", type=str, default=p["vis_path"])
 args = parser.parse_args()
+
+# dump to yaml
+with open(f"{file_name}_params.yaml", 'w') as f:
+    yaml.dump(vars(args), f, default_flow_style=False)
+exit(0)
 
 result_filenames = args.result_filenames.split(",")
 

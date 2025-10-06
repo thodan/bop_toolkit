@@ -11,6 +11,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+from tqdm import tqdm
 
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
@@ -178,7 +179,21 @@ renderer_mode = "+".join(renderer_modalities)
 width, height = None, None
 ren = None
 
-for scene_id in scene_ids_curr:
+scene_ids_curr=scene_ids_curr[:1]
+
+for scene_id in tqdm(scene_ids_curr):
+
+    save_path = p["vis_rgb_tpath"].format(
+        vis_path=p["vis_path"],
+        dataset=p["dataset"],
+        split=p["dataset_split"],
+        scene_id=scene_id,
+        im_id=0,
+    )
+    if os.path.exists(os.path.dirname(save_path)):
+        misc.log("Skipping a completed scene {}.".format(scene_id))
+        continue
+
     tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
     scene_modality = dataset_params.get_scene_sensor_or_modality(p["modality"], scene_id)
     scene_sensor = dataset_params.get_scene_sensor_or_modality(p["sensor"], scene_id)
