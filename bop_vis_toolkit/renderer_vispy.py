@@ -11,7 +11,8 @@ os.environ["PYOPENGL_PLATFORM"] = "egl"
 import numpy as np
 import OpenGL.GL as gl
 import vispy
-from bop_toolkit_lib import inout, misc, renderer
+from bop_toolkit_lib import inout, misc
+from bop_vis_toolkit import renderer
 from vispy import app, gloo
 
 # app backends: glfw, pyglet, egl
