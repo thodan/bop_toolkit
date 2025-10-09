@@ -16,8 +16,8 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
 from bop_toolkit_lib import visibility
+from bop_vis_toolkit import renderer
 
 
 # PARAMETERS.
@@ -56,7 +56,7 @@ p = {
 
 
 if p["vis_visibility_masks"]:
-    from bop_toolkit_lib import visualization
+    from bop_vis_toolkit import visualization
 
 # Load dataset parameters.
 dp_split = dataset_params.get_split_params(

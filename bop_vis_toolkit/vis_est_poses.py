@@ -14,8 +14,7 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
-from bop_toolkit_lib import visualization
+from bop_vis_toolkit import visualization, renderer
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]

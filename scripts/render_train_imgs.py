@@ -4,15 +4,10 @@
 """Renders RGB-D images of an object model."""
 
 import os
+
 import cv2
-
-from bop_toolkit_lib import config
-from bop_toolkit_lib import dataset_params
-from bop_toolkit_lib import inout
-from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
-from bop_toolkit_lib import view_sampler
-
+from bop_toolkit_lib import config, dataset_params, inout, misc, view_sampler
+from bop_vis_toolkit import renderer
 
 # PARAMETERS.
 ################################################################################

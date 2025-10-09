@@ -16,8 +16,7 @@ from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_error
 
-from bop_toolkit_lib import renderer
-from bop_toolkit_lib import renderer_batch
+from bop_vis_toolkit import renderer, renderer_batch
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
