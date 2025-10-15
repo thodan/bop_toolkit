@@ -1,26 +1,24 @@
-# Author: Gu Wang (guwang12@foxmail.com)
-# Tsinghua University
-# Adapted based on the glumpy version: "./renderer_py.py"
-"""A Python Vispy based renderer."""
+# Author: Tomas Hodan (hodantom@cmp.felk.cvut.cz)
+# Center for Machine Perception, Czech Technical University in Prague
 
-import inspect
+"""A Python based renderer."""
+
+import logging
 import os
-from typing import Hashable
 
-os.environ["PYOPENGL_PLATFORM"] = "egl"
 import numpy as np
-import OpenGL.GL as gl
-import vispy
 from bop_toolkit_lib import inout, misc
-from bop_vis_toolkit import renderer
-from vispy import app, gloo
+from bop_toolkit_lib.rendering import renderer
+from glumpy import app, gl, gloo
 
-# app backends: glfw, pyglet, egl
-# gl backends: gl2, pyopengl2, gl+
-app_backend = "egl"
-gl_backend = "gl2"  # "pyopengl2"  # speed: 'gl+' < 'gl2' < 'pyopengl2'
-vispy.use(app=app_backend, gl=gl_backend)
-print("vispy uses app: {}, gl: {}".format(app_backend, gl_backend))
+# Set glumpy logging level.
+from glumpy.log import log
+
+log.setLevel(logging.WARNING)  # Options: ERROR, WARNING, DEBUG, INFO.
+
+# Set backend (http://glumpy.readthedocs.io/en/latest/api/app-backends.html).
+# app.use('glfw')  # Options: 'glfw', 'qt5', 'pyside', 'pyglet'.
+
 
 # RGB vertex shader.
 _rgb_vertex_code = """
@@ -232,39 +230,7 @@ def _calc_calib_proj(K, x0, y0, w, h, nc, fc, window_coords="y_down"):
     return proj.T
 
 
-class SingletonArgs(type):
-    """Singleton that keep single instance for single set of arguments. E.g.:
-    assert SingletonArgs('spam') is not SingletonArgs('eggs')
-    assert SingletonArgs('spam') is SingletonArgs('spam')
-
-    Source: https://gist.github.com/wowkin2/3af15bfbf197a14a2b0b2488a1e8c787
-    """
-
-    _instances = {}
-    _init = {}
-
-    def __init__(cls, name, bases, dct):
-        cls._init[cls] = dct.get("__init__", None)
-
-    def __call__(cls, *args, **kwargs):
-        def hashable(x):
-            return x if isinstance(x, Hashable) else x.__str__()
-
-        init = cls._init[cls]
-        if init is not None:
-            callargs_hashable = {
-                hashable(k): hashable(v)
-                for k, v in inspect.getcallargs(init, None, *args, **kwargs).items()
-            }
-            key = (cls, frozenset(callargs_hashable.items()))
-        else:
-            key = cls
-        if key not in cls._instances:
-            cls._instances[key] = super(SingletonArgs, cls).__call__(*args, **kwargs)
-        return cls._instances[key]
-
-
-class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
+class RendererPython(renderer.Renderer):
     """A Python based renderer."""
 
     def __init__(
@@ -283,17 +249,11 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         :param shading: Type of shading ('flat', 'phong').
         :param bg_color: Color of the background (R, G, B, A).
         """
-        renderer.Renderer.__init__(self, width=width, height=height)
-        app.Canvas.__init__(self, show=False, size=(width, height))
+        super(RendererPython, self).__init__(width, height)
 
         self.mode = mode
         self.shading = shading
         self.bg_color = bg_color
-
-        # yz flip: opencv to opengl
-        pose_cv_to_gl = np.eye(4, dtype=np.float32)
-        pose_cv_to_gl[1, 1], pose_cv_to_gl[2, 2] = -1, -1
-        self.pose_cv_to_gl = pose_cv_to_gl
 
         # Indicators whether to render RGB and/or depth image.
         self.render_rgb = self.mode in ["rgb", "rgb+depth"]
@@ -308,6 +268,9 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         self.rgb = None
         self.depth = None
 
+        # Window for rendering.
+        self.window = app.Window(visible=False)
+
         # Per-object vertex and index buffer.
         self.vertex_buffers = {}
         self.index_buffers = {}
@@ -317,9 +280,14 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         self.depth_programs = {}
 
         # The frame buffer object.
-        rgb_buf = gloo.Texture2D(shape=(self.height, self.width, 3))
-        depth_buf = gloo.RenderBuffer(shape=(self.height, self.width))
+        rgb_buf = np.zeros((self.height, self.width, 4), np.float32).view(
+            gloo.TextureFloat2D
+        )
+        depth_buf = np.zeros((self.height, self.width), np.float32).view(
+            gloo.DepthTexture
+        )
         self.fbo = gloo.FrameBuffer(color=rgb_buf, depth=depth_buf)
+
         # Activate the created frame buffer object.
         self.fbo.activate()
 
@@ -431,9 +399,9 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
                 raise ValueError("Unknown shading type.")
 
         # Create vertex and index buffer for the loaded object model.
-        self.vertex_buffers[obj_id] = gloo.VertexBuffer(vertices)
-        self.index_buffers[obj_id] = gloo.IndexBuffer(
-            model["faces"].flatten().astype(np.uint32)
+        self.vertex_buffers[obj_id] = vertices.view(gloo.VertexBuffer)
+        self.index_buffers[obj_id] = (
+            model["faces"].flatten().astype(np.uint32).view(gloo.IndexBuffer)
         )
 
         # Set shader for the selected shading.
@@ -471,8 +439,13 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         del self.rgb_programs[obj_id]
         del self.depth_programs[obj_id]
 
-    def render_object(self, obj_id, R, t, fx, fy, cx, cy, clear=True):
+    def render_object(self, obj_id, R, t, fx, fy, cx, cy):
         """See base class."""
+
+        # Define the following variables as global so their latest values are always
+        # seen in function on_draw below.
+        global curr_obj_id, mat_model, mat_view, mat_proj
+        curr_obj_id = obj_id
 
         # Model matrix (from object space to world space).
         mat_model = np.eye(4, dtype=np.float32)
@@ -481,10 +454,9 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         # system from OpenCV to OpenGL camera space).
         mat_view_cv = np.eye(4, dtype=np.float32)
         mat_view_cv[:3, :3], mat_view_cv[:3, 3] = R, t.squeeze()
-
-        mat_view = self.pose_cv_to_gl.dot(
-            mat_view_cv
-        )  # OpenCV to OpenGL camera system.
+        yz_flip = np.eye(4, dtype=np.float32)
+        yz_flip[1, 1], yz_flip[2, 2] = -1, -1
+        mat_view = yz_flip.dot(mat_view_cv)  # OpenCV to OpenGL camera system.
         mat_view = mat_view.T  # OpenGL expects column-wise matrix format.
 
         # Calculate the near and far clipping plane from the 3D bounding box.
@@ -493,17 +465,32 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
             (bbox_corners, np.ones((bbox_corners.shape[0], 1))), axis=1
         ).transpose()
         bbox_corners_eye_z = mat_view_cv[2, :].reshape((1, 4)).dot(bbox_corners_ht)
-        self.clip_near = bbox_corners_eye_z.min()
-        self.clip_far = bbox_corners_eye_z.max()
+        clip_near = bbox_corners_eye_z.min()
+        clip_far = bbox_corners_eye_z.max()
 
         # Projection matrix.
         K = np.array([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]])
         mat_proj = _calc_calib_proj(
-            K, 0, 0, self.width, self.height, self.clip_near, self.clip_far
+            K, 0, 0, self.width, self.height, clip_near, clip_far
         )
 
-        self.update()
-        self.on_draw(obj_id, mat_model, mat_view, mat_proj, clear=clear)
+        @self.window.event
+        def on_draw(dt):
+            self.window.clear()
+            global curr_obj_id, mat_model, mat_view, mat_proj
+
+            # Render the RGB image.
+            if self.render_rgb:
+                self.rgb = self._draw_rgb(curr_obj_id, mat_model, mat_view, mat_proj)
+
+            # Render the depth image.
+            if self.render_depth:
+                self.depth = self._draw_depth(
+                    curr_obj_id, mat_model, mat_view, mat_proj
+                )
+
+        # The on_draw function is called framecount+1 times.
+        app.run(framecount=0)
 
         if self.mode == "rgb":
             return {"rgb": self.rgb}
@@ -511,29 +498,6 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
             return {"depth": self.depth}
         elif self.mode == "rgb+depth":
             return {"rgb": self.rgb, "depth": self.depth}
-
-    def on_draw(self, obj_id, mat_model, mat_view, mat_proj, clear=True):
-        with self.fbo:
-            gloo.set_state(depth_test=True, blend=False, cull_face=False)
-            gl.glEnable(gl.GL_LINE_SMOOTH)
-            # gl.glDisable(gl.GL_LINE_SMOOTH)
-            if clear:
-                gloo.set_clear_color(
-                    (
-                        self.bg_color[0],
-                        self.bg_color[1],
-                        self.bg_color[2],
-                        self.bg_color[3],
-                    )
-                )
-                gloo.clear(color=True, depth=True)
-            gloo.set_viewport(0, 0, self.width, self.height)
-
-            if self.render_rgb:
-                self.rgb = self._draw_rgb(obj_id, mat_model, mat_view, mat_proj)
-
-            if self.render_depth:
-                self.depth = self._draw_depth(obj_id, mat_model, mat_view, mat_proj)
 
     def _draw_rgb(self, obj_id, mat_model, mat_view, mat_proj):
         """Renders an RGB image.
@@ -552,16 +516,28 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         program["u_nm"] = _calc_normal_matrix(mat_model, mat_view)
         program["u_mvp"] = _calc_model_view_proj(mat_model, mat_view, mat_proj)
 
+        # OpenGL setup.
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glClearColor(
+            self.bg_color[0], self.bg_color[1], self.bg_color[2], self.bg_color[3]
+        )
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        gl.glViewport(0, 0, self.width, self.height)
+
+        # Keep the back-face culling disabled because of objects which do not have
+        # well-defined surface (e.g. the lamp from the lm dataset).
+        gl.glDisable(gl.GL_CULL_FACE)
+
         # Rendering.
-        program.draw("triangles", self.index_buffers[obj_id])
+        program.draw(gl.GL_TRIANGLES, self.index_buffers[obj_id])
 
         # Get the content of the FBO texture.
-        rgb = gl.glReadPixels(
-            0, 0, self.width, self.height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE
-        )
-        rgb = np.frombuffer(rgb, dtype=np.uint8).reshape((self.height, self.width, 3))[
-            ::-1, :
-        ]
+        rgb = np.zeros((self.height, self.width, 4), dtype=np.float32)
+        gl.glReadPixels(0, 0, self.width, self.height, gl.GL_RGBA, gl.GL_FLOAT, rgb)
+        rgb.shape = (self.height, self.width, 4)
+        rgb = rgb[::-1, :]
+        rgb = np.round(rgb[:, :, :3] * 255).astype(np.uint8)  # Convert to [0, 255].
+
         return rgb
 
     def _draw_depth(self, obj_id, mat_model, mat_view, mat_proj):
@@ -578,23 +554,24 @@ class RendererVispy(renderer.Renderer, app.Canvas, metaclass=SingletonArgs):
         program["u_mv"] = _calc_model_view(mat_model, mat_view)
         program["u_mvp"] = _calc_model_view_proj(mat_model, mat_view, mat_proj)
 
+        # OpenGL setup.
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glClearColor(0.0, 0.0, 0.0, 0.0)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        gl.glViewport(0, 0, self.width, self.height)
+
+        # Keep the back-face culling disabled because of objects which do not have
+        # well-defined surface (e.g. the lamp from the lm dataset).
+        gl.glDisable(gl.GL_CULL_FACE)
+
         # Rendering.
-        program.draw("triangles", self.index_buffers[obj_id])
+        program.draw(gl.GL_TRIANGLES, self.index_buffers[obj_id])
 
-        dep = gl.glReadPixels(
-            0, 0, self.width, self.height, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT
-        )
-        # self.depth = self.depth.reshape(self.height, self.width)
-        # Read buffer and flip X
-        dep = np.copy(np.frombuffer(dep, np.float32)).reshape(self.height, self.width)[
-            ::-1, :
-        ]
+        # Get the content of the FBO texture.
+        depth = np.zeros((self.height, self.width, 4), dtype=np.float32)
+        gl.glReadPixels(0, 0, self.width, self.height, gl.GL_RGBA, gl.GL_FLOAT, depth)
+        depth.shape = (self.height, self.width, 4)
+        depth = depth[::-1, :]
+        depth = depth[:, :, 0]  # Depth is saved in the first channel
 
-        # Convert z-buffer to depth map
-        mult = (self.clip_near * self.clip_far) / (self.clip_near - self.clip_far)
-        addi = self.clip_far / (self.clip_near - self.clip_far)
-        bg = dep == 1
-        dep = mult / (dep + addi)
-        dep[bg] = 0
-
-        return dep
+        return depth
