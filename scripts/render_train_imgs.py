@@ -7,7 +7,7 @@ import os
 
 import cv2
 from bop_toolkit_lib import config, dataset_params, inout, misc, view_sampler
-from bop_vis_toolkit import renderer
+from bop_toolkit_lib.rendering import renderer
 
 # PARAMETERS.
 ################################################################################

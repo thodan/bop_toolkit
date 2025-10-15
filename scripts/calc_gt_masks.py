@@ -12,7 +12,7 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import visibility
-from bop_vis_toolkit import renderer
+from bop_toolkit_lib.rendering import renderer
 
 
 # PARAMETERS.
