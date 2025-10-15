@@ -162,8 +162,16 @@ for result_filename in p["result_filenames"]:
     # Recover all timings, check consistency
     _, _, times, times_available = inout.check_consistent_timings(coco_results, "image_id")
 
+    # pycocotools does not take into account "ignore" annotation properly
+    # but the same behavior can be achieved using "iscrowd" annotation
+    for ann in dataset_coco_ann["annotations"]:
+        if "ignore" in ann and ann["ignore"]:
+            ann["iscrowd"] = ann["ignore"]
+    
     # initialize COCO ground truth api
-    cocoGt = COCO(dataset_coco_ann)
+    cocoGt = COCO()
+    cocoGt.dataset = dataset_coco_ann
+    cocoGt.createIndex()
 
     if p["ann_type"] == "segm":
         pycoco_utils.ensure_rle_binary(dataset_coco_results, cocoGt)
@@ -196,4 +204,4 @@ for result_filename in p["result_filenames"]:
     )
     if p["ann_type"] == "bbox" and p["bbox_type"] == "modal":
         final_scores_path = final_scores_path.replace(".json", "_modal.json")
-    inout.save_json(final_scores_path, coco_scores)
+    inout.save_json(final_scores_path, coco_scores, verbose=True)
