@@ -2,9 +2,9 @@ import os
 import numpy as np
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-from bop_toolkit_lib import pycoco_utils
 import argparse
 
+from bop_toolkit_lib import pycoco_utils
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout

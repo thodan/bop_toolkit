@@ -4,10 +4,10 @@
 """An interface to the C++ based renderer (bop_renderer)."""
 
 import sys
-import numpy as np
 
+import numpy as np
 from bop_toolkit_lib import config
-from bop_toolkit_lib import renderer
+from bop_toolkit_lib.rendering import renderer
 
 # C++ renderer (https://github.com/thodan/bop_renderer)
 sys.path.append(config.bop_renderer_path)
