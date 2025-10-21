@@ -23,6 +23,7 @@ dependencies = [
     "scikit-image>=0.21.0",
     "scipy>=1.10.1",
     "vispy>=0.14.2",
+    "tqdm>=4.67.1",
 ]
 
 
