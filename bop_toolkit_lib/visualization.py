@@ -166,7 +166,8 @@ def vis_object_poses(
         ren_depth = np.zeros((im_size[1], im_size[0]), np.float32)
 
     # Render the pose estimates one by one.
-    for pose in poses:
+    res_per_obj = {}
+    for obj_idx, pose in enumerate(poses):
         # Rendering.
         if htt_available and isinstance(K, CameraModel): # hand_tracking_toolkit is used for rendering.
             ren_out = renderer.render_object(
@@ -227,6 +228,11 @@ def vis_object_poses(
                         color=text_color,
                         size=text_size,
                     )
+        # pose["obj_id"] is id of the category, need another idx to handle multiple instances of the same category
+        res_per_obj[obj_idx] = {**ren_out, "pose": pose}
+
+    res={}
+    res["res_per_obj"] = res_per_obj
 
     # Blend and save the RGB visualization.
     if vis_rgb:
@@ -273,3 +279,5 @@ def vis_object_poses(
         ]
         depth_diff_vis = write_text_on_image(depth_diff_vis, depth_info)
         inout.save_im(vis_depth_diff_path, depth_diff_vis)
+
+    return res
