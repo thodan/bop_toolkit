@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
+from bop_toolkit_lib.config import LIB_DIR
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -67,7 +68,7 @@ def write_text_on_image(im, txt_list, loc=(3, 0), color=(1.0, 1.0, 1.0), size=20
 
     # Load font.
     try:
-        font_path = os.path.join(os.path.dirname(__file__), "droid_sans_mono.ttf")
+        font_path = str(LIB_DIR / "droid_sans_mono.ttf")
         font = ImageFont.truetype(font_path, size)
     except IOError:
         misc.log("Warning: Loading a fallback font.")
