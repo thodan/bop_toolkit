@@ -13,11 +13,11 @@ DATA_DIR = ROOT_DIR / "data"
 # You may change default values here or 
 # set the corresponding environment variable.
 default_paths = {
-    "BOP_PATH": DATA_DIR,
+    "BOP_PATH": str(DATA_DIR),
     "BOP_RESULTS_PATH": rf"{ROOT_DIR}/results",
     "BOP_EVAL_PATH": rf"{ROOT_DIR}/results",
     "BOP_OUTPUT_PATH": rf"{ROOT_DIR}/outputs",
-    "BOP_RENDERER_PATH": r"/path/to/bop_renderer/build",
+    "BOP_RENDERER_PATH": rf"{ROOT_DIR}/bop_renderer/build",
     "BOP_MESHLAB_PATH": r"/path/to/meshlabserver.exe",
 }
 
