@@ -6,9 +6,9 @@ import numpy as np
 
 def draw_pose_contour(
     cv_img,
-    mesh,
     K,
     obj_pose,
+    mesh=None,
     contour_color=(255, 0, 0),
     thickness=3,
     headless=False,
@@ -18,6 +18,7 @@ def draw_pose_contour(
     # based on: https://github.com/megapose6d/megapose6d/blob/master/src/megapose/visualization/utils.py
 
     if render_out is None:
+        assert mesh is not None
         rendered_color, depth = render_offscreen(
             mesh,
             obj_pose,
@@ -54,26 +55,26 @@ def draw_pose_contour(
     return rendered_color, cv_img
 
 
-def get_buffered_depth_and_obj_masks(render_out_per_obj):
-    buffered_depth = np.zeros_like(list(render_out_per_obj.values())[0]["depth"])
+def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
+    depth_map = np.zeros_like(list(render_out_per_obj.values())[0]["depth"])
     for idx, obj_res in render_out_per_obj.items():
         depth_obj = obj_res["depth"]
-        is_fg = (buffered_depth == 0) | (depth_obj < buffered_depth)
+        is_fg = (depth_map == 0) | (depth_obj < depth_map)
         exists = depth_obj > 0
         mask_obj = exists & is_fg
-        buffered_depth[mask_obj] = depth_obj[mask_obj]
+        depth_map[mask_obj] = depth_obj[mask_obj]
 
-    # refine masks with complete depth buffer
+    # get masks based on the complete depth map
     mask_objs = []
     for i, (idx, obj_res) in enumerate(render_out_per_obj.items()):
         depth_obj = obj_res["depth"]
-        is_fg = (buffered_depth == 0) | (depth_obj <= buffered_depth)
+        is_fg = (depth_map == 0) | (depth_obj <= depth_map)
         exists = depth_obj > 0
         mask_obj = exists & is_fg
         mask_objs.append(mask_obj)
 
     return {
-        "buffered_depth": buffered_depth,
+        "depth_map": depth_map,
         "mask_objs": mask_objs,
     }
 
