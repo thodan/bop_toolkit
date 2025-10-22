@@ -39,6 +39,7 @@ def generate_candidate_orientations(dist):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", default="xyzibd", help="Name of the BOP dataset. See dataset_params.py for options.")
+parser.add_argument("--model_type", default=None, help="Type of the 3D models to use. None = default")
 parser.add_argument("--renderer_type", default="vispy", help="Type of the renderer. Options: 'vispy', 'cpp', 'python'")
 parser.add_argument("--max_sym_disc_step", type=float, default=0.01, help="See misc.get_symmetry_transformations")
 parser.add_argument("--datasets_path", default=config.datasets_path, help="Path to the folder containing the BOP datasets.")
@@ -51,8 +52,8 @@ vis_dir = Path(args.vis_dir)
 vis_dir.mkdir(parents=True, exist_ok=True)
 
 # Load dataset parameters.
-model_type = None  # None = default.
-if args.dataset == "tless":
+model_type = args.model_type
+if model_type is None and args.dataset == "tless":
     model_type = "cad"
 dp_model = dataset_params.get_model_params(args.datasets_path, args.dataset, model_type)
 
