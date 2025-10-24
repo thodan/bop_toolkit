@@ -1,4 +1,3 @@
-import os
 
 import cv2
 import numpy as np
@@ -6,31 +5,14 @@ import numpy as np
 
 def draw_pose_contour(
     cv_img,
-    K,
-    obj_pose,
-    mesh=None,
+    rendered_depth,
     contour_color=(255, 0, 0),
     thickness=3,
-    headless=False,
     mask_visib=None,
-    render_out=None,
 ):
     # based on: https://github.com/megapose6d/megapose6d/blob/master/src/megapose/visualization/utils.py
 
-    if render_out is None:
-        assert mesh is not None
-        rendered_color, depth = render_offscreen(
-            mesh,
-            obj_pose,
-            K,
-            w=cv_img.shape[1],
-            h=cv_img.shape[0],
-            headless=headless,
-        )
-    else:
-        rendered_color, depth = render_out["color"], render_out["depth"]
-
-    mask = ((depth > 0).astype(np.uint8)) * 255
+    mask = ((rendered_depth > 0).astype(np.uint8)) * 255
 
     if mask_visib is not None:
         mask = mask * mask_visib
@@ -47,12 +29,12 @@ def draw_pose_contour(
         k_thick = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (thickness, thickness))
         edge = cv2.dilate(edge, k_thick, iterations=1)
 
-    # overlay
-    if cv_img.ndim == 2:
-        cv_img = cv2.cvtColor(cv_img, cv2.COLOR_GRAY2BGR)
-    cv_img[edge > 0] = contour_color
+    overlay = cv_img.copy()
+    if overlay.ndim == 2:
+        overlay = cv2.cvtColor(overlay, cv2.COLOR_GRAY2BGR)
+    overlay[edge > 0] = contour_color
 
-    return rendered_color, cv_img
+    return overlay
 
 
 def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
@@ -77,42 +59,3 @@ def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
         "depth_map": depth_map,
         "mask_objs": mask_objs,
     }
-
-
-def render_offscreen(mesh, obj_pose, intrinsic, w, h, headless=False):
-    import pyrender
-
-    if headless:
-        os.environ["DISPLAY"] = ":1"
-        os.environ["PYOPENGL_PLATFORM"] = "egl"
-
-    fx, fy, cx, cy = intrinsic[0][0], intrinsic[1][1], intrinsic[0][2], intrinsic[1][2]
-    cam_pose = np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-
-    scene = pyrender.Scene(
-        bg_color=np.array([1, 1, 1, 0]), ambient_light=np.array([0.2, 0.2, 0.2, 1.0])
-    )
-    light = pyrender.SpotLight(
-        color=np.ones(3),
-        intensity=4.0,
-        innerConeAngle=np.pi / 16.0,
-        outerConeAngle=np.pi / 6.0,
-    )
-    camera = pyrender.IntrinsicsCamera(
-        fx=fx, fy=fy, cx=cx, cy=cy, znear=0.01, zfar=100000
-    )
-
-    scene.add(light, pose=cam_pose)
-    scene.add(camera, pose=cam_pose)
-
-    # If you actually have a mesh, prefer from_trimesh; from_points renders a point cloud.
-    if isinstance(mesh, dict) and "pts" in mesh:
-        mesh_node = pyrender.Mesh.from_points(mesh["pts"])
-    else:
-        mesh_node = pyrender.Mesh.from_trimesh(mesh)
-    scene.add(mesh_node, pose=obj_pose)
-
-    r = pyrender.OffscreenRenderer(w, h)
-    color, depth = r.render(scene, flags=pyrender.RenderFlags.OFFSCREEN)
-    r.delete()
-    return color, depth
