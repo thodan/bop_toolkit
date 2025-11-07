@@ -89,5 +89,5 @@ for obj_id in dp_model["obj_ids"]:
             )
             misc.ensure_dir(os.path.dirname(vis_rgb_path))
             inout.save_im(vis_rgb_path, vis_rgb)
-
+            misc.log(vis_rgb_path)
 misc.log("Done.")
