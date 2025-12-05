@@ -3,8 +3,7 @@
 A Python toolkit of the BOP benchmark for 6D object pose estimation
 (http://bop.felk.cvut.cz).
 
-- **bop_toolkit_lib** - The core Python library for i/o operations, calculation
-  of pose errors, Python based rendering etc.
+- **bop_toolkit_lib** - The core Python library for i/o operations, calculation of pose errors, etc.
 - **docs** - Documentation and conventions.
 - **scripts** - Scripts for evaluation, rendering of training images,
   visualization of 6D object poses etc.
@@ -38,13 +37,15 @@ uv pip install .[scripts]  # install dependencies for utility scripts (e.g. `ann
 ### Unittests
 `python -m unittest discover bop_toolkit_lib/tests`
 
-### Vispy Renderer (default)
+### Rendering
+
+#### Vispy Renderer (default)
 
 The Python based headless renderer with egl backend is implemented using [Vispy](https://github.com/vispy/vispy).
 Vispy is installed using the pip command above.
 Note that the [nvidia opengl driver](https://developer.nvidia.com/opengl-driver) might be required in case of any errors.
 
-### Python Renderer (deprecated)
+#### Python Renderer (deprecated)
 
 Another Python based renderer is implemented using
 [Glumpy](https://glumpy.github.io/) which depends on
@@ -64,7 +65,7 @@ To install freetype and GLFW on Windows, follow [these instructions](https://glu
 GLFW serves as a backend of Glumpy. [Another backend](https://glumpy.readthedocs.io/en/latest/api/app-backends.html)
 can be used but were not tested with our code.
 
-### C++ Renderer
+#### C++ Renderer
 
 For fast CPU-based rendering on a headless server, we recommend installing [bop_renderer](https://github.com/thodan/bop_renderer),
 an off-screen C++ renderer with Python bindings.
@@ -112,6 +113,26 @@ python scripts/eval_bop22_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESU
 ```
 --result_filenames: Comma-separated filenames with per-dataset coco results (place them under your `results_path` defined in your [config.py](bop_toolkit_lib/config.py)).  
 --ann_type: 'bbox' to evaluate amodal bounding boxes. 'segm' to evaluate segmentation masks.
+
+### Visualize results
+
+You can find several visualization scripts named `vis_*.py` in the `scripts/` folder. The scripts provide functionality to visualize your 6D pose estimation results:
+
+- `vis_gt_poses.py` - visualize groundtruth poses
+- `vis_est_poses.py` - visualize estimated poses
+- `vis_object_symmetries.py` - render of object symmetries
+
+#### Available Visuals
+
+- [x] rendering of objects onto an image
+- [x] depth error based on rendering with groundtruth and predicted poses
+- [x] rendering of object symmetries
+- [ ] depth error heatmaps based on rendering with groundtruth and predicted poses
+- [ ] rendering of object contour
+- [ ] 3D bounding boxes
+- [ ] depth maps
+- [ ] joint groundtruth-prediction visuals
+- [ ] NOCS
 
 ## Convert BOP to COCO format
 

@@ -12,12 +12,11 @@ from pathlib import Path
 
 import numpy as np
 
-from bop_toolkit_lib import config
+from bop_toolkit_lib import config, visualization
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
-from bop_toolkit_lib import visualization
+from bop_toolkit_lib.rendering import renderer
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -179,6 +178,7 @@ width, height = None, None
 ren = None
 
 for scene_id in scene_ids_curr:
+
     tpath_keys = dataset_params.scene_tpaths_keys(p["modality"], p["sensor"], scene_id)
     scene_modality = dataset_params.get_scene_sensor_or_modality(p["modality"], scene_id)
     scene_sensor = dataset_params.get_scene_sensor_or_modality(p["sensor"], scene_id)
