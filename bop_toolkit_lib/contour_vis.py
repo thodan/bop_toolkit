@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 
@@ -9,6 +8,7 @@ def draw_pose_contour(
     contour_color=(255, 0, 0),
     thickness=3,
     mask_visib=None,
+    use_depth=False,
 ):
     # based on: https://github.com/megapose6d/megapose6d/blob/master/src/megapose/visualization/utils.py
 
@@ -20,9 +20,17 @@ def draw_pose_contour(
     # clean up small noise
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     eroded = cv2.erode(mask, k, iterations=1)
-    edge = cv2.subtract(mask, eroded)
 
-    mask = cv2.Canny(mask, threshold1=30, threshold2=100)
+    if use_depth:
+        depth2 = rendered_depth.copy()
+        depth2[mask == 0] = 0
+        assert depth2.max() > 1e1, f"Ensure the depth has mm-scale, {depth2.max=}"
+        depth2 = (depth2 * 1e-3 * 255).clip(0, 255).astype(np.uint8)
+        mask_depth = cv2.Canny(depth2, threshold1=30, threshold2=100)
+        edge = cv2.subtract(mask_depth, eroded)
+    else:
+        edge = cv2.subtract(mask, eroded)
+        mask = cv2.Canny(mask, threshold1=30, threshold2=100)
 
     # get a thicker outline
     if thickness > 1:
