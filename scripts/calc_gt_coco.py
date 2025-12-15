@@ -6,7 +6,8 @@
 import os
 import argparse
 import datetime
-import json
+
+from tqdm import tqdm
 
 from bop_toolkit_lib import pycoco_utils
 from bop_toolkit_lib import config
@@ -74,7 +75,7 @@ target_file_path = os.path.join(dp_split["base_path"], args.targets_filename)
 targets = inout.load_json(target_file_path)
 targets_org = misc.reorganize_targets(targets)
 
-for scene_id in dp_split["scene_ids"]:
+for scene_id in tqdm(dp_split["scene_ids"], colour="green"):
     tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
     scene_modality = dataset_params.get_scene_sensor_or_modality(dp_split["eval_modality"], scene_id)
     scene_sensor = dataset_params.get_scene_sensor_or_modality(dp_split["eval_sensor"], scene_id)
@@ -104,7 +105,7 @@ for scene_id in dp_split["scene_ids"]:
     misc.log(f"Calculating Coco Annotations - dataset: {args.dataset} ({args.dataset_split}, {args.dataset_split_type}), scene: {scene_id}")
 
     # Go through each view in scene_gt
-    for im_id, inst_list in scene_gt.items():
+    for im_id, inst_list in tqdm(scene_gt.items(), colour="blue"):
         # Skip if the image is not in the targets
         in_target = scene_id in targets_org and im_id in targets_org[scene_id]
         if not args.use_all_gt and not in_target:
@@ -165,6 +166,4 @@ for scene_id in dp_split["scene_ids"]:
 
             segmentation_id = segmentation_id + 1
 
-    with open(coco_gt_path, "w") as output_json_file:
-        json.dump(coco_scene_output, output_json_file)
-        misc.log('Saved {}'.format(coco_gt_path))
+    inout.save_json(coco_gt_path, coco_scene_output, verbose=True)
