@@ -232,7 +232,7 @@ def vis_object_poses(
         # pose["obj_id"] is id of the category, need another idx to handle multiple instances of the same category
         res_per_obj[obj_idx] = {**ren_out, "pose": pose}
 
-    res={}
+    res = {}
     res["res_per_obj"] = res_per_obj
 
     # Blend and save the RGB visualization.
