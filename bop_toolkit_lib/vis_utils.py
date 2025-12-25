@@ -4,7 +4,37 @@ import cv2
 import numpy as np
 from bop_toolkit_lib import misc
 from bop_toolkit_lib.common_utils import adjust_img_for_plt, cast_to_numpy
-from bop_toolkit_lib.vis_utils import draw_text_in_ul
+from bop_toolkit_lib.nb_utils import backproj_depth
+
+
+def get_depth_diff_img(gt_depth, est_pose, gt_pose, cam, syms=None):
+    hw = gt_depth.shape[-2:]
+    gt_depth_xyz, _ = backproj_depth(gt_depth, cam)
+    dists = compute_per_point_dists(
+        gt_depth_xyz,
+        get_pose_mat_from_dict(gt_pose),
+        get_pose_mat_from_dict(est_pose),
+        syms=syms,
+    )
+    depth_diff_img = np.zeros(hw)
+    gt_depth_uv = np.where(gt_depth > 0)
+    depth_diff_img[gt_depth_uv] = dists
+    return depth_diff_img
+
+
+def combine_depth_diffs(masks, diffs, use_clip=False, clip_val=None):
+    combined = np.zeros_like(diffs[0], dtype=np.float32)
+    imgs = []
+    for i, mask in enumerate(masks):
+        combined[mask] = diffs[i][mask]
+        imgs.append(combined)
+    if use_clip:
+        clip_val = np.percentile(combined, 99.7) if clip_val is None else clip_val
+        combined = np.clip(combined, 0, clip_val)
+    return {
+        "combined": combined,
+        "imgs": imgs,
+    }
 
 
 def draw_pose_contour(
@@ -71,25 +101,6 @@ def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
     return {
         "depth_map": depth_map,
         "mask_objs": mask_objs,
-    }
-
-
-def combine_depth_diffs(masks, diffs, use_clip=False, clip_val=None):
-    is_rgb = diffs[0].ndim == 3
-    combined = np.zeros_like(diffs[0], dtype=np.float32)
-    imgs = []
-    for i, mask in enumerate(masks):
-        # mask = d > combined
-        # print(f"{i=} {mask.sum()}")
-        a = diffs[i][mask]
-        combined[mask] = a
-        imgs.append(combined)
-    if use_clip:
-        clip_val = np.percentile(combined, 99.7) if clip_val is None else clip_val
-        combined = np.clip(combined, 0, clip_val)
-    return {
-        "combined": combined,
-        "imgs": imgs,
     }
 
 
@@ -313,8 +324,39 @@ def draw_text_in_ul(
     return rgb
 
 
-def pose_dict_to_mat(pose):
+def get_pose_mat_from_dict(pose):
+    return get_pose_mat_from_rt(pose["R"], pose["t"])
+
+
+def get_pose_mat_from_rt(rot, t):
     pose_mat = np.eye(4)
-    pose_mat[:3, :3] = pose["R"]
-    pose_mat[:3, 3] = pose["t"].squeeze()
+    pose_mat[:3, :3] = rot
+    pose_mat[:3, 3] = t.squeeze()
     return pose_mat
+
+
+def compute_per_point_dists(pts_gt_cam, pose_gt, pose_est, syms=None):
+    # pts=pts transformed via gt pose, poses=obj->cam
+    pose_gt_inv = np.linalg.inv(pose_gt)
+    # gt -> est
+    if syms is not None:
+        pose_ests = []
+        for sym in syms:
+            R = pose_est[:3, :3].dot(sym["R"])
+            t = pose_est[:3, :3].dot(sym["t"].squeeze()) + pose_est[:3, 3]
+            pose_ests.append(get_pose_mat_from_rt(R, t))
+    else:
+        pose_ests = [pose_est]
+
+    all_dists = []
+    for pose in pose_ests:
+        delta_T = pose @ pose_gt_inv
+
+        pts_est_transformed = misc.transform_pts_Rt(
+            pts_gt_cam, delta_T[:3, :3], delta_T[:3, 3]
+        )
+        dists = np.linalg.norm(pts_est_transformed - pts_gt_cam, axis=1)
+        all_dists.append(dists)
+    best_pose_idx = np.argmin([d.mean() for d in all_dists])
+    dists = all_dists[best_pose_idx]
+    return dists
