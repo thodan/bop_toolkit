@@ -93,6 +93,12 @@ DEFAULTS = {
         "result_filenames": [],
         # Folder with results to be evaluated.
         "results_path": config.results_path,
+        "vis_rgb_tpath": os.path.join(
+            "{vis_path}", "{result_name}", "{scene_id:06d}", "{vis_name}.jpg"
+        ),
+        "vis_depth_diff_tpath": os.path.join(
+            "{vis_path}", "{result_name}", "{scene_id:06d}", "{vis_name}_depth_diff.jpg"
+        ),
     },
 }
 ################################################################################
