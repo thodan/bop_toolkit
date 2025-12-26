@@ -206,6 +206,38 @@ def setup_parser():
 
 
 def main(args):
+    # Load the color and depth images and prepare images for rendering.
+    rgb = None
+    if args.vis_rgb:
+        # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
+        im_tpath = tpath_keys["rgb_tpath"]
+        # check for BOP classic (itodd)
+        rgb_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, 'rgb')
+        if im_tpath == "rgb_tpath" and not rgb_available:
+            im_tpath = "gray_tpath"
+
+        rgb = inout.load_im(
+            dp_split[im_tpath].format(scene_id=scene_id, im_id=im_id)
+        )
+        # if image is grayscale (e.g. quest3), convert it to 3 channels
+        if rgb.ndim == 2:
+            rgb = np.dstack([rgb, rgb, rgb])
+        else:
+            rgb = rgb[:,:,:3]  # should we keep this?
+    
+    depth = None
+    if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
+        depth_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, "depth")
+        if not depth_available:
+            misc.log(f"{scene_sensor} has no depth data, skipping depth visualization")
+            args.vis_depth_diff = False
+            args.vis_rgb_resolve_visib = False
+        else:
+            depth = inout.load_depth(
+                dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
+            )
+            depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+
     if args.mode == "gt":
         # Path to the output RGB visualization.
         split = "{}_{}".format(args.dataset_split, scene_sensor) if scene_sensor else args.dataset_split 
