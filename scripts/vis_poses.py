@@ -205,9 +205,77 @@ def setup_parser():
     return parser
 
 
+def main(args):
+    if args.mode == "gt":
+        # Path to the output RGB visualization.
+        split = "{}_{}".format(args.dataset_split, scene_sensor) if scene_sensor else args.dataset_split 
+        vis_rgb_path = None
+        if args.vis_rgb:
+            vis_rgb_path = args.vis_rgb_tpath.format(
+                vis_path=args.vis_path,
+                dataset=args.dataset,
+                split=split,
+                scene_id=scene_id,
+                im_id=im_id,
+            )
+
+        # Path to the output depth difference visualization.
+        vis_depth_diff_path = None
+        if args.vis_depth_diff:
+            vis_depth_diff_path = args.vis_depth_diff_tpath.format(
+                vis_path=args.vis_path,
+                dataset=args.dataset,
+                split=split,
+                scene_id=scene_id,
+                im_id=im_id,
+            )
+    else:
+        # Visualization name.
+        if args.vis_per_obj_id:
+            vis_name = "{im_id:06d}_{obj_id:06d}".format(
+                im_id=im_id, obj_id=im_ests_vis_obj_ids[ests_vis_id]
+            )
+        else:
+            vis_name = "{im_id:06d}".format(im_id=im_id)
+        # Path to the output RGB visualization.
+        vis_rgb_path = None
+        if args.vis_rgb:
+            vis_rgb_path = args.vis_rgb_tpath.format(
+                vis_path=args.vis_path,
+                result_name=result_name,
+                scene_id=scene_id,
+                vis_name=vis_name,
+            )
+
+        # Path to the output depth difference visualization.
+        vis_depth_diff_path = None
+        if args.vis_depth_diff:
+            vis_depth_diff_path = args.vis_depth_diff_tpath.format(
+                vis_path=args.vis_path,
+                result_name=result_name,
+                scene_id=scene_id,
+                vis_name=vis_name,
+            )
+
+
+    # at this point gt/est branches should converge
+    # does it make sense to have gt branch if est branch uses gt anyway?
+    visualization.vis_object_poses(
+        poses=gt_poses,
+        K=cam,
+        renderer=ren,
+        rgb=rgb,
+        depth=depth,
+        vis_rgb_path=vis_rgb_path,
+        vis_depth_diff_path=vis_depth_diff_path,
+        vis_rgb_resolve_visib=vis_rgb_resolve_visib,
+    )
+
+
 if __name__ == "__main__":
     parser = setup_parser()
     args = parser.parse_args()
     if args.vis_path is None:
         vis_type = "gt" if args.mode == "gt" else "est"
         args.vis_path = os.path.join(config.output_path, f"vis_{vis_type}_poses")
+    main(args)
