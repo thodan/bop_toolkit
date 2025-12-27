@@ -3,6 +3,7 @@
 
 """I/O functions."""
 
+import os
 import gzip
 import struct
 import numpy as np
@@ -12,7 +13,7 @@ import png
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 
 from bop_toolkit_lib import misc
 
@@ -365,7 +366,7 @@ def load_bop_results(path: Union[str,Path], version="bop19", max_num_estimates_p
     return results
 
 
-def save_bop_results(path: Union[str,Path], results: list[dict], version="bop19"):
+def save_bop_results(path: Union[str,Path], results: List[dict], version="bop19"):
     """Saves 6D object pose estimates to a file.
 
     :param path: Path to the output file.
@@ -400,43 +401,61 @@ def save_bop_results(path: Union[str,Path], results: list[dict], version="bop19"
         raise ValueError("Unknown version of BOP results.")
 
 
+def check_consistent_timings(results, im_id_key):
+    """
+    Check if the time for all estimates from the same image are the same.
+
+    Timings should be present in every result dictionary in the key "time". 
+    If not, or if a value -1 is used, 'times_available' is returned false.
+
+    :param results: list of pose or coco results
+    :param im_id_key: "im_id" for pose results, "image_id" for coco results
+    :return: tuple (check_passed, check_msg, times, times_available).
+    """
+    times = {}
+    times_available = True
+    for result in results:
+        scene_id, im_id = result["scene_id"], result[im_id_key]
+        result_key = f"{scene_id:06d}_{im_id:06d}"
+        if "time" not in result or result["time"] < 0:
+            times_available = False
+            continue
+        if result_key in times:
+            if abs(times[result_key] - result["time"]) > 0.001:
+                check_msg = f"The running time for scene {scene_id} and image {im_id} is not the same for all estimates."
+                misc.log(check_msg)
+                return False, check_msg, times, times_available
+        else:
+            times[result_key] = result["time"]
+
+    # all results passed the test
+    return True, "OK", times, times_available
+
+
 def check_bop_results(path: Union[str,Path], version="bop19"):
     """Checks if the format of BOP results is correct.
 
-    :param result_filenames: Path to a file with pose estimates.
+    :param path: Path to a file with pose estimates.
     :param version: Version of the results.
     :return: True if the format is correct, False if it is not correct.
     """
-    check_passed = True
-    check_msg = "OK"
     try:
         results = load_bop_results(path, version)
 
+        if len(results) == 0:
+            return False, "Empty results"
+
         if version == "bop19":
-            # Check if the time for all estimates from the same image are the same.
-            times = {}
-            for result in results:
-                result_key = "{:06d}_{:06d}".format(result["scene_id"], result["im_id"])
-                if result_key in times:
-                    if abs(times[result_key] - result["time"]) > 0.001:
-                        check_passed = False
-                        check_msg = (
-                            "The running time for scene {} and image {} is not the same for"
-                            " all estimates.".format(
-                                result["scene_id"], result["im_id"]
-                            )
-                        )
-                        misc.log(check_msg)
-                        break
-                else:
-                    times[result_key] = result["time"]
+            check_timings, check_msg_timings, times, times_available = check_consistent_timings(results, "im_id")
+            if not check_timings:
+                return False, check_msg_timings
 
     except Exception as e:
-        check_passed = False
-        check_msg = "Error when loading BOP results: {}".format(e)
+        check_msg = f"Error when loading BOP results: {e}"
         misc.log(check_msg)
+        return False, check_msg
 
-    return check_passed, check_msg
+    return True, "OK"
 
 
 def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
@@ -451,49 +470,68 @@ def check_coco_results(path: Union[str,Path], version="bop22", ann_type="segm", 
     :return: True if the format is correct, False if it is not correct.
     """
 
-    misc.log("Checking coco result format...")
-    check_passed = True
-    check_msg = "OK"
     try:
         results = load_json(path, keys_to_int=True)
     except Exception as e:
-        check_passed = False
-        check_msg = "Error when loading COCO results: {}".format(e)
+        check_msg = f"Error when loading BOP coco results: {e}"
         misc.log(check_msg)
-        raise
+        return False, check_msg
+    
+    return check_coco_results_(results, version, ann_type, enforce_no_segm_if_bbox)
+
+
+def check_coco_results_(results: List, version="bop22", ann_type="segm", enforce_no_segm_if_bbox=False):
+    """Checks if the format of extended COCO results is correct.
+
+    :param results: List of results loaded from file.
+    :param version: Version of the results.
+    :param ann_type: type of annotation expected in the file.
+        "bbox" -> bounding boxes
+        "segm" -> segmentation mask
+    :param enforce_no_segm_if_bbox: prevent the presence of segmentation mask in the file if ann_type is "bbox"
+    :return: True if the format is correct, False if it is not correct.
+    """
+
+    if len(results) == 0:
+        return False, "Empty results"
 
     if version == "bop22":
         try:
             for result in results:
-                assert "scene_id" in result, "scene_id key missing"
-                assert "image_id" in result, "image_id key missing"
-                assert "category_id" in result, "category_id key missing"
-                assert "score" in result, "score key missing"
-                assert isinstance(result["scene_id"], int)
-                assert isinstance(result["image_id"], int)
-                assert isinstance(result["category_id"], int)
-                assert isinstance(result["score"], float)
-                if enforce_no_segm_if_bbox:
-                    assert not (ann_type == "bbox" and "segmentation" in result), \
-                           "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
-                if "bbox" in result:
-                    assert isinstance(result["bbox"], list)
-                if "segmentation" in result and ann_type == "segm":
-                    assert isinstance(
-                        result["segmentation"], dict
-                    ), "Segmentation not in RLE format!"
+                assert "scene_id" in result, "'scene_id' key missing"
+                assert "image_id" in result, "'image_id' key missing"
+                assert "category_id" in result, "'category_id' key missing"
+                assert "score" in result, "'score' key missing"
+                assert isinstance(result["scene_id"], int), "'scene_id' value should be of type 'int'"
+                assert isinstance(result["image_id"], int), "'image_id' value should be of type 'int'"
+                assert isinstance(result["category_id"], int), "'category_id' value should be of type 'int'"
+                assert isinstance(result["score"], (float,int)), "'score' value should be of type 'float' or 'int'"
+                if ann_type == "bbox":
+                    assert "bbox" in result, "ann_type 'bbox' should contain 'bbox' key in all results"
+                    assert isinstance(result["bbox"], list), "result['bbox'] should be a list"
+                    if enforce_no_segm_if_bbox:
+                        assert "segmentation" not in result, "'segmentation' key should not be present in coco result file for 2D detection annotation ('bbox' annotation type)"
+                if ann_type == "segm":
+                    assert "segmentation" in result, "ann_type 'segm' should contain 'segmentation' key in all results"
+                    assert isinstance(result["segmentation"], dict), "Segmentation not in RLE format!"
                     assert "counts" in result["segmentation"], "Incorrect RLE format!"
                     assert "size" in result["segmentation"], "Incorrect RLE format!"
                 if "time" in result:
                     assert isinstance(result["time"], (float, int))
-        except AssertionError as msg:
-            check_msg = "Error when checking keys and types: {}".format(msg)
-            check_passed = False
+
+        except (AssertionError, Exception) as e:
+            check_msg = f"Error when checking keys and types: {e}"
             misc.log(check_msg)
-    return check_passed, check_msg
+            return False, check_msg
+
+        check_timings, check_msg_timings, times, times_available = check_consistent_timings(results, "image_id")
+        if not check_timings:
+            return False, check_msg_timings
+
+    return True, "OK"
 
 
-def save_coco_results(path: Union[str,Path], results: list[dict], version="bop22", compress=False):
+def save_coco_results(path: Union[str,Path], results: List[dict], version="bop22", compress=False):
     """Saves detections/instance segmentations for each scene in coco format.
 
     "bbox" should be [x,y,w,h] in pixels
@@ -892,3 +930,128 @@ def get_im_targets(im_gt: dict, im_gt_info: dict, visib_gt_min: float, eval_mode
             im_targets[obj_id] = {"inst_count": 0}
         im_targets[obj_id]["inst_count"] += 1
     return im_targets
+
+
+def parse_result_filename(result_filename: Union[str,Path]):
+    """
+    Parse result filename to get method, dataset, split and split_type.
+
+    Result file needs to follow one of the valid BOP result file format:
+    - "{method}_{dataset}-{split}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+    - "{method}_{dataset}-{split}-{split_type}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+
+    where the individual elements :
+    - method: name of the method used to produced the results
+    - dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    - split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    - split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    - optional_id: id that may be attached to uniquely identify result file
+    - ext: file extension (e.g. "csv", "json", "json.gz")
+
+    :param result_filename: name or full path of a result file.
+    :return: tuple (result_name, method, dataset, split, split_type, ext)
+    """
+    try:
+        # Split the filename
+        filename_split = os.path.basename(result_filename).split('.')
+        result_name = filename_split[0]
+        ext = '.'.join(filename_split[1:])
+        result_info = result_name.split("_")
+        method = result_info[0]
+        dataset_info = result_info[1].split("-")
+        dataset = dataset_info[0]
+        split = dataset_info[1]
+        split_type = str(dataset_info[2]) if len(dataset_info) > 2 else None
+
+        return result_name, method, dataset, split, split_type, ext
+    
+    except ValueError as e:
+        FILENAME_FORMATS = [
+            "{method}_{dataset}-{split}.{ext}",
+            "{method}_{dataset}-{split}_{optional_id}.{ext}",
+            "{method}_{dataset}-{split}-{split_type}.{ext}",
+            "{method}_{dataset}-{split}_{optional_id}.{ext}",
+        ]
+        formats_str = '\n'.join(FILENAME_FORMATS)
+        error_msg = (
+            f"Wrong format for result file name {result_filename}\n" +
+            f"Should follow one of those formats: \n{formats_str}"
+        )
+        raise ValueError(error_msg)
+
+
+def _create_result_filename(method: str, dataset: str, split: str, ext: str, split_type: Union[str,None], optional_id: Union[str,None]):
+    """Create a result filename. 
+    
+    Filename will following one of the valid formats (depending on args value): 
+    - "{method}_{dataset}-{split}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+    - "{method}_{dataset}-{split}-{split_type}.{ext}"
+    - "{method}_{dataset}-{split}_{optional_id}.{ext}"
+
+    :param: method: name of the method used to produced the results
+    :param: dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    :param: split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    :param: ext: file extension (e.g. "csv", "json", "json.gz")
+    :param: split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.). Optional.
+    :param: optional_id: id that may be attached to uniquely identify result file. Optional.
+    """
+
+    if split_type is None and optional_id is None:
+        return f"{method}_{dataset}-{split}.{ext}"
+    elif split_type is None:
+        return f"{method}_{dataset}-{split}_{optional_id}.{ext}"
+    elif optional_id is None:
+        return f"{method}_{dataset}-{split}-{split_type}.{ext}"
+    else:
+        return f"{method}_{dataset}-{split}-{split_type}_{optional_id}.{ext}"
+
+
+def create_coco_result_filename(
+        method: str, 
+        dataset: str, 
+        split: str, 
+        split_type: Union[str,None] = None, 
+        optional_id: Union[str,None] = None
+    ):
+    """Create a coco result filename. 
+    
+    Filename will following one of the valid formats (depending on args value): 
+    - "{method}_{dataset}-{split}.json"
+    - "{method}_{dataset}-{split}_{optional_id}.json"
+    - "{method}_{dataset}-{split}-{split_type}.json"
+    - "{method}_{dataset}-{split}_{optional_id}.json"
+
+    :param: method: name of the method used to produced the results
+    :param: dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    :param: split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    :param: split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.). Optional.
+    :param: optional_id: id that may be attached to uniquely identify result file. Optional.
+    """
+    return _create_result_filename(method, dataset, split, "json", split_type, optional_id)
+
+
+def create_pose_result_filename(
+        method: str, 
+        dataset: str, 
+        split: str, 
+        split_type: Union[str,None] = None, 
+        optional_id: Union[str,None] = None
+    ):
+    """Create a pose result filename. 
+    
+    Filename will following one of the valid formats (depending on args value): 
+    - "{method}_{dataset}-{split}.csv"
+    - "{method}_{dataset}-{split}_{optional_id}.csv"
+    - "{method}_{dataset}-{split}-{split_type}.csv"
+    - "{method}_{dataset}-{split}_{optional_id}.csv"
+
+    :param: method: name of the method used to produced the results
+    :param: dataset: name of the dataset on which the results was produced (e.g. "ycbv", "tless", etc.)
+    :param: split: name of the dataset split on which the results was produced (e.g. "test", "val", etc.)
+    :param: split_type: name of the dataset split on which the results was produced (e.g. "test", "val", etc.). Optional.
+    :param: optional_id: id that may be attached to uniquely identify result file. Optional.
+    """
+    return _create_result_filename(method, dataset, split, "csv", split_type, optional_id)

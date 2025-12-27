@@ -16,8 +16,7 @@ from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import pose_error
 
-from bop_toolkit_lib import renderer
-from bop_toolkit_lib import renderer_batch
+from bop_toolkit_lib.rendering import renderer, renderer_batch
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -160,13 +159,7 @@ for result_filename in p["result_filenames"]:
     time_start = time.time()
 
     # Parse info about the method and the dataset from the filename.
-    result_name = os.path.splitext(os.path.basename(result_filename))[0]
-    result_info = result_name.split("_")
-    method = str(result_info[0])
-    dataset_info = result_info[1].split("-")
-    dataset = str(dataset_info[0])
-    split = str(dataset_info[1])
-    split_type = str(dataset_info[2]) if len(dataset_info) > 2 else None
+    result_name, method, dataset, split, split_type, _ = inout.parse_result_filename(result_filename)
     split_type_str = " - " + split_type if split_type is not None else ""
 
     # Load dataset parameters.

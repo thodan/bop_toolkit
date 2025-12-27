@@ -179,8 +179,8 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     gray_ext = ".png"
     depth_ext = ".png"
 
-    if split_type == "pbr":
-        # The photorealistic synthetic images are provided in the JPG format.
+    if split_type == "pbr" or dataset_name == "handal":
+        # The photorealistic synthetic images or HANDAL's images are provided in the JPG format.
         rgb_ext = ".jpg"
     elif dataset_name == "itodd":
         gray_ext = ".tif"
@@ -503,7 +503,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     elif dataset_name == "xyzibd":
         sensor_modalities_have_separate_annotations = {"photoneo": False, "xyz": False, "realsense": False}
         p["im_modalities"] = {"photoneo": ["gray", "depth"], "xyz": ["gray", "depth"], "realsense": ["rgb", "depth"]}
-        val_scene_ids = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 54, 60, 65, 70]
+        val_scene_ids = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
         missing_pbr_scene_ids = [6, 7, 8, 18, 19, 20]
         p["scene_ids"] = {
             "test": [i for i in range(1, 75) if i not in val_scene_ids],
@@ -544,6 +544,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = {"3dlong": ["gray", "depth"], "cam0": ["gray"], "cam1": ["gray"], "cam2": ["gray"]}
         p["scene_ids"] = {
             "test": [1],
+            "val": [1],
             "train": list(range(50)),
         }[split]
 

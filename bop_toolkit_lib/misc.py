@@ -6,11 +6,13 @@
 import os
 import sys
 import datetime
-import pytz
 import math
 import subprocess
-import numpy as np
 import logging
+import argparse
+
+import pytz
+import numpy as np
 from scipy.spatial import distance
 
 from bop_toolkit_lib import transform
@@ -21,17 +23,11 @@ logging.basicConfig()
 def log(s):
     """A logging function.
 
-    :param s: String to print (with the current date and time).
+    :param s: String to print (with the current UTC date and time).
     """
-    # Use UTC time for logging.
-    utc_now = pytz.utc.localize(datetime.datetime.utcnow())
-    # pst_now = utc_now.astimezone(pytz.timezone("America/Los_Angeles"))
-    utc_now_str = "{}/{}|{:02d}:{:02d}:{:02d}".format(
-        utc_now.month, utc_now.day, utc_now.hour, utc_now.minute, utc_now.second
-    )
-
-    # sys.stdout.write('{}: {}\n'.format(time.strftime('%m/%d|%H:%M:%S'), s))
-    sys.stdout.write("{}: {}\n".format(utc_now_str, s))
+    now = datetime.datetime.now(datetime.timezone.utc)
+    utc_now_str = f"{now.month}/{now.day}|{now.hour:02d}:{now.minute:02d}:{now.second:02d}"
+    sys.stdout.write(f"{utc_now_str}: {s}\n")
     sys.stdout.flush()
 
 
@@ -488,3 +484,9 @@ def reorganize_targets(targets, organize_by_obj_ids=False):
             targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     return targets_org
+
+
+def add_argument_bool(parser: argparse.ArgumentParser, arg_name: str, default: bool):
+    parser.add_argument(f"--{arg_name}", action="store_true")
+    parser.add_argument(f"--no_{arg_name}", dest=f"{arg_name}", action="store_false")
+    parser.set_defaults(**{f"{arg_name}": default})

@@ -6,10 +6,10 @@
 
 import os
 import argparse
+from tqdm import tqdm
 from bop_toolkit_lib import config
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import dataset_params
-from tqdm import tqdm
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]

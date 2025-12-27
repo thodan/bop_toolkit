@@ -70,7 +70,7 @@ INFO = {
 }
 
 # Load and organize the estimation targets.
-target_file_path = os.path.join(dp_split["base_path"], p["targets_filename"])
+target_file_path = os.path.join(dp_split["base_path"], args.targets_filename)
 targets = inout.load_json(target_file_path)
 targets_org = misc.reorganize_targets(targets)
 
@@ -101,11 +101,7 @@ for scene_id in dp_split["scene_ids"]:
     coco_gt_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
     if args.bbox_type == "modal":
         coco_gt_path = coco_gt_path.replace("scene_gt_coco", "scene_gt_coco_modal")
-    misc.log(
-        "Calculating Coco Annotations - dataset: {} ({}, {}), scene: {}".format(
-            p["dataset"], p["dataset_split"], p["dataset_split_type"], scene_id
-        )
-    )
+    misc.log(f"Calculating Coco Annotations - dataset: {args.dataset} ({args.dataset_split}, {args.dataset_split_type}), scene: {scene_id}")
 
     # Go through each view in scene_gt
     for im_id, inst_list in scene_gt.items():

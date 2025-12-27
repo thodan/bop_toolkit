@@ -2,9 +2,9 @@ import argparse
 import os
 import time
 
-from bop_toolkit_lib.renderer import create_renderer
 from bop_toolkit_lib.pose_error import POSE_ERROR_VSD_ARGS
 from bop_toolkit_lib import inout, misc, pose_error
+from bop_toolkit_lib.rendering.renderer import create_renderer
 
 
 if __name__ == "__main__":
