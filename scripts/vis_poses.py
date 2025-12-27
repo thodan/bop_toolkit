@@ -223,9 +223,6 @@ def postprocess_args(args):
 
 
 def main(args):
-    # Load colors.
-    colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
-    colors = inout.load_json(colors_path)
 
     if args.mode == "gt":
         dataset, split, split_type = (
@@ -286,7 +283,7 @@ def main(args):
                 )
         scene_ids = scene_ids_curr
 
-        # Subset of images for which the ground-truth poses will be rendered.
+        # Subset of images for which the GT poses will be rendered.
         if args.targets_filename is not None:
             targets = inout.load_json(
                 os.path.join(dp_split["base_path"], args.targets_filename)
@@ -297,7 +294,6 @@ def main(args):
         else:
             scene_im_ids = None
     else:
-        # Load pose estimates.
         misc.log("Loading pose estimates...")
         ests = inout.load_bop_results(os.path.join(args.results_path, result_filename))
 
@@ -305,14 +301,14 @@ def main(args):
         misc.log("Organizing pose estimates...")
         ests_org = {}
         for est in ests:
-            if est["scene_id"] not in [48]:
-                continue
             ests_org.setdefault(est["scene_id"], {}).setdefault(
                 est["im_id"], {}
             ).setdefault(est["obj_id"], []).append(est)
         scene_ids = list(ests_org.keys())
 
-    # Rendering mode.
+    colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
+    colors = inout.load_json(colors_path)
+
     renderer_modalities = []
     if args.vis_rgb:
         renderer_modalities.append("rgb")
@@ -354,7 +350,7 @@ def main(args):
                     model_color = tuple(colors[(obj_id - 1) % len(colors)])
                 ren.add_object(obj_id, model_path, surf_color=model_color)
 
-        # Load info and ground-truth poses for the current scene.
+        # Load info and GT poses for the current scene.
         scene_camera = inout.load_scene_camera(
             dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
         )
@@ -375,14 +371,15 @@ def main(args):
                 im_ids = sorted(scene_gt.keys())
             if args.im_ids:
                 im_ids = set(im_ids).intersection(args.im_ids)
+            
             poses_scene_vis = {}
-            for im_counter, im_id in enumerate(im_ids):
-                # List of considered ground-truth poses.
+            for im_id in im_ids:
+                # List of considered GT poses.
                 gt_ids_curr = range(len(scene_gt[im_id]))
                 if args.gt_ids:
                     gt_ids_curr = set(gt_ids_curr).intersection(args.gt_ids)
 
-                # Collect the ground-truth poses.
+                # Collect the GT poses.
                 poses = []
                 for gt_id in gt_ids_curr:
                     gt = scene_gt[im_id][gt_id]
@@ -407,7 +404,7 @@ def main(args):
         else:
             poses_scene = ests_org[scene_id]
             poses_scene_vis = {}
-            for im_ind, (im_id, poses_img) in enumerate(poses_scene.items()):
+            for im_id, poses_img in poses_scene.items():
 
                 im_ests_vis = []
                 im_ests_vis_obj_ids = []
@@ -451,7 +448,6 @@ def main(args):
             else:
                 cam = scene_camera[im_id]["cam_K"]
 
-            # Load the color and depth images and prepare images for rendering.
             rgb = None
             if args.vis_rgb:
                 # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
@@ -470,7 +466,7 @@ def main(args):
                 if rgb.ndim == 2:
                     rgb = np.dstack([rgb, rgb, rgb])
                 else:
-                    rgb = rgb[:, :, :3]  # should we keep this?
+                    rgb = rgb[:, :, :3]
 
             depth = None
             if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
@@ -491,15 +487,14 @@ def main(args):
                     )
                     depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
+            vis_depth_diff_path = None
+            vis_rgb_path = None
             if args.mode == "gt":
-
-                # Path to the output RGB visualization.
                 split = (
                     "{}_{}".format(args.dataset_split, scene_sensor)
                     if scene_sensor
                     else args.dataset_split
                 )
-                vis_rgb_path = None
                 if args.vis_rgb:
                     vis_rgb_path = args.vis_rgb_tpath.format(
                         vis_path=args.vis_path,
@@ -508,9 +503,6 @@ def main(args):
                         scene_id=scene_id,
                         im_id=im_id,
                     )
-
-                # Path to the output depth difference visualization.
-                vis_depth_diff_path = None
                 if args.vis_depth_diff:
                     vis_depth_diff_path = args.vis_depth_diff_tpath.format(
                         vis_path=args.vis_path,
@@ -520,10 +512,7 @@ def main(args):
                         im_id=im_id,
                     )
             else:
-                # Visualization name.
                 vis_name = "{im_id:06d}".format(im_id=im_id)
-                # Path to the output RGB visualization.
-                vis_rgb_path = None
                 if args.vis_rgb:
                     vis_rgb_path = args.vis_rgb_tpath.format(
                         vis_path=args.vis_path,
@@ -531,9 +520,6 @@ def main(args):
                         scene_id=scene_id,
                         vis_name=vis_name,
                     )
-
-                # Path to the output depth difference visualization.
-                vis_depth_diff_path = None
                 if args.vis_depth_diff:
                     vis_depth_diff_path = args.vis_depth_diff_tpath.format(
                         vis_path=args.vis_path,
