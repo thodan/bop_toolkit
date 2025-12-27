@@ -301,8 +301,6 @@ def main(args):
             else:
                 cam = scene_camera[im_id]["cam_K"]
 
-
-
             # Load the color and depth images and prepare images for rendering.
             rgb = None
             if args.vis_rgb:
@@ -336,6 +334,34 @@ def main(args):
                     depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
 
             if args.mode == "gt":
+
+                # List of considered ground-truth poses.
+                gt_ids_curr = range(len(scene_gt[im_id]))
+                if args.gt_ids:
+                    gt_ids_curr = set(gt_ids_curr).intersection(args.gt_ids)
+
+                # Collect the ground-truth poses.
+                poses = []
+                for gt_id in gt_ids_curr:
+                    gt = scene_gt[im_id][gt_id]
+                    # skip fully occluded masks - all values are -1
+                    if all(val == -1 for val in gt["cam_t_m2c"]):
+                        continue
+                    poses.append(
+                        {
+                            "obj_id": gt["obj_id"],
+                            "R": gt["cam_R_m2c"],
+                            "t": gt["cam_t_m2c"],
+                            "text_info": [
+                                {
+                                    "name": "",
+                                    "val": "{}:{}".format(gt["obj_id"], gt_id),
+                                    "fmt": "",
+                                }
+                            ],
+                        }
+                    )
+
                 # Path to the output RGB visualization.
                 split = "{}_{}".format(args.dataset_split, scene_sensor) if scene_sensor else args.dataset_split 
                 vis_rgb_path = None
@@ -391,7 +417,7 @@ def main(args):
 
                 # Join the per-object estimates to make it a single visual.
                 # if there are multiple estimates per object, they are treated as independent entries
-                im_ests_vis = list(itertools.chain.from_iterable(im_ests_vis))
+                poses = list(itertools.chain.from_iterable(im_ests_vis))
 
                 # Visualization name.
                 vis_name = "{im_id:06d}".format(im_id=im_id)
@@ -416,7 +442,7 @@ def main(args):
                     )
                     
             visualization.vis_object_poses(
-                poses=im_ests_vis,
+                poses=poses,
                 K=cam,
                 renderer=ren,
                 rgb=rgb,
