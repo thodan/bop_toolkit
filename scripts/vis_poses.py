@@ -16,19 +16,6 @@ from vis_poses_cli import postprocess_args, setup_parser
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
 
-htt_available = False
-try:
-    from bop_toolkit_lib import pose_error_htt
-
-    htt_available = True
-except ImportError as e:
-    logger.warning(
-        """Missing hand_tracking_toolkit dependency,
-        mandatory if you are running evaluation on HOT3d.
-        Refer to the README.md for installation instructions.
-        """
-    )
-
 
 def main(args):
 
@@ -51,10 +38,16 @@ def main(args):
 
     #######################
     # hot3d specific checks
-    if dataset == "hot3d" and not htt_available:
-        raise ImportError(
-            "Missing hand_tracking_toolkit dependency, mandatory for HOT3D dataset."
-        )
+    if dataset == "hot3d":
+        try:
+            from bop_toolkit_lib import pose_error_htt
+        except ImportError:
+            raise ImportError(
+                """Missing hand_tracking_toolkit dependency,
+                mandatory if you are running evaluation on HOT3D.
+                Refer to the README.md for installation instructions.
+                """
+            )
 
     if dataset == "hot3d" and args.renderer_type != "htt":
         raise ValueError("'htt' renderer_type is mandatory for HOT3D dataset.")
@@ -179,7 +172,7 @@ def main(args):
                 im_ids = sorted(scene_gt.keys())
             if args.im_ids:
                 im_ids = set(im_ids).intersection(args.im_ids)
-            
+
             poses_scene_vis = {}
             for im_id in im_ids:
                 # List of considered GT poses.
