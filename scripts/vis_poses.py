@@ -309,7 +309,7 @@ def main(args):
     width, height = None, None
     ren = None
 
-    for scene_id in scene_ids:
+    for scene_id in tqdm(scene_ids, desc="Scenes"):
 
         tpath_keys = dataset_params.scene_tpaths_keys(
             dp_split["eval_modality"], dp_split["eval_sensor"], scene_id
@@ -429,7 +429,7 @@ def main(args):
                 poses = list(itertools.chain.from_iterable(im_ests_vis))
                 poses_scene_vis[im_id] = poses
 
-        for im_ind, (im_id, poses_img) in enumerate(poses_scene_vis.items()):
+        for (im_id, poses_img) in tqdm(poses_scene_vis.items(), desc=f"Scene {scene_id}"):
 
             # Retrieve camera intrinsics.
             if dataset == "hot3d":
@@ -538,8 +538,6 @@ def main(args):
                 vis_depth_diff_path=vis_depth_diff_path,
                 vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
             )
-        #     break
-        # break
 
 
 if __name__ == "__main__":
