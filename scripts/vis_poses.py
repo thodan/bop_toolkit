@@ -91,7 +91,7 @@ DEFAULTS = {
         "vis_per_obj_id": False,
         # Names of files with pose estimates to visualize (assumed to be stored in
         # folder config.eval_path).
-        "result_filenames": [],
+        "result_filename": None,
         # Folder with results to be evaluated.
         "results_path": config.results_path,
         "vis_rgb_tpath": os.path.join(
@@ -192,10 +192,10 @@ def setup_parser():
     )
     misc.add_argument_bool(parser_est, "vis_per_obj_id", est_defs["vis_per_obj_id"])
     parser_est.add_argument(
-        "--result_filenames",
+        "--result_filename",
         type=str,
-        default=",".join(est_defs["result_filenames"]),
-        help="Comma-separated names of result files",
+        default=est_defs["result_filename"],
+        help="Result file",
     )
     parser_est.add_argument(
         "--results_path",
@@ -211,8 +211,7 @@ def main(args):
     colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
     colors = inout.load_json(colors_path)
 
-    result_filenames = args.result_filenames.split(",")
-    result_filename = result_filenames[0]
+    result_filename = args.result_filename
     
     misc.log("Processing: " + result_filename)
 
