@@ -70,8 +70,6 @@ class Dataset:
     def __init__(self, dataset_path, dataset_split):
         self.scenes_path = os.path.join(dataset_path, dataset_split)
         self.objects_path = os.path.join(dataset_path, "models")
-        assert os.path.exists(self.scenes_path), f"Path {self.scenes_path} doesn't exist"
-        assert os.path.exists(self.objects_path), f"Path {self.objects_path} doesn't exist"
 
 
 class AnnotationScene:

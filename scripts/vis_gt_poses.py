@@ -35,8 +35,6 @@ except ImportError as e:
 
 # PARAMETERS.
 ################################################################################
-dataset = "lmo"
-dataset = "icbin"
 p = {
     # See dataset_params.py for options.
     "dataset": "ycbv",
@@ -201,20 +199,6 @@ for scene_id in scene_ids_curr:
             if not args.vis_orig_color:
                 model_color = tuple(colors[(obj_id - 1) % len(colors)])
             ren.add_object(obj_id, model_path, surf_color=model_color)
-
-scene_ids = dataset_params.get_present_scene_ids(dp_split)
-for scene_id in scene_ids:
-
-    save_path = p["vis_rgb_tpath"].format(
-        vis_path=p["vis_path"],
-        dataset=p["dataset"],
-        split=p["dataset_split"],
-        scene_id=scene_id,
-        im_id=0,
-    )
-    if os.path.exists(os.path.dirname(save_path)):
-        misc.log("Skipping a completed scene {}.".format(scene_id))
-        continue
 
     # Load scene info and ground-truth poses.
     scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
