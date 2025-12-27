@@ -116,11 +116,17 @@ python scripts/eval_bop22_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESU
 
 ### Visualize results
 
-You can find several visualization scripts named `vis_*.py` in the `scripts/` folder. The scripts provide functionality to visualize your 6D pose estimation results:
+`vis_poses.py` in the `scripts/` folder allows visualizing estimated and groundtruth poses. See `vis_poses_cli.py` for available CLI arguments.
 
-- `vis_gt_poses.py` - visualize groundtruth poses
-- `vis_est_poses.py` - visualize estimated poses
-- `vis_object_symmetries.py` - render of object symmetries
+Sample commands:
+
+```
+python vis_poses.py gt --dataset ycbv --scene_ids 48 --vis_orig_color
+
+python vis_poses.py est --result_filename /bop/results/gt-equivalent_ycbv-test.csv --n_top 2
+```
+
+`vis_object_symmetries.py` renders object symmetries.
 
 #### Available Visuals
 
