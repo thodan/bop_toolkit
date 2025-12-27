@@ -87,8 +87,6 @@ DEFAULTS = {
         # Top N pose estimates (with the highest score) to be visualized for each
         # object in each image. 0 = all estimates, -1 = given by the number of GT poses.
         "n_top": 0,
-        # True = one visualization for each (im_id, obj_id), False = one per im_id.
-        "vis_per_obj_id": False,
         # Names of files with pose estimates to visualize (assumed to be stored in
         # folder config.eval_path).
         "result_filename": None,
@@ -190,7 +188,6 @@ def setup_parser():
         default=est_defs["n_top"],
         help="Top N estimates to visualize (0=all, -1=match GT)",
     )
-    misc.add_argument_bool(parser_est, "vis_per_obj_id", est_defs["vis_per_obj_id"])
     parser_est.add_argument(
         "--result_filename",
         type=str,
@@ -386,29 +383,18 @@ def main(args):
                         est["obj_id"] = obj_id
 
                         # Text info to write on the image at the pose estimate.
-                        if args.vis_per_obj_id:
-                            est["text_info"] = [
-                                {"name": "", "val": est["score"], "fmt": ":.2f"}
-                            ]
-                        else:
-                            val = "{}:{:.2f}".format(obj_id, est["score"])
-                            est["text_info"] = [{"name": "", "val": val, "fmt": ""}]
+                        val = "{}:{:.2f}".format(obj_id, est["score"])
+                        est["text_info"] = [{"name": "", "val": val, "fmt": ""}]
 
                     im_ests_vis.append(obj_ests_sorted)
                     im_ests_vis_obj_ids.append(obj_id)
 
-                # Join the per-object estimates if only one visualization is to be made.
-                if not args.vis_per_obj_id:
-                    im_ests_vis = [list(itertools.chain.from_iterable(im_ests_vis))]
-                im_ests_vis = im_ests_vis[0]
+                # Join the per-object estimates to make it a single visual.
+                # if there are multiple estimates per object, they are treated as independent entries
+                im_ests_vis = list(itertools.chain.from_iterable(im_ests_vis))
 
                 # Visualization name.
-                if args.vis_per_obj_id:
-                    vis_name = "{im_id:06d}_{obj_id:06d}".format(
-                        im_id=im_id, obj_id=im_ests_vis_obj_ids[ests_vis_id]
-                    )
-                else:
-                    vis_name = "{im_id:06d}".format(im_id=im_id)
+                vis_name = "{im_id:06d}".format(im_id=im_id)
                 # Path to the output RGB visualization.
                 vis_rgb_path = None
                 if args.vis_rgb:
@@ -429,17 +415,16 @@ def main(args):
                         vis_name=vis_name,
                     )
                     
-            for ests_vis_id, ests_vis in enumerate(im_ests_vis):
-                visualization.vis_object_poses(
-                    poses=ests_vis,
-                    K=cam,
-                    renderer=ren,
-                    rgb=rgb,
-                    depth=depth,
-                    vis_rgb_path=vis_rgb_path,
-                    vis_depth_diff_path=vis_depth_diff_path,
-                    vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
-                )
+            visualization.vis_object_poses(
+                poses=im_ests_vis,
+                K=cam,
+                renderer=ren,
+                rgb=rgb,
+                depth=depth,
+                vis_rgb_path=vis_rgb_path,
+                vis_depth_diff_path=vis_depth_diff_path,
+                vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
+            )
             break
         break
 
