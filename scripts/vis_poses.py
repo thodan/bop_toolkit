@@ -226,6 +226,7 @@ def main(args):
             args.dataset_split,
             args.dataset_split_type,
         )
+        method = "GT"
     else:
         result_filename = args.result_filename
 
@@ -262,6 +263,15 @@ def main(args):
     dp_model = dataset_params.get_model_params(args.datasets_path, dataset, model_type)
 
     if args.mode == "gt":
+        # List of considered scenes.
+        scene_ids_curr = dp_split["scene_ids"]
+        if args.scene_ids:
+            target_scene_ids = [int(x) for x in args.scene_ids.split(',')]
+            scene_ids_curr = set(scene_ids_curr).intersection(target_scene_ids)
+            if len(scene_ids_curr) == 0:
+                misc.log(f"Dataset scene ids {dp_split['scene_ids']} do not overlap with chosen scene ids {args.scene_ids}")
+        scene_ids = scene_ids_curr
+                
         # Subset of images for which the ground-truth poses will be rendered.
         if args.targets_filename is not None:
             targets = inout.load_json(
@@ -286,6 +296,7 @@ def main(args):
             ests_org.setdefault(est["scene_id"], {}).setdefault(
                 est["im_id"], {}
             ).setdefault(est["obj_id"], []).append(est)
+        scene_ids = list(ests_org.keys())
 
     # Rendering mode.
     renderer_modalities = []
@@ -298,7 +309,7 @@ def main(args):
     width, height = None, None
     ren = None
 
-    for scene_id, poses_scene in ests_org.items():
+    for scene_id in scene_ids:
 
         tpath_keys = dataset_params.scene_tpaths_keys(
             dp_split["eval_modality"], dp_split["eval_sensor"], scene_id
@@ -378,6 +389,7 @@ def main(args):
                         }
                     )
         else:
+            poses_scene = ests_org[scene_id]
             for im_ind, (im_id, poses_img) in enumerate(poses_scene.items()):
 
                 im_ests_vis = []
