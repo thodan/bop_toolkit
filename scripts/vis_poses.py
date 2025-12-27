@@ -304,43 +304,7 @@ def main(args):
             else:
                 cam = scene_camera[im_id]["cam_K"]
 
-            im_ests_vis = []
-            im_ests_vis_obj_ids = []
-            for obj_id, obj_ests in im_ests.items():
-                # Sort the estimates by score (in descending order).
-                obj_ests_sorted = sorted(
-                    obj_ests, key=lambda est: est["score"], reverse=True
-                )
 
-                # Select the number of top estimated poses to visualize.
-                if args.n_top == 0:  # All estimates are considered.
-                    n_top_curr = None
-                elif args.n_top == -1:  # Given by the number of GT poses.
-                    n_gt = sum([gt["obj_id"] == obj_id for gt in scene_gt[im_id]])
-                    n_top_curr = n_gt
-                else:  # Specified by the parameter n_top.
-                    n_top_curr = args.n_top
-                obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
-
-                # Get list of poses to visualize.
-                for est in obj_ests_sorted:
-                    est["obj_id"] = obj_id
-
-                    # Text info to write on the image at the pose estimate.
-                    if args.vis_per_obj_id:
-                        est["text_info"] = [
-                            {"name": "", "val": est["score"], "fmt": ":.2f"}
-                        ]
-                    else:
-                        val = "{}:{:.2f}".format(obj_id, est["score"])
-                        est["text_info"] = [{"name": "", "val": val, "fmt": ""}]
-
-                im_ests_vis.append(obj_ests_sorted)
-                im_ests_vis_obj_ids.append(obj_id)
-
-            # Join the per-object estimates if only one visualization is to be made.
-            if not args.vis_per_obj_id:
-                im_ests_vis = [list(itertools.chain.from_iterable(im_ests_vis))]
 
             # Load the color and depth images and prepare images for rendering.
             rgb = None
@@ -360,6 +324,7 @@ def main(args):
                     rgb = np.dstack([rgb, rgb, rgb])
                 else:
                     rgb = rgb[:,:,:3]  # should we keep this?
+                    
             depth = None
             if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
                 depth_available = dataset_params.sensor_has_modality(dp_split, scene_sensor, "depth")
@@ -372,6 +337,7 @@ def main(args):
                         dp_split[tpath_keys["depth_tpath"]].format(scene_id=scene_id, im_id=im_id)
                     )
                     depth *= scene_camera[im_id]["depth_scale"]  # Convert to [mm].
+
             if args.mode == "gt":
                 # Path to the output RGB visualization.
                 split = "{}_{}".format(args.dataset_split, scene_sensor) if scene_sensor else args.dataset_split 
@@ -396,6 +362,46 @@ def main(args):
                         im_id=im_id,
                     )
             else:
+
+                im_ests_vis = []
+                im_ests_vis_obj_ids = []
+                for obj_id, obj_ests in im_ests.items():
+                    # Sort the estimates by score (in descending order).
+                    obj_ests_sorted = sorted(
+                        obj_ests, key=lambda est: est["score"], reverse=True
+                    )
+
+                    # Select the number of top estimated poses to visualize.
+                    if args.n_top == 0:  # All estimates are considered.
+                        n_top_curr = None
+                    elif args.n_top == -1:  # Given by the number of GT poses.
+                        n_gt = sum([gt["obj_id"] == obj_id for gt in scene_gt[im_id]])
+                        n_top_curr = n_gt
+                    else:  # Specified by the parameter n_top.
+                        n_top_curr = args.n_top
+                    obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
+
+                    # Get list of poses to visualize.
+                    for est in obj_ests_sorted:
+                        est["obj_id"] = obj_id
+
+                        # Text info to write on the image at the pose estimate.
+                        if args.vis_per_obj_id:
+                            est["text_info"] = [
+                                {"name": "", "val": est["score"], "fmt": ":.2f"}
+                            ]
+                        else:
+                            val = "{}:{:.2f}".format(obj_id, est["score"])
+                            est["text_info"] = [{"name": "", "val": val, "fmt": ""}]
+
+                    im_ests_vis.append(obj_ests_sorted)
+                    im_ests_vis_obj_ids.append(obj_id)
+
+                # Join the per-object estimates if only one visualization is to be made.
+                if not args.vis_per_obj_id:
+                    im_ests_vis = [list(itertools.chain.from_iterable(im_ests_vis))]
+                im_ests_vis = im_ests_vis[0]
+
                 # Visualization name.
                 if args.vis_per_obj_id:
                     vis_name = "{im_id:06d}_{obj_id:06d}".format(
