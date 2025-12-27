@@ -1,10 +1,12 @@
 import copy
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 from bop_toolkit_lib import misc
 from bop_toolkit_lib.common_utils import adjust_img_for_plt, cast_to_numpy
 from bop_toolkit_lib.nb_utils import backproj_depth
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def get_depth_diff_img(gt_depth, est_pose, gt_pose, cam, syms=None):
@@ -324,6 +326,10 @@ def draw_text_in_ul(
     return rgb
 
 
+def merge_masks(masks):
+    return np.any(masks, axis=0)
+
+
 def get_pose_mat_from_dict(pose):
     return get_pose_mat_from_rt(pose["R"], pose["t"])
 
@@ -360,3 +366,79 @@ def compute_per_point_dists(pts_gt_cam, pose_gt, pose_est, syms=None):
     best_pose_idx = np.argmin([d.mean() for d in all_dists])
     dists = all_dists[best_pose_idx]
     return dists
+
+
+def plot_depth(
+    depth,
+    ax=None,
+    include_colorbar=True,
+    disable_axis=True,
+    cmap="viridis",
+    cbar_title=None,
+    rgb=None,
+    rgb_alpha=0.3,
+    use_horiz_cbar=False,
+    title=None,
+    use_fixed_cbar=False,
+    vmin=None,
+    vmax=None,
+    fontsize=14,
+    use_white_bg=False,
+    mask=None,
+):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+        if disable_axis:
+            ax.axis("off")
+    kwargs = {}
+    if use_fixed_cbar:
+        kwargs.update({"vmin": vmin, "vmax": vmax})
+    cmap = plt.get_cmap(cmap)
+    cmap.set_bad("white")
+
+    depth = adjust_depth_for_plt(depth)
+
+    if use_white_bg:
+        assert mask is not None
+        depth = depth.copy()
+        depth[~mask] = np.nan
+
+    im = ax.imshow(depth, cmap=cmap, **kwargs)
+
+    if include_colorbar:
+        if cbar_title is None:
+            cbar_title = "Depth (m)"
+        if depth.max() > 100:
+            cbar_title = cbar_title.replace("(m)", "(mm)")
+
+        divider = make_axes_locatable(ax)
+        if use_horiz_cbar:
+            cax = divider.append_axes("bottom", size="5%", pad=0.05)
+            cbar = plt.colorbar(im, cax=cax, orientation="horizontal")
+            cbar.set_label(cbar_title, fontsize=fontsize)
+        else:
+            cax = divider.append_axes("right", size="5%", pad=0.05)
+            cbar = plt.colorbar(im, cax=cax)
+            cbar.set_label(cbar_title, rotation=90, labelpad=15, fontsize=fontsize)
+        cbar.ax.tick_params(labelsize=fontsize)
+
+    if rgb is not None:
+        assert rgb.shape[:2] == depth.shape[:2], (rgb.shape, depth.shape)
+        ax.imshow(rgb, alpha=rgb_alpha)
+
+    if title:
+        ax.set_title(title)
+
+    return ax
+
+
+def adjust_depth_for_plt(img):
+    img = cast_to_numpy(img)
+    if len(img.shape) == 4:
+        if img.shape[0] == 1:
+            img = img[0]
+        else:
+            raise RuntimeError(f"Expected 1 image, got {img.shape[0]}")
+    if img.shape[0] == 1:
+        img = img.transpose(1, 2, 0)
+    return img
