@@ -40,15 +40,14 @@ DEFAULTS = {
         "vis_rgb_resolve_visib": True,
         # Indicates whether to render depth image (or save images of depth differences).
         "vis_depth_diff": True,
-        # If to use the original model color.
-        # Note: vis_gt_poses used True, vis_est_poses used False. Defaulting to False.
+        # Whether to use the original model color.
         "vis_orig_color": False,
         # Type of the renderer (used for the VSD pose error function).
         # Options: 'vispy', 'cpp', 'python'. 'htt' is mandatory for "hot3d" dataset.
         "renderer_type": "vispy",
         # Folder containing the BOP datasets.
         "datasets_path": config.datasets_path,
-        # Folder for output visualisations.
+        # Folder for output visualisations. The default value depends on script's mode
         "vis_path": None,
     },
     "gt": {
@@ -62,15 +61,19 @@ DEFAULTS = {
         # for which the GT poses will be visualized. The file is assumed to be stored
         # in the dataset folder. None = all images.
         "targets_filename": "test_targets_bop19.json",
-        # Modality used to visualize ground truth, default to eval modality. Should not be "depth".
+        #########
+        # Which sensor to visualize. By default it uses the evaluation modality set
+        # in dataset_params.py. Set to None for rendering PBR images or BOP core datasets.
+        # Set to sensor for new BOP core sets, e.g. "photoneo".
+        #########
+        # Modality used to visualize ground truth, default to eval modality.
         "modality": None,
         # Sensor used to visualize ground truth, default to eval sensor.
         "sensor": None,
-        # Select ID's of scenes, images and GT poses to be processed.
-        # Empty list [] means that all ID's will be used.
-        "scene_ids": [],
-        "im_ids": [],
-        "gt_ids": [],
+        # Select ID's of scenes, images and GT poses to be processed, otherwise use all of them
+        "scene_ids": None,
+        "im_ids": None,
+        "gt_ids": None,
         # Path templates for output images.
         "vis_rgb_tpath": os.path.join(
             "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}.jpg"
@@ -87,8 +90,10 @@ DEFAULTS = {
         # Top N pose estimates (with the highest score) to be visualized for each
         # object in each image. 0 = all estimates, -1 = given by the number of GT poses.
         "n_top": 0,
-        # Names of files with pose estimates to visualize (assumed to be stored in
-        # folder config.eval_path).
+        # Name of a file with pose estimates to visualize (assumed to be stored in
+        # folder config.eval_path). See docs/bop_challenge_2019.md for a description
+        # of the format. Example results can be found at:
+        # https://bop.felk.cvut.cz/media/data/bop_sample_results/bop_challenge_2019_sample_results.zip
         "result_filename": None,
         # Folder with results to be evaluated.
         "results_path": config.results_path,
@@ -120,19 +125,16 @@ def setup_parser():
 
     common_parser.add_argument(
         "--renderer_type",
-        type=str,
         default=c_defs["renderer_type"],
         help="Renderer type (vispy, cpp, python, htt)",
     )
     common_parser.add_argument(
         "--datasets_path",
-        type=str,
         default=c_defs["datasets_path"],
         help="Path to BOP datasets",
     )
     common_parser.add_argument(
         "--vis_path",
-        type=str,
         default=c_defs["vis_path"],
         help="Output folder for visualizations",
     )
@@ -145,35 +147,30 @@ def setup_parser():
     parser_gt = subparsers.add_parser(
         "gt", parents=[common_parser], help="Visualize Ground Truth poses"
     )
-    parser_gt.add_argument("--dataset", type=str, default=gt_defs["dataset"])
+    parser_gt.add_argument("--dataset", default=gt_defs["dataset"])
+    parser_gt.add_argument("--dataset_split", default=gt_defs["dataset_split"])
     parser_gt.add_argument(
-        "--dataset_split", type=str, default=gt_defs["dataset_split"]
-    )
-    parser_gt.add_argument(
-        "--dataset_split_type", type=str, default=gt_defs["dataset_split_type"]
+        "--dataset_split_type", default=gt_defs["dataset_split_type"]
     )
     parser_gt.add_argument(
         "--targets_filename",
-        type=str,
         default=gt_defs["targets_filename"],
         help="JSON file with targets (scene/im_ids) to visualize",
     )
-    parser_gt.add_argument("--modality", type=str, default=gt_defs["modality"])
-    parser_gt.add_argument("--sensor", type=str, default=gt_defs["sensor"])
+    parser_gt.add_argument("--modality", default=gt_defs["modality"])
+    parser_gt.add_argument("--sensor", default=gt_defs["sensor"])
 
-    parser_gt.add_argument("--scene_ids", type=str, help="Comma-separated scene IDs")
-    parser_gt.add_argument("--im_ids", type=str, help="Comma-separated image IDs")
-    parser_gt.add_argument("--gt_ids", type=str, help="Comma-separated GT IDs")
+    parser_gt.add_argument("--scene_ids", help="Comma-separated scene IDs")
+    parser_gt.add_argument("--im_ids", help="Comma-separated image IDs")
+    parser_gt.add_argument("--gt_ids", help="Comma-separated GT object IDs")
 
     parser_gt.add_argument(
         "--vis_rgb_tpath",
-        type=str,
         default=gt_defs["vis_rgb_tpath"],
         help="Template path for output RGB images",
     )
     parser_gt.add_argument(
         "--vis_depth_diff_tpath",
-        type=str,
         default=gt_defs["vis_depth_diff_tpath"],
         help="Template path for output depth difference images",
     )
@@ -190,29 +187,39 @@ def setup_parser():
     )
     parser_est.add_argument(
         "--result_filename",
-        type=str,
         default=est_defs["result_filename"],
+        required=True,
         help="Result file",
     )
     parser_est.add_argument(
         "--results_path",
-        type=str,
         default=est_defs["results_path"],
         help="Path to results folder",
     )
     parser_est.add_argument(
         "--vis_rgb_tpath",
-        type=str,
         default=est_defs["vis_rgb_tpath"],
         help="Template path for output RGB images",
     )
     parser_est.add_argument(
         "--vis_depth_diff_tpath",
-        type=str,
         default=est_defs["vis_depth_diff_tpath"],
         help="Template path for output depth difference images",
     )
     return parser
+
+
+def postprocess_args(args):
+
+    if args.mode == "gt":
+
+        if args.modality == "depth":
+            raise ValueError("Modality for GT visualization cannot be 'depth'")
+
+        for attr in ["scene_ids", "im_ids", "gt_ids"]:
+            val = getattr(args, attr)
+            if val is not None:
+                setattr(args, attr, [int(x) for x in val.split(",")])
 
 
 def main(args):
@@ -263,15 +270,22 @@ def main(args):
     dp_model = dataset_params.get_model_params(args.datasets_path, dataset, model_type)
 
     if args.mode == "gt":
+        if args.modality is not None:
+            dp_split["eval_modality"] = args.modality
+        if args.sensor is not None:
+            dp_split["eval_sensor"] = args.sensor
+
         # List of considered scenes.
         scene_ids_curr = dp_split["scene_ids"]
         if args.scene_ids:
-            target_scene_ids = [int(x) for x in args.scene_ids.split(',')]
+            target_scene_ids = args.scene_ids
             scene_ids_curr = set(scene_ids_curr).intersection(target_scene_ids)
             if len(scene_ids_curr) == 0:
-                misc.log(f"Dataset scene ids {dp_split['scene_ids']} do not overlap with chosen scene ids {args.scene_ids}")
+                misc.log(
+                    f"Dataset scene ids {dp_split['scene_ids']} do not overlap with chosen scene ids {args.scene_ids}"
+                )
         scene_ids = scene_ids_curr
-                
+
         # Subset of images for which the ground-truth poses will be rendered.
         if args.targets_filename is not None:
             targets = inout.load_json(
@@ -429,7 +443,7 @@ def main(args):
                 poses = list(itertools.chain.from_iterable(im_ests_vis))
                 poses_scene_vis[im_id] = poses
 
-        for (im_id, poses_img) in tqdm(poses_scene_vis.items(), desc=f"Scene {scene_id}"):
+        for im_id, poses_img in tqdm(poses_scene_vis.items(), desc=f"Scene {scene_id}"):
 
             # Retrieve camera intrinsics.
             if dataset == "hot3d":
@@ -546,4 +560,5 @@ if __name__ == "__main__":
     if args.vis_path is None:
         vis_type = "gt" if args.mode == "gt" else "est"
         args.vis_path = os.path.join(config.output_path, f"vis_{vis_type}_poses")
+    args = postprocess_args(args)
     main(args)
