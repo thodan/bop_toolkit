@@ -361,6 +361,7 @@ def main(args):
                 im_ids = sorted(scene_gt.keys())
             if args.im_ids:
                 im_ids = set(im_ids).intersection(args.im_ids)
+            poses_scene_vis = {}
             for im_counter, im_id in enumerate(im_ids):
                 # List of considered ground-truth poses.
                 gt_ids_curr = range(len(scene_gt[im_id]))
@@ -388,8 +389,10 @@ def main(args):
                             ],
                         }
                     )
+                poses_scene_vis[im_id] = poses
         else:
             poses_scene = ests_org[scene_id]
+            poses_scene_vis = {}
             for im_ind, (im_id, poses_img) in enumerate(poses_scene.items()):
 
                 im_ests_vis = []
@@ -424,8 +427,9 @@ def main(args):
                 # Join the per-object estimates to make it a single visual.
                 # if there are multiple estimates per object, they are treated as independent entries
                 poses = list(itertools.chain.from_iterable(im_ests_vis))
+                poses_scene_vis[im_id] = poses
 
-        for im_ind, (im_id, poses_img) in enumerate(poses_scene.items()):
+        for im_ind, (im_id, poses_img) in enumerate(poses_scene_vis.items()):
 
             # Retrieve camera intrinsics.
             if dataset == "hot3d":
@@ -534,8 +538,8 @@ def main(args):
                 vis_depth_diff_path=vis_depth_diff_path,
                 vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
             )
-            break
-        break
+        #     break
+        # break
 
 
 if __name__ == "__main__":
