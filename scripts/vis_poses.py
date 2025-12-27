@@ -24,9 +24,9 @@ try:
 except ImportError as e:
     logger.warning(
         """Missing hand_tracking_toolkit dependency,
-                   mandatory if you are running evaluation on HOT3d.
-                   Refer to the README.md for installation instructions.
-                   """
+        mandatory if you are running evaluation on HOT3d.
+        Refer to the README.md for installation instructions.
+        """
     )
 
 DEFAULTS = {
@@ -200,6 +200,18 @@ def setup_parser():
         default=est_defs["results_path"],
         help="Path to results folder",
     )
+    parser_est.add_argument(
+        "--vis_rgb_tpath",
+        type=str,
+        default=est_defs["vis_rgb_tpath"],
+        help="Template path for output RGB images",
+    )
+    parser_est.add_argument(
+        "--vis_depth_diff_tpath",
+        type=str,
+        default=est_defs["vis_depth_diff_tpath"],
+        help="Template path for output depth difference images",
+    )
     return parser
 
 
@@ -263,7 +275,7 @@ def main(args):
     width, height = None, None
     ren = None
 
-    for scene_id, scene_ests in ests_org.items():
+    for scene_id, poses_scene in ests_org.items():
 
         tpath_keys = dataset_params.scene_tpaths_keys(dp_split["eval_modality"], dp_split["eval_sensor"], scene_id)
         scene_modality = dataset_params.get_scene_sensor_or_modality(dp_split["eval_modality"], scene_id)
@@ -290,10 +302,74 @@ def main(args):
         scene_camera = inout.load_scene_camera(dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id))
         scene_gt = inout.load_scene_gt(dp_split[tpath_keys["scene_gt_tpath"]].format(scene_id=scene_id))
 
-        for im_ind, (im_id, im_ests) in enumerate(scene_ests.items()):
-            if im_ind % 10 == 0:
-                split_type_str = " - " + split_type if split_type is not None else ""
-                misc.log(f"Visualizing pose estimates - method: {method}, dataset: {dataset}{split_type_str}, scene: {scene_id}, im: {im_id}")
+        split_type_str = " - " + split_type if split_type is not None else ""
+        misc.log(f"Visualizing pose estimates - method: {method}, dataset: {dataset}{split_type_str}, scene: {scene_id}")
+        
+        for im_ind, (im_id, poses_img) in enumerate(poses_scene.items()):
+            if args.mode == "gt":
+
+                # List of considered ground-truth poses.
+                gt_ids_curr = range(len(scene_gt[im_id]))
+                if args.gt_ids:
+                    gt_ids_curr = set(gt_ids_curr).intersection(args.gt_ids)
+
+                # Collect the ground-truth poses.
+                poses = []
+                for gt_id in gt_ids_curr:
+                    gt = scene_gt[im_id][gt_id]
+                    # skip fully occluded masks - all values are -1
+                    if all(val == -1 for val in gt["cam_t_m2c"]):
+                        continue
+                    poses.append(
+                        {
+                            "obj_id": gt["obj_id"],
+                            "R": gt["cam_R_m2c"],
+                            "t": gt["cam_t_m2c"],
+                            "text_info": [
+                                {
+                                    "name": "",
+                                    "val": "{}:{}".format(gt["obj_id"], gt_id),
+                                    "fmt": "",
+                                }
+                            ],
+                        }
+                    )
+            else:
+
+                im_ests_vis = []
+                im_ests_vis_obj_ids = []
+                for obj_id, obj_ests in poses_img.items():
+                    # Sort the estimates by score (in descending order).
+                    obj_ests_sorted = sorted(
+                        obj_ests, key=lambda est: est["score"], reverse=True
+                    )
+
+                    # Select the number of top estimated poses to visualize.
+                    if args.n_top == 0:  # All estimates are considered.
+                        n_top_curr = None
+                    elif args.n_top == -1:  # Given by the number of GT poses.
+                        n_gt = sum([gt["obj_id"] == obj_id for gt in scene_gt[im_id]])
+                        n_top_curr = n_gt
+                    else:  # Specified by the parameter n_top.
+                        n_top_curr = args.n_top
+                    obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
+
+                    # Get list of poses to visualize.
+                    for est in obj_ests_sorted:
+                        est["obj_id"] = obj_id
+
+                        # Text info to write on the image at the pose estimate.
+                        val = "{}:{:.2f}".format(obj_id, est["score"])
+                        est["text_info"] = [{"name": "", "val": val, "fmt": ""}]
+
+                    im_ests_vis.append(obj_ests_sorted)
+                    im_ests_vis_obj_ids.append(obj_id)
+
+                # Join the per-object estimates to make it a single visual.
+                # if there are multiple estimates per object, they are treated as independent entries
+                poses = list(itertools.chain.from_iterable(im_ests_vis))
+        
+        for im_ind, (im_id, poses_img) in enumerate(poses_scene.items()):
 
             # Retrieve camera intrinsics.
             if dataset == 'hot3d':
@@ -335,33 +411,6 @@ def main(args):
 
             if args.mode == "gt":
 
-                # List of considered ground-truth poses.
-                gt_ids_curr = range(len(scene_gt[im_id]))
-                if args.gt_ids:
-                    gt_ids_curr = set(gt_ids_curr).intersection(args.gt_ids)
-
-                # Collect the ground-truth poses.
-                poses = []
-                for gt_id in gt_ids_curr:
-                    gt = scene_gt[im_id][gt_id]
-                    # skip fully occluded masks - all values are -1
-                    if all(val == -1 for val in gt["cam_t_m2c"]):
-                        continue
-                    poses.append(
-                        {
-                            "obj_id": gt["obj_id"],
-                            "R": gt["cam_R_m2c"],
-                            "t": gt["cam_t_m2c"],
-                            "text_info": [
-                                {
-                                    "name": "",
-                                    "val": "{}:{}".format(gt["obj_id"], gt_id),
-                                    "fmt": "",
-                                }
-                            ],
-                        }
-                    )
-
                 # Path to the output RGB visualization.
                 split = "{}_{}".format(args.dataset_split, scene_sensor) if scene_sensor else args.dataset_split 
                 vis_rgb_path = None
@@ -385,40 +434,6 @@ def main(args):
                         im_id=im_id,
                     )
             else:
-
-                im_ests_vis = []
-                im_ests_vis_obj_ids = []
-                for obj_id, obj_ests in im_ests.items():
-                    # Sort the estimates by score (in descending order).
-                    obj_ests_sorted = sorted(
-                        obj_ests, key=lambda est: est["score"], reverse=True
-                    )
-
-                    # Select the number of top estimated poses to visualize.
-                    if args.n_top == 0:  # All estimates are considered.
-                        n_top_curr = None
-                    elif args.n_top == -1:  # Given by the number of GT poses.
-                        n_gt = sum([gt["obj_id"] == obj_id for gt in scene_gt[im_id]])
-                        n_top_curr = n_gt
-                    else:  # Specified by the parameter n_top.
-                        n_top_curr = args.n_top
-                    obj_ests_sorted = obj_ests_sorted[slice(0, n_top_curr)]
-
-                    # Get list of poses to visualize.
-                    for est in obj_ests_sorted:
-                        est["obj_id"] = obj_id
-
-                        # Text info to write on the image at the pose estimate.
-                        val = "{}:{:.2f}".format(obj_id, est["score"])
-                        est["text_info"] = [{"name": "", "val": val, "fmt": ""}]
-
-                    im_ests_vis.append(obj_ests_sorted)
-                    im_ests_vis_obj_ids.append(obj_id)
-
-                # Join the per-object estimates to make it a single visual.
-                # if there are multiple estimates per object, they are treated as independent entries
-                poses = list(itertools.chain.from_iterable(im_ests_vis))
-
                 # Visualization name.
                 vis_name = "{im_id:06d}".format(im_id=im_id)
                 # Path to the output RGB visualization.
@@ -442,7 +457,7 @@ def main(args):
                     )
                     
             visualization.vis_object_poses(
-                poses=poses,
+                poses=poses_img,
                 K=cam,
                 renderer=ren,
                 rgb=rgb,
