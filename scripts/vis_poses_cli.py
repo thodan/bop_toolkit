@@ -160,6 +160,12 @@ def setup_parser():
         default=est_defs["vis_path_template"],
         help="Template path for output images",
     )
+    parser_est.add_argument(
+        "--extra_vis_types",
+        nargs="*",
+        help="List of extra visualizations to generate.",
+        choices=["depth_heatmap", "bbox3d", "contour"]
+    )
     return parser
 
 

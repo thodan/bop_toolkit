@@ -7,11 +7,9 @@ import os
 
 # import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-
-from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib.config import LIB_DIR
+from PIL import Image, ImageDraw, ImageFont
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
