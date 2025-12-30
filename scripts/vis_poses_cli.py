@@ -129,14 +129,9 @@ def setup_parser():
     parser_gt.add_argument("--gt_ids", help="Comma-separated GT object IDs")
 
     parser_gt.add_argument(
-        "--vis_rgb_tpath",
-        default=gt_defs["vis_rgb_tpath"],
-        help="Template path for output RGB images",
-    )
-    parser_gt.add_argument(
-        "--vis_depth_diff_tpath",
-        default=gt_defs["vis_depth_diff_tpath"],
-        help="Template path for output depth difference images",
+        "--vis_path_template",
+        default=gt_defs["vis_path_template"],
+        help="Template path for output images",
     )
 
     est_defs = DEFAULTS["est"]
@@ -161,14 +156,9 @@ def setup_parser():
         help="Path to results folder",
     )
     parser_est.add_argument(
-        "--vis_rgb_tpath",
-        default=est_defs["vis_rgb_tpath"],
-        help="Template path for output RGB images",
-    )
-    parser_est.add_argument(
-        "--vis_depth_diff_tpath",
-        default=est_defs["vis_depth_diff_tpath"],
-        help="Template path for output depth difference images",
+        "--vis_path_template",
+        default=est_defs["vis_path_template"],
+        help="Template path for output images",
     )
     return parser
 
