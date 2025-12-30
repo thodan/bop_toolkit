@@ -10,7 +10,6 @@ import numpy as np
 from bop_toolkit_lib import config, dataset_params, inout, misc, visualization
 from bop_toolkit_lib.rendering import renderer
 from tqdm import tqdm
-
 from vis_poses_cli import postprocess_args, setup_parser
 
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -329,16 +328,24 @@ def main(args):
                         vis_name=vis_name,
                     )
 
-            visualization.vis_object_poses(
+            vis_rgb = vis_rgb_path is not None
+            vis_depth_diff = vis_depth_diff_path is not None
+            vis_res = visualization.vis_object_poses(
                 poses=poses_img,
                 K=cam,
                 renderer=ren,
                 rgb=rgb,
                 depth=depth,
-                vis_rgb_path=vis_rgb_path,
-                vis_depth_diff_path=vis_depth_diff_path,
                 vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
+                vis_rgb=vis_rgb,
+                vis_depth_diff=vis_depth_diff,
             )
+            if vis_rgb:
+                misc.ensure_dir(os.path.dirname(vis_rgb_path))
+                inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
+            if vis_depth_diff:
+                misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
+                inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
 
 
 if __name__ == "__main__":
