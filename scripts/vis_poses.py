@@ -8,14 +8,17 @@ import itertools
 import os
 
 import numpy as np
+import trimesh
 from bop_toolkit_lib import config, dataset_params, inout, misc, visualization
 from bop_toolkit_lib.rendering import renderer
 from bop_toolkit_lib.vis_utils import (
     calc_mask_visib_percent,
     combine_depth_diffs,
     draw_pose_contour,
+    draw_pose_on_img,
     get_depth_diff_img,
     get_depth_map_and_obj_masks_from_renderings,
+    get_pose_mat_from_dict,
     merge_masks,
     plot_depth,
 )
