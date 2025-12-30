@@ -190,27 +190,9 @@ def main(args):
                 if args.gt_ids:
                     gt_ids_curr = set(gt_ids_curr).intersection(args.gt_ids)
 
-                # Collect the GT poses.
-                poses = []
-                for gt_id in gt_ids_curr:
-                    gt = scene_gt[im_id][gt_id]
-                    # skip fully occluded masks - all values are -1
-                    if all(val == -1 for val in gt["cam_t_m2c"]):
-                        continue
-                    poses.append(
-                        {
-                            "obj_id": gt["obj_id"],
-                            "R": gt["cam_R_m2c"],
-                            "t": gt["cam_t_m2c"],
-                            "text_info": [
-                                {
-                                    "name": "",
-                                    "val": "{}:{}".format(gt["obj_id"], gt_id),
-                                    "fmt": "",
-                                }
-                            ],
-                        }
-                    )
+                poses = misc.parse_gt_poses_from_scene_im(
+                    scene_gt[im_id], gt_ids=gt_ids_curr
+                )
                 poses_scene_vis[im_id] = poses
         else:
             poses_scene = ests_org[scene_id]
