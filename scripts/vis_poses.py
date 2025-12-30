@@ -3,6 +3,7 @@ Visualizes object models in the GT/estimated poses.
 The script visualize datasets in the classical BOP19 format as well as the HOT3D dataset in H3 BOP24 format.
 """
 
+import functools
 import itertools
 import os
 
@@ -288,7 +289,8 @@ def main(args):
                     if scene_sensor
                     else args.dataset_split
                 )
-                vis_path_base = args.vis_path_template.format(
+                vis_path_base = functools.partial(
+                    args.vis_path_template.format,
                     vis_path=args.vis_path,
                     dataset=args.dataset,
                     split=split,
@@ -296,16 +298,17 @@ def main(args):
                     im_id=im_id,
                 )
             else:
-                vis_path_base = args.vis_path_template.format(
+                vis_path_base = functools.partial(
+                    args.vis_path_template.format,
                     vis_path=args.vis_path,
                     result_name=result_name,
                     scene_id=scene_id,
                     im_id=im_id,
                 )
             if args.vis_rgb:
-                vis_rgb_path = vis_path_base.format(suffix="")
+                vis_rgb_path = vis_path_base(suffix="")
             if args.vis_depth_diff:
-                vis_depth_diff_path = vis_path_base.format(suffix="_depth_diff")
+                vis_depth_diff_path = vis_path_base(suffix="_depth_diff")
 
             vis_res = visualization.vis_object_poses(
                 poses=poses_img,
@@ -342,7 +345,8 @@ def main(args):
                         models=models,
                         models_info=models_info,
                     )
-                    vis_res_gt = visualization.vis_object_poses(
+                    res_per_obj_est = vis_res["res_per_obj"]
+                    res_per_obj_gt = visualization.vis_object_poses(
                         poses=gt_poses_matched,
                         K=cam,
                         renderer=ren,
@@ -351,14 +355,16 @@ def main(args):
                         vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
                         vis_rgb=args.vis_rgb,
                         vis_depth_diff=args.vis_depth_diff,
-                    )
+                    )["res_per_obj"]
 
-                    bres_gt = get_depth_map_and_obj_masks_from_renderings(vis_res_gt)
+                    bres_gt = get_depth_map_and_obj_masks_from_renderings(
+                        res_per_obj_gt
+                    )
                     mask_objs_gt = bres_gt["mask_objs"]
 
                     depth_diff_meshs = []
-                    for obj_idx, obj_res_gt in vis_res_gt.keys():
-                        obj_res = vis_res[obj_idx]
+                    for obj_idx, obj_res_gt in res_per_obj_gt.items():
+                        obj_res = res_per_obj_est[obj_idx]
                         gt_depth = obj_res_gt["depth"]
                         obj_id = obj_res_gt["pose"]["obj_id"]
                         sym_mat = misc.get_symmetry_transformations(
@@ -390,13 +396,6 @@ def main(args):
                         include_colorbar=True,
                         use_fixed_cbar=True,
                         mask=mask_objs_gt_merged,
-                    )
-                    import matplotlib.pyplot as plt
-
-                    plt.savefig(
-                        f"/media/master/t9/learning/projects/bop/c.png",
-                        dpi=100,
-                        bbox_inches="tight",
                     )
                 elif "contour" in args.extra_vis_types:
                     ...
