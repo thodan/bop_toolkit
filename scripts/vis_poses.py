@@ -9,6 +9,13 @@ import os
 import numpy as np
 from bop_toolkit_lib import config, dataset_params, inout, misc, visualization
 from bop_toolkit_lib.rendering import renderer
+from bop_toolkit_lib.vis_utils import (
+    combine_depth_diffs,
+    get_depth_diff_img,
+    get_depth_map_and_obj_masks_from_renderings,
+    merge_masks,
+    plot_depth,
+)
 from tqdm import tqdm
 from vis_poses_cli import postprocess_args, setup_parser
 
@@ -112,7 +119,11 @@ def main(args):
     renderer_modalities = []
     if args.vis_rgb:
         renderer_modalities.append("rgb")
-    if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
+    if (
+        args.vis_depth_diff
+        or (args.vis_rgb and args.vis_rgb_resolve_visib)
+        or ("depth_heatmap" in args.extra_vis_types)
+    ):
         renderer_modalities.append("depth")
     renderer_mode = "+".join(renderer_modalities)
 
@@ -332,7 +343,83 @@ def main(args):
                 inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
 
             if args.mode == "est":
-                ...
+
+                if "depth_heatmap" in args.extra_vis_types:
+                    gt_poses = misc.parse_gt_poses_from_scene_im(scene_gt[im_id])
+                    models = {}
+                    for obj_id in dp_model["obj_ids"]:
+                        models[obj_id] = inout.load_ply(
+                            dp_model["model_tpath"].format(obj_id=obj_id)
+                        )
+                    models_info = inout.load_json(
+                        dp_model["models_info_path"], keys_to_int=True
+                    )
+                    gt_poses_matched = misc.match_gt_poses_to_est(
+                        est_poses=poses_img,
+                        gt_poses=gt_poses,
+                        models=models,
+                        models_info=models_info,
+                    )
+                    vis_res_gt = visualization.vis_object_poses(
+                        poses=gt_poses_matched,
+                        K=cam,
+                        renderer=ren,
+                        rgb=rgb,
+                        depth=depth,
+                        vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
+                        vis_rgb=args.vis_rgb,
+                        vis_depth_diff=args.vis_depth_diff,
+                    )
+
+                    bres_gt = get_depth_map_and_obj_masks_from_renderings(vis_res_gt)
+                    mask_objs_gt = bres_gt["mask_objs"]
+
+                    depth_diff_meshs = []
+                    for obj_idx, obj_res_gt in vis_res_gt.keys():
+                        obj_res = vis_res[obj_idx]
+                        gt_depth = obj_res_gt["depth"]
+                        obj_id = obj_res_gt["pose"]["obj_id"]
+                        sym_mat = misc.get_symmetry_transformations(
+                            models_info[obj_id], 0.01
+                        )
+                        pose = obj_res["pose"]
+                        depth_diff_mesh = get_depth_diff_img(
+                            gt_depth=gt_depth,
+                            est_pose=pose,
+                            gt_pose=obj_res_gt["pose"],
+                            cam=cam,
+                            syms=sym_mat,
+                        )
+                        depth_diff_meshs.append(depth_diff_mesh)
+
+                    dres = combine_depth_diffs(
+                        mask_objs_gt,
+                        depth_diff_meshs,
+                    )
+                    depth_diff_img = dres["combined"]
+                    mask_objs_gt_merged = merge_masks(mask_objs_gt)
+                    plot_depth(
+                        depth_diff_img,
+                        cbar_title="Error (mm)",
+                        ax=None,
+                        cmap="turbo",
+                        use_horiz_cbar=True,
+                        use_white_bg=True,
+                        include_colorbar=True,
+                        use_fixed_cbar=True,
+                        mask=mask_objs_gt_merged,
+                    )
+                    import matplotlib.pyplot as plt
+
+                    plt.savefig(
+                        f"/media/master/t9/learning/projects/bop/c.png",
+                        dpi=100,
+                        bbox_inches="tight",
+                    )
+                elif "contour" in args.extra_vis_types:
+                    ...
+                elif "bbox3d" in args.extra_vis_types:
+                    ...
 
 
 if __name__ == "__main__":
