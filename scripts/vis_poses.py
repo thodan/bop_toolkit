@@ -320,7 +320,7 @@ def main(args):
                     im_id=im_id,
                 )
             if args.vis_rgb:
-                vis_rgb_path = vis_path_base(suffix="")
+                vis_rgb_path = vis_path_base(suffix="_overlay")
             if args.vis_depth_diff:
                 vis_depth_diff_path = vis_path_base(suffix="_depth_diff")
 
