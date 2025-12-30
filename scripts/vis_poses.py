@@ -337,40 +337,30 @@ def main(args):
                 misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
                 inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
 
-            if args.mode == "est":
+            if args.mode == "est" and len(args.extra_vis_types) > 0:
+
+                gt_poses = misc.parse_gt_poses_from_scene_im(scene_gt[im_id])
+                gt_poses_matched = misc.match_gt_poses_to_est(
+                    est_poses=poses_img,
+                    gt_poses=gt_poses,
+                    models=models,
+                    models_info=models_info,
+                )
+                res_per_obj_est = vis_res["res_per_obj"]
+                res_per_obj_gt = visualization.vis_object_poses(
+                    poses=gt_poses_matched,
+                    K=cam,
+                    renderer=ren,
+                    rgb=rgb,
+                    depth=depth,
+                    vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
+                    vis_rgb=args.vis_rgb,
+                    vis_depth_diff=args.vis_depth_diff,
+                )["res_per_obj"]
+                bres_gt = get_depth_map_and_obj_masks_from_renderings(res_per_obj_gt)
+                mask_objs_gt = bres_gt["mask_objs"]
 
                 if "depth_heatmap" in args.extra_vis_types:
-                    gt_poses = misc.parse_gt_poses_from_scene_im(scene_gt[im_id])
-                    models = {}
-                    for obj_id in dp_model["obj_ids"]:
-                        models[obj_id] = inout.load_ply(
-                            dp_model["model_tpath"].format(obj_id=obj_id)
-                        )
-                    models_info = inout.load_json(
-                        dp_model["models_info_path"], keys_to_int=True
-                    )
-                    gt_poses_matched = misc.match_gt_poses_to_est(
-                        est_poses=poses_img,
-                        gt_poses=gt_poses,
-                        models=models,
-                        models_info=models_info,
-                    )
-                    res_per_obj_est = vis_res["res_per_obj"]
-                    res_per_obj_gt = visualization.vis_object_poses(
-                        poses=gt_poses_matched,
-                        K=cam,
-                        renderer=ren,
-                        rgb=rgb,
-                        depth=depth,
-                        vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
-                        vis_rgb=args.vis_rgb,
-                        vis_depth_diff=args.vis_depth_diff,
-                    )["res_per_obj"]
-
-                    bres_gt = get_depth_map_and_obj_masks_from_renderings(
-                        res_per_obj_gt
-                    )
-                    mask_objs_gt = bres_gt["mask_objs"]
 
                     depth_diff_meshs = []
                     for obj_idx, obj_res_gt in res_per_obj_gt.items():
@@ -408,7 +398,37 @@ def main(args):
                         mask=mask_objs_gt_merged,
                     )
                 elif "contour" in args.extra_vis_types:
-                    ...
+                    res_per_obj = res_per_obj_est
+                    bres = get_depth_map_and_obj_masks_from_renderings(res_per_obj)
+                    bres_gt = get_depth_map_and_obj_masks_from_renderings(
+                        res_per_obj_gt
+                    )
+                    mask_objs = bres["mask_objs"]
+                    contour_img = copy.deepcopy(rgb)
+                    for idx in range(len(res_per_obj)):
+                        depth_obj_gt = res_per_obj_gt[idx]["depth"]
+                        depth_obj = res_per_obj[idx]["depth"]
+                        depth_obj_mask = depth_obj_gt > 0
+                        mask_obj = mask_objs[idx]
+                        mask_obj_gt = mask_objs_gt[idx]
+
+                        percent = calc_mask_visib_percent(mask_obj, depth_obj_mask)
+                        if percent < 20:
+                            print(f"{idx=} {percent=}")
+                            continue
+
+                        contour_img = draw_pose_contour(
+                            contour_img,
+                            rendered_depth=depth_obj_gt,
+                            mask_visib=mask_obj_gt,
+                            contour_color=(0, 255, 0),
+                        )
+                        contour_img = draw_pose_contour(
+                            contour_img,
+                            rendered_depth=depth_obj,
+                            contour_color=(255, 0, 0),
+                            mask_visib=mask_obj,
+                        )
                 elif "bbox3d" in args.extra_vis_types:
                     ...
 
