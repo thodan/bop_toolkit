@@ -358,8 +358,8 @@ def main(args):
                     rgb=rgb,
                     depth=depth,
                     vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
-                    vis_rgb=args.vis_rgb,
-                    vis_depth_diff=args.vis_depth_diff,
+                    vis_rgb=False,
+                    vis_depth_diff=False,
                 )["res_per_obj"]
                 bres_gt = get_depth_map_and_obj_masks_from_renderings(res_per_obj_gt)
                 mask_objs_gt = bres_gt["mask_objs"]
