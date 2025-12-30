@@ -295,41 +295,25 @@ def main(args):
                     if scene_sensor
                     else args.dataset_split
                 )
-                if args.vis_rgb:
-                    vis_rgb_path = args.vis_rgb_tpath.format(
-                        vis_path=args.vis_path,
-                        dataset=args.dataset,
-                        split=split,
-                        scene_id=scene_id,
-                        im_id=im_id,
-                    )
-                if args.vis_depth_diff:
-                    vis_depth_diff_path = args.vis_depth_diff_tpath.format(
-                        vis_path=args.vis_path,
-                        dataset=args.dataset,
-                        split=split,
-                        scene_id=scene_id,
-                        im_id=im_id,
-                    )
+                vis_path_base = args.vis_path_template.format(
+                    vis_path=args.vis_path,
+                    dataset=args.dataset,
+                    split=split,
+                    scene_id=scene_id,
+                    im_id=im_id,
+                )
             else:
-                vis_name = "{im_id:06d}".format(im_id=im_id)
-                if args.vis_rgb:
-                    vis_rgb_path = args.vis_rgb_tpath.format(
-                        vis_path=args.vis_path,
-                        result_name=result_name,
-                        scene_id=scene_id,
-                        vis_name=vis_name,
-                    )
-                if args.vis_depth_diff:
-                    vis_depth_diff_path = args.vis_depth_diff_tpath.format(
-                        vis_path=args.vis_path,
-                        result_name=result_name,
-                        scene_id=scene_id,
-                        vis_name=vis_name,
-                    )
+                vis_path_base = args.vis_path_template.format(
+                    vis_path=args.vis_path,
+                    result_name=result_name,
+                    scene_id=scene_id,
+                    im_id=im_id,
+                )
+            if args.vis_rgb:
+                vis_rgb_path = vis_path_base.format(suffix="")
+            if args.vis_depth_diff:
+                vis_depth_diff_path = vis_path_base.format(suffix="_depth_diff")
 
-            vis_rgb = vis_rgb_path is not None
-            vis_depth_diff = vis_depth_diff_path is not None
             vis_res = visualization.vis_object_poses(
                 poses=poses_img,
                 K=cam,
@@ -337,15 +321,18 @@ def main(args):
                 rgb=rgb,
                 depth=depth,
                 vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
-                vis_rgb=vis_rgb,
-                vis_depth_diff=vis_depth_diff,
+                vis_rgb=args.vis_rgb,
+                vis_depth_diff=args.vis_depth_diff,
             )
-            if vis_rgb:
+            if args.vis_rgb:
                 misc.ensure_dir(os.path.dirname(vis_rgb_path))
                 inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
-            if vis_depth_diff:
+            if args.vis_depth_diff:
                 misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
                 inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
+
+            if args.mode == "est":
+                ...
 
 
 if __name__ == "__main__":

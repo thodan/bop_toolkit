@@ -49,15 +49,8 @@ DEFAULTS = {
         "im_ids": None,
         "gt_ids": None,
         # Path templates for output images.
-        "vis_rgb_tpath": os.path.join(
-            "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}.jpg"
-        ),
-        "vis_depth_diff_tpath": os.path.join(
-            "{vis_path}",
-            "{dataset}",
-            "{split}",
-            "{scene_id:06d}",
-            "{im_id:06d}_depth_diff.jpg",
+        "vis_path_template": os.path.join(
+            "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}{suffix}.jpg"
         ),
     },
     "est": {
@@ -71,12 +64,9 @@ DEFAULTS = {
         "result_filename": None,
         # Folder with results to be evaluated.
         "results_path": config.results_path,
-        "vis_rgb_tpath": os.path.join(
-            "{vis_path}", "{result_name}", "{scene_id:06d}", "{vis_name}.jpg"
-        ),
-        "vis_depth_diff_tpath": os.path.join(
-            "{vis_path}", "{result_name}", "{scene_id:06d}", "{vis_name}_depth_diff.jpg"
-        ),
+        "vis_path_template": os.path.join(
+            "{vis_path}", "{result_name}", "{scene_id:06d}", "{im_id:06d}{suffix}.jpg"
+        )
     },
 }
 ################################################################################
