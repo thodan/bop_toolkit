@@ -359,6 +359,8 @@ def main(args):
                 )["res_per_obj"]
                 bres_gt = get_depth_map_and_obj_masks_from_renderings(res_per_obj_gt)
                 mask_objs_gt = bres_gt["mask_objs"]
+                bres_est = get_depth_map_and_obj_masks_from_renderings(res_per_obj_est)
+                mask_objs = bres_est["mask_objs"]
 
                 if "depth_heatmap" in args.extra_vis_types:
 
@@ -398,16 +400,10 @@ def main(args):
                         mask=mask_objs_gt_merged,
                     )
                 elif "contour" in args.extra_vis_types:
-                    res_per_obj = res_per_obj_est
-                    bres = get_depth_map_and_obj_masks_from_renderings(res_per_obj)
-                    bres_gt = get_depth_map_and_obj_masks_from_renderings(
-                        res_per_obj_gt
-                    )
-                    mask_objs = bres["mask_objs"]
                     contour_img = copy.deepcopy(rgb)
-                    for idx in range(len(res_per_obj)):
+                    for idx in range(len(res_per_obj_est)):
                         depth_obj_gt = res_per_obj_gt[idx]["depth"]
-                        depth_obj = res_per_obj[idx]["depth"]
+                        depth_obj = res_per_obj_est[idx]["depth"]
                         depth_obj_mask = depth_obj_gt > 0
                         mask_obj = mask_objs[idx]
                         mask_obj_gt = mask_objs_gt[idx]
@@ -430,7 +426,64 @@ def main(args):
                             mask_visib=mask_obj,
                         )
                 elif "bbox3d" in args.extra_vis_types:
-                    ...
+                    bbox_img = copy.deepcopy(rgb)
+                    for idx in range(len(res_per_obj_est)):
+
+                        obj_id = res_per_obj_gt[idx]["pose"]["obj_id"]
+                        pose_gt = res_per_obj_gt[idx]["pose"]
+                        pose_est = res_per_obj_est[idx]["pose"]
+                        model = models[obj_id]
+                        pts = model["pts"]
+                        mesh = trimesh.Trimesh(vertices=pts, faces=model["faces"])
+                        bbox_3d = trimesh.bounds.corners(
+                            mesh.bounding_box_oriented.bounds
+                        )
+                        depth_obj_gt = res_per_obj_gt[idx]["depth"]
+                        depth_obj_mask = depth_obj_gt > 0
+                        mask_obj = mask_objs[idx]
+                        percent = calc_mask_visib_percent(mask_obj, depth_obj_mask)
+                        if percent < 35:
+                            print(f"{idx=} {percent=}")
+                            continue
+
+                        syms = misc.get_symmetry_transformations(
+                            models_info[obj_id], max_sym_disc_step=0.01
+                        )
+                        pts_est = misc.transform_pts_Rt(
+                            pts, pose_est["R"], pose_est["t"].squeeze()
+                        )
+                        gt_poses_syms = []
+                        es = []
+                        for sym in syms:
+                            R_gt_sym = pose_gt["R"].dot(sym["R"])
+                            t_gt_sym = (
+                                pose_gt["R"].dot(sym["t"].squeeze())
+                                + pose_gt["t"].squeeze()
+                            )
+                            pts_gt_sym = misc.transform_pts_Rt(pts, R_gt_sym, t_gt_sym)
+                            gt_poses_syms.append(
+                                {"R": R_gt_sym, "t": t_gt_sym, "obj_id": obj_id}
+                            )
+                            es.append(
+                                np.linalg.norm(pts_est - pts_gt_sym, axis=1).max()
+                            )
+                        best_idx = np.argmin(es)
+                        pose_gt_sym = gt_poses_syms[best_idx]
+                        pose_gt_sym_mat = get_pose_mat_from_dict(pose_gt_sym)
+
+                        est_pose_mat = get_pose_mat_from_dict(
+                            res_per_obj_est[idx]["pose"]
+                        )
+                        bbox_img = draw_pose_on_img(
+                            bbox_img,
+                            pose_pred=est_pose_mat,
+                            pose_gt=pose_gt_sym_mat,
+                            K=cam,
+                            axes_scale=50 // 2,
+                            mesh_bbox=bbox_3d,
+                            bbox_color=(255, 0, 0),
+                            bbox_color_gt=(0, 255, 0),
+                        )
 
 
 if __name__ == "__main__":
