@@ -122,7 +122,8 @@ def main(args):
     colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
     colors = inout.load_json(colors_path)
 
-    if args.mode == "est" and len(args.extra_vis_types) > 0:
+    do_extra_vis = args.mode == "est" and len(args.extra_vis_types) > 0
+    if do_extra_vis:
         models = {}
         for obj_id in dp_model["obj_ids"]:
             models[obj_id] = inout.load_ply(
@@ -333,13 +334,14 @@ def main(args):
                 vis_rgb=args.vis_rgb,
                 vis_depth_diff=args.vis_depth_diff,
             )
-            misc.ensure_dir(os.path.dirname(vis_rgb_path))
+            if args.vis_rgb or args.vis_depth_diff or do_extra_vis:
+                misc.ensure_dir(os.path.dirname(vis_rgb_path))
             if args.vis_rgb:
                 inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
             if args.vis_depth_diff:
                 inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
 
-            if args.mode == "est" and len(args.extra_vis_types) > 0:
+            if do_extra_vis:
 
                 gt_poses = misc.parse_gt_poses_from_scene_im(scene_gt[im_id])
                 gt_poses_matched = misc.match_gt_poses_to_est(
