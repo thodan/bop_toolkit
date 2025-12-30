@@ -462,7 +462,7 @@ def get_eval_calc_errors_script_name(use_gpu, error_type, dataset):
 
     if use_gpu and error_type in ["mssd", "mspd"]:
         # mspd not supported for gpus for hot3d dataset
-        if error_type != "mspd" or dataset != 'hot3d':
+        if error_type != "mspd" or dataset != "hot3d":
             return gpu_script, True
     return cpu_script, False
 
@@ -488,12 +488,38 @@ def reorganize_targets(targets, organize_by_obj_ids=False):
     return targets_org
 
 
+def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
+    poses = []
+    gt_ids = scene_gt_img.keys() if gt_ids is None else gt_ids
+    for gt_id in gt_ids:
+        gt = scene_gt_img[gt_id]
+        # skip fully occluded masks - all values are -1
+        if all(val == -1 for val in gt["cam_t_m2c"]):
+            continue
+        poses.append(
+            {
+                "obj_id": gt["obj_id"],
+                "R": gt["cam_R_m2c"],
+                "t": gt["cam_t_m2c"],
+                "text_info": [
+                    {
+                        "name": "",
+                        "val": "{}:{}".format(gt["obj_id"], gt_id),
+                        "fmt": "",
+                    }
+                ],
+            }
+        )
+
+    return poses
+
+
 def match_gt_poses_to_est(est_poses, gt_poses, models, models_info):
 
     cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
     for i, e in enumerate(est_poses):
         for j, g in enumerate(gt_poses):
-            obj_id = e['obj_id']
+            obj_id = e["obj_id"]
             syms = get_symmetry_transformations(models_info[obj_id], 0.01)
             cost_mat[i, j] = mssd(
                 R_est=e["R"],
