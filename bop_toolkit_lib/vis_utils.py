@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from bop_toolkit_lib import misc
 from bop_toolkit_lib.common_utils import adjust_img_for_plt, cast_to_numpy
-from bop_toolkit_lib.nb_utils import backproj_depth
+from bop_toolkit_lib.geom_utils import backproj_depth
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 

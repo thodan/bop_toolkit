@@ -490,7 +490,7 @@ def reorganize_targets(targets, organize_by_obj_ids=False):
 
 def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
     poses = []
-    gt_ids = scene_gt_img.keys() if gt_ids is None else gt_ids
+    gt_ids = list(range(len(scene_gt_img))) if gt_ids is None else gt_ids
     for gt_id in gt_ids:
         gt = scene_gt_img[gt_id]
         # skip fully occluded masks - all values are -1
