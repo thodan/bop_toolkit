@@ -403,7 +403,9 @@ def main(args):
                         use_fixed_cbar=True,
                         mask=mask_objs_gt_merged,
                     )
-                elif "contour" in args.extra_vis_types:
+                    save_path = vis_path_base(suffix="_depth_heatmap")
+                    plt.savefig(save_path, dpi=100, bbox_inches='tight')
+                if "contour" in args.extra_vis_types:
                     contour_img = copy.deepcopy(rgb)
                     for idx in range(len(res_per_obj_est)):
                         depth_obj_gt = res_per_obj_gt[idx]["depth"]
@@ -429,7 +431,9 @@ def main(args):
                             contour_color=(255, 0, 0),
                             mask_visib=mask_obj,
                         )
-                elif "bbox3d" in args.extra_vis_types:
+                    save_path = vis_path_base(suffix="_contour")
+                    inout.save_im(save_path, contour_img)
+                if "bbox3d" in args.extra_vis_types:
                     bbox_img = copy.deepcopy(rgb)
                     for idx in range(len(res_per_obj_est)):
 
@@ -488,6 +492,8 @@ def main(args):
                             bbox_color=(255, 0, 0),
                             bbox_color_gt=(0, 255, 0),
                         )
+                    save_path = vis_path_base(suffix="_bbox3d")
+                    inout.save_im(save_path, bbox_img)
 
 
 if __name__ == "__main__":
