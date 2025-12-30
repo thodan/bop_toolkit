@@ -11,7 +11,9 @@ import numpy as np
 from bop_toolkit_lib import config, dataset_params, inout, misc, visualization
 from bop_toolkit_lib.rendering import renderer
 from bop_toolkit_lib.vis_utils import (
+    calc_mask_visib_percent,
     combine_depth_diffs,
+    draw_pose_contour,
     get_depth_diff_img,
     get_depth_map_and_obj_masks_from_renderings,
     merge_masks,
@@ -116,6 +118,14 @@ def main(args):
 
     colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
     colors = inout.load_json(colors_path)
+
+    if args.mode == "est" and len(args.extra_vis_types) > 0:
+        models = {}
+        for obj_id in dp_model["obj_ids"]:
+            models[obj_id] = inout.load_ply(
+                dp_model["model_tpath"].format(obj_id=obj_id)
+            )
+        models_info = inout.load_json(dp_model["models_info_path"], keys_to_int=True)
 
     renderer_modalities = []
     if args.vis_rgb:
