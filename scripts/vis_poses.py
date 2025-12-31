@@ -126,12 +126,16 @@ def main(args):
 
     do_extra_vis = args.mode == "est" and len(args.extra_vis_types) > 0
     if do_extra_vis:
+        models_info = inout.load_json(dp_model["models_info_path"], keys_to_int=True)
         models = {}
+        syms_per_obj = {}
         for obj_id in dp_model["obj_ids"]:
             models[obj_id] = inout.load_ply(
                 dp_model["model_tpath"].format(obj_id=obj_id)
             )
-        models_info = inout.load_json(dp_model["models_info_path"], keys_to_int=True)
+            syms_per_obj[obj_id] = misc.get_symmetry_transformations(
+                models_info[obj_id], max_sym_disc_step=0.01
+            )
 
     renderer_modalities = []
     if args.vis_rgb:
@@ -375,16 +379,13 @@ def main(args):
                         obj_res = res_per_obj_est[obj_idx]
                         gt_depth = obj_res_gt["depth"]
                         obj_id = obj_res_gt["pose"]["obj_id"]
-                        sym_mat = misc.get_symmetry_transformations(
-                            models_info[obj_id], 0.01
-                        )
                         pose = obj_res["pose"]
                         depth_diff_mesh = get_depth_diff_img(
                             gt_depth=gt_depth,
                             est_pose=pose,
                             gt_pose=obj_res_gt["pose"],
                             cam=cam,
-                            syms=sym_mat,
+                            syms=syms_per_obj[obj_id],
                         )
                         depth_diff_meshs.append(depth_diff_mesh)
 
@@ -406,7 +407,7 @@ def main(args):
                         mask=mask_objs_gt_merged,
                     )
                     save_path = vis_path_base(suffix="_depth_heatmap")
-                    plt.savefig(save_path, dpi=100, bbox_inches='tight')
+                    plt.savefig(save_path, dpi=100, bbox_inches="tight")
                 if "contour" in args.extra_vis_types:
                     contour_img = copy.deepcopy(rgb)
                     for idx in range(len(res_per_obj_est)):
@@ -454,15 +455,12 @@ def main(args):
                         if percent < args.min_obj_visib_percent_to_draw_bbox3d:
                             continue
 
-                        syms = misc.get_symmetry_transformations(
-                            models_info[obj_id], max_sym_disc_step=0.01
-                        )
                         pts_est = misc.transform_pts_Rt(
                             pts, pose_est["R"], pose_est["t"].squeeze()
                         )
                         gt_poses_syms = []
                         es = []
-                        for sym in syms:
+                        for sym in syms_per_obj[obj_id]:
                             R_gt_sym = pose_gt["R"].dot(sym["R"])
                             t_gt_sym = (
                                 pose_gt["R"].dot(sym["t"].squeeze())
