@@ -417,8 +417,7 @@ def main(args):
                         mask_obj_gt = mask_objs_gt[idx]
 
                         percent = calc_mask_visib_percent(mask_obj, depth_obj_mask)
-                        if percent < 20:
-                            print(f"{idx=} {percent=}")
+                        if percent < args.min_obj_visib_percent_to_draw_contour:
                             continue
 
                         contour_img = draw_pose_contour(
@@ -452,8 +451,7 @@ def main(args):
                         depth_obj_mask = depth_obj_gt > 0
                         mask_obj = mask_objs[idx]
                         percent = calc_mask_visib_percent(mask_obj, depth_obj_mask)
-                        if percent < 35:
-                            print(f"{idx=} {percent=}")
+                        if percent < args.min_obj_visib_percent_to_draw_bbox3d:
                             continue
 
                         syms = misc.get_symmetry_transformations(

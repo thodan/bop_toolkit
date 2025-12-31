@@ -145,6 +145,18 @@ def setup_parser():
         help="Top N estimates to visualize (0=all, -1=match GT)",
     )
     parser_est.add_argument(
+        "--min_obj_visib_percent_to_draw_contour",
+        type=int,
+        default=20,
+        help="Minimum visibility of an object to include it in the contour visual",
+    )
+    parser_est.add_argument(
+        "--min_obj_visib_percent_to_draw_bbox3d",
+        type=int,
+        default=35,
+        help="Minimum visibility of an object to include it in the bbox3d visual",
+    )
+    parser_est.add_argument(
         "--result_filename",
         default=est_defs["result_filename"],
         required=True,
