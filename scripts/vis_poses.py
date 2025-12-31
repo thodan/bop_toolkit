@@ -3,6 +3,7 @@ Visualizes object models in the GT/estimated poses.
 The script visualize datasets in the classical BOP19 format as well as the HOT3D dataset in H3 BOP24 format.
 """
 
+import copy
 import functools
 import itertools
 import os
