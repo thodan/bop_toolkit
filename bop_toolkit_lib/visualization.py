@@ -7,11 +7,9 @@ import os
 
 # import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-
-from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib.config import LIB_DIR
+from PIL import Image, ImageDraw, ImageFont
 
 # Get the base name of the file without the .py extension
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -111,8 +109,8 @@ def vis_object_poses(
     renderer,
     rgb=None,
     depth=None,
-    vis_rgb_path=None,
-    vis_depth_diff_path=None,
+    vis_depth_diff=False,
+    vis_rgb=False,
     vis_rgb_resolve_visib=False,
 ):
     """Visualizes 3D object models in specified poses in a single image.
@@ -135,10 +133,6 @@ def vis_object_poses(
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
-
-    # Indicators of visualization types.
-    vis_rgb = vis_rgb_path is not None
-    vis_depth_diff = vis_depth_diff_path is not None
 
     if vis_rgb and rgb is None:
         raise ValueError("RGB visualization triggered but RGB image not provided.")
@@ -167,19 +161,10 @@ def vis_object_poses(
         ren_depth = np.zeros((im_size[1], im_size[0]), np.float32)
 
     # Render the pose estimates one by one.
-    for pose in poses:
-        # Rendering.
-        if htt_available and isinstance(K, CameraModel): # hand_tracking_toolkit is used for rendering.
-            ren_out = renderer.render_object(
-                pose["obj_id"], pose["R"], pose["t"], K
-            )
-        elif isinstance(K, np.ndarray) and K.shape == (3, 3):  # pinhole camera model is used for rendering.
-            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
-            ren_out = renderer.render_object(
-                pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
-            )
-        else:
-            raise ValueError("Camera model 'K' type {} should be either CameraModel or np.ndarray".format(type(K)))
+    res_per_obj = {}
+    renderings = render_poses(poses, renderer, K=K)
+    for obj_idx, ren_out in enumerate(renderings):
+        pose = poses[obj_idx]
 
         m_rgb = None
         if vis_rgb:
@@ -228,10 +213,14 @@ def vis_object_poses(
                         color=text_color,
                         size=text_size,
                     )
+        # pose["obj_id"] is id of the category, need another idx to handle multiple instances of the same category
+        res_per_obj[obj_idx] = {**ren_out, "pose": pose}
+
+    res = {}
+    res["res_per_obj"] = res_per_obj
 
     # Blend and save the RGB visualization.
     if vis_rgb:
-        misc.ensure_dir(os.path.dirname(vis_rgb_path))
 
         vis_im_rgb = (
             0.5 * rgb.astype(np.float32)
@@ -239,11 +228,10 @@ def vis_object_poses(
             + 1.0 * ren_rgb_info.astype(np.float32)
         )
         vis_im_rgb[vis_im_rgb > 255] = 255
-        inout.save_im(vis_rgb_path, vis_im_rgb.astype(np.uint8), jpg_quality=95)
+        res["vis_im_rgb"] = vis_im_rgb.astype(np.uint8)
 
     # Save the image of depth differences.
     if vis_depth_diff:
-        misc.ensure_dir(os.path.dirname(vis_depth_diff_path))
 
         # Calculate the depth difference at pixels where both depth maps are valid.
         valid_mask = (depth > 0) * (ren_depth > 0)
@@ -273,4 +261,24 @@ def vis_object_poses(
             {"name": "25 percentile", "fmt": ":.3f", "val": np.percentile(np.abs(depth_diff_valid), 25)},
         ]
         depth_diff_vis = write_text_on_image(depth_diff_vis, depth_info)
-        inout.save_im(vis_depth_diff_path, depth_diff_vis)
+        res["depth_diff_vis"] = depth_diff_vis
+
+    return res
+
+
+def render_poses(poses, renderer, K):
+    renderings = []
+    for pose in poses:
+        if htt_available and isinstance(K, CameraModel): # hand_tracking_toolkit is used for rendering.
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], K
+            )
+        elif isinstance(K, np.ndarray) and K.shape == (3, 3):  # pinhole camera model is used for rendering.
+            fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+            ren_out = renderer.render_object(
+                pose["obj_id"], pose["R"], pose["t"], fx, fy, cx, cy
+            )
+        else:
+            raise ValueError("Camera model 'K' type {} should be either CameraModel or np.ndarray".format(type(K)))
+        renderings.append(ren_out)
+    return renderings

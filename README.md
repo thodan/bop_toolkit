@@ -126,6 +126,8 @@ python vis_poses.py gt --dataset ycbv --scene_ids 48 --vis_orig_color
 python vis_poses.py est --result_filename /bop/results/gt-equivalent_ycbv-test.csv --n_top 2
 ```
 
+Pass `--extra_vis_types depth_heatmap contour bbox3d` when calling `vis_poses.py est` to extend the default visuals.
+
 `vis_object_symmetries.py` renders object symmetries.
 
 #### Available Visuals
@@ -133,12 +135,9 @@ python vis_poses.py est --result_filename /bop/results/gt-equivalent_ycbv-test.c
 - [x] rendering of objects onto an image
 - [x] depth error based on rendering with groundtruth and predicted poses
 - [x] rendering of object symmetries
-- [ ] depth error heatmaps based on rendering with groundtruth and predicted poses
-- [ ] rendering of object contour
-- [ ] 3D bounding boxes
-- [ ] depth maps
-- [ ] joint groundtruth-prediction visuals
-- [ ] NOCS
+- [x] depth error heatmaps based on rendering with groundtruth and predicted poses
+- [x] rendering of object contour
+- [x] 3D bounding boxes
 
 ## Convert BOP to COCO format
 

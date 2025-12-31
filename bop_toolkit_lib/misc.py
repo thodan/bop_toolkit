@@ -14,8 +14,10 @@ import argparse
 import pytz
 import numpy as np
 from scipy.spatial import distance
+import scipy.optimize
 
 from bop_toolkit_lib import transform
+from bop_toolkit_lib.pose_error import mssd
 
 logging.basicConfig()
 
@@ -460,7 +462,7 @@ def get_eval_calc_errors_script_name(use_gpu, error_type, dataset):
 
     if use_gpu and error_type in ["mssd", "mspd"]:
         # mspd not supported for gpus for hot3d dataset
-        if error_type != "mspd" or dataset != 'hot3d':
+        if error_type != "mspd" or dataset != "hot3d":
             return gpu_script, True
     return cpu_script, False
 
@@ -484,6 +486,50 @@ def reorganize_targets(targets, organize_by_obj_ids=False):
             targets_org.setdefault(target["scene_id"], {})[target["im_id"]] = target
 
     return targets_org
+
+
+def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
+    poses = []
+    gt_ids = list(range(len(scene_gt_img))) if gt_ids is None else gt_ids
+    for gt_id in gt_ids:
+        gt = scene_gt_img[gt_id]
+        # skip fully occluded masks - all values are -1
+        if all(val == -1 for val in gt["cam_t_m2c"]):
+            continue
+        poses.append(
+            {
+                "obj_id": gt["obj_id"],
+                "R": gt["cam_R_m2c"],
+                "t": gt["cam_t_m2c"],
+                "text_info": [
+                    {
+                        "name": "",
+                        "val": "{}:{}".format(gt["obj_id"], gt_id),
+                        "fmt": "",
+                    }
+                ],
+            }
+        )
+
+    return poses
+
+
+def match_gt_poses_to_est(est_poses, gt_poses, models, syms_per_obj):
+
+    cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
+    for i, e in enumerate(est_poses):
+        for j, g in enumerate(gt_poses):
+            cost_mat[i, j] = mssd(
+                R_est=e["R"],
+                t_est=e["t"],
+                R_gt=g["R"],
+                t_gt=g["t"],
+                pts=models[e["obj_id"]]["pts"],
+                syms=syms_per_obj[e["obj_id"]],
+            )
+    row_ind, col_ind = scipy.optimize.linear_sum_assignment(cost_mat)
+    gt_poses_ordered = [gt_poses[j] for j in col_ind]
+    return gt_poses_ordered
 
 
 def add_argument_bool(parser: argparse.ArgumentParser, arg_name: str, default: bool):
