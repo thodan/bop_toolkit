@@ -7,6 +7,7 @@ import functools
 import itertools
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import trimesh
 from bop_toolkit_lib import config, dataset_params, inout, misc, visualization
