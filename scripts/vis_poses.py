@@ -354,7 +354,7 @@ def main(args):
                     est_poses=poses_img,
                     gt_poses=gt_poses,
                     models=models,
-                    models_info=models_info,
+                    syms_per_obj=syms_per_obj,
                 )
                 res_per_obj_est = vis_res["res_per_obj"]
                 res_per_obj_gt = visualization.vis_object_poses(

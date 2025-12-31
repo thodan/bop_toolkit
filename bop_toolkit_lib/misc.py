@@ -514,20 +514,18 @@ def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
     return poses
 
 
-def match_gt_poses_to_est(est_poses, gt_poses, models, models_info):
+def match_gt_poses_to_est(est_poses, gt_poses, models, syms_per_obj):
 
     cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
     for i, e in enumerate(est_poses):
         for j, g in enumerate(gt_poses):
-            obj_id = e["obj_id"]
-            syms = get_symmetry_transformations(models_info[obj_id], 0.01)
             cost_mat[i, j] = mssd(
                 R_est=e["R"],
                 t_est=e["t"],
                 R_gt=g["R"],
                 t_gt=g["t"],
                 pts=models[e["obj_id"]]["pts"],
-                syms=syms,
+                syms=syms_per_obj[e["obj_id"]],
             )
     row_ind, col_ind = scipy.optimize.linear_sum_assignment(cost_mat)
     gt_poses_ordered = [gt_poses[j] for j in col_ind]
