@@ -49,6 +49,8 @@ def main(args):
         result_name, method, dataset, split, split_type, _ = (
             inout.parse_result_filename(result_filename)
         )
+    vis_rgb = "overlay" in args.vis_types
+    vis_depth_diff = "depth_diff" in args.vis_types
 
     #######################
     # hot3d specific checks
@@ -124,7 +126,10 @@ def main(args):
     colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
     colors = inout.load_json(colors_path)
 
-    do_extra_vis = args.mode == "est" and len(args.extra_vis_types) > 0
+    extra_vis_types = ["depth_heatmap", "bbox3d", "contour"]
+    do_extra_vis = args.mode == "est" and any(
+        x in args.vis_types for x in extra_vis_types
+    )
     if do_extra_vis:
         models_info = inout.load_json(dp_model["models_info_path"], keys_to_int=True)
         models = {}
@@ -138,13 +143,9 @@ def main(args):
             )
 
     renderer_modalities = []
-    if args.vis_rgb:
+    if vis_rgb:
         renderer_modalities.append("rgb")
-    if (
-        args.vis_depth_diff
-        or (args.vis_rgb and args.vis_rgb_resolve_visib)
-        or ("depth_heatmap" in args.extra_vis_types)
-    ):
+    if vis_depth_diff or (vis_rgb and args.vis_rgb_resolve_visib) or do_extra_vis:
         renderer_modalities.append("depth")
     renderer_mode = "+".join(renderer_modalities)
 
@@ -263,7 +264,7 @@ def main(args):
                 cam = scene_camera[im_id]["cam_K"]
 
             rgb = None
-            if args.vis_rgb:
+            if vis_rgb:
                 # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
                 im_tpath = tpath_keys["rgb_tpath"]
                 # check for BOP classic (itodd)
@@ -283,7 +284,7 @@ def main(args):
                     rgb = rgb[:, :, :3]
 
             depth = None
-            if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
+            if vis_depth_diff or (vis_rgb and args.vis_rgb_resolve_visib):
                 depth_available = dataset_params.sensor_has_modality(
                     dp_split, scene_sensor, "depth"
                 )
@@ -291,7 +292,7 @@ def main(args):
                     misc.log(
                         f"{scene_sensor} has no depth data, skipping depth visualization"
                     )
-                    args.vis_depth_diff = False
+                    vis_depth_diff = False
                     args.vis_rgb_resolve_visib = False
                 else:
                     depth = inout.load_depth(
@@ -325,9 +326,9 @@ def main(args):
                     scene_id=scene_id,
                     im_id=im_id,
                 )
-            if args.vis_rgb:
+            if vis_rgb:
                 vis_rgb_path = vis_path_base(suffix="_overlay")
-            if args.vis_depth_diff:
+            if vis_depth_diff:
                 vis_depth_diff_path = vis_path_base(suffix="_depth_diff")
 
             vis_res = visualization.vis_object_poses(
@@ -337,14 +338,14 @@ def main(args):
                 rgb=rgb,
                 depth=depth,
                 vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
-                vis_rgb=args.vis_rgb,
-                vis_depth_diff=args.vis_depth_diff,
+                vis_rgb=vis_rgb,
+                vis_depth_diff=vis_depth_diff,
             )
-            if args.vis_rgb or args.vis_depth_diff or do_extra_vis:
+            if vis_rgb or vis_depth_diff or do_extra_vis:
                 misc.ensure_dir(os.path.dirname(vis_rgb_path))
-            if args.vis_rgb:
+            if vis_rgb:
                 inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
-            if args.vis_depth_diff:
+            if vis_depth_diff:
                 inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
 
             if do_extra_vis:

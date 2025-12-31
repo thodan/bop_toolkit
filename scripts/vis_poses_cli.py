@@ -5,15 +5,11 @@ from bop_toolkit_lib import config, misc
 
 DEFAULTS = {
     "common": {
-        # Indicates whether to render RGB image.
-        "vis_rgb": True,
         # Indicates whether to resolve visibility in the rendered RGB images (using
         # depth renderings). If True, only the part of object surface, which is not
         # occluded by any other modeled object, is visible. If False, RGB renderings
         # of individual objects are blended together.
         "vis_rgb_resolve_visib": True,
-        # Indicates whether to render depth image (or save images of depth differences).
-        "vis_depth_diff": True,
         # Whether to use the original model color.
         "vis_orig_color": False,
         # Type of the renderer (used for the VSD pose error function).
@@ -102,6 +98,13 @@ def setup_parser():
         default=c_defs["vis_path"],
         help="Output folder for visualizations",
     )
+    common_parser.add_argument(
+        "--vis_types",
+        nargs="*",
+        help="List of visualizations to generate.",
+        choices=["overlay", "depth_diff"],
+        default=["overlay", "depth_diff"]
+    )
 
     subparsers = parser.add_subparsers(
         dest="mode", required=True, help="Visualization mode"
@@ -173,11 +176,11 @@ def setup_parser():
         help="Template path for output images",
     )
     parser_est.add_argument(
-        "--extra_vis_types",
+        "--vis_types",
         nargs="*",
-        help="List of extra visualizations to generate.",
-        choices=["depth_heatmap", "bbox3d", "contour"],
-        default=[]
+        help="List of visualizations to generate. 'depth_heatmap' requires GT poses.",
+        choices=["overlay", "depth_diff", "depth_heatmap", "bbox3d", "contour"],
+        default=["overlay", "depth_diff"]
     )
     return parser
 
