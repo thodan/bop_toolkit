@@ -76,11 +76,9 @@ def setup_parser():
     common_parser = argparse.ArgumentParser(add_help=False)
     c_defs = DEFAULTS["common"]
 
-    misc.add_argument_bool(common_parser, "vis_rgb", c_defs["vis_rgb"])
     misc.add_argument_bool(
         common_parser, "vis_rgb_resolve_visib", c_defs["vis_rgb_resolve_visib"]
     )
-    misc.add_argument_bool(common_parser, "vis_depth_diff", c_defs["vis_depth_diff"])
     misc.add_argument_bool(common_parser, "vis_orig_color", c_defs["vis_orig_color"])
 
     common_parser.add_argument(
@@ -97,13 +95,6 @@ def setup_parser():
         "--vis_path",
         default=c_defs["vis_path"],
         help="Output folder for visualizations",
-    )
-    common_parser.add_argument(
-        "--vis_types",
-        nargs="*",
-        help="List of visualizations to generate.",
-        choices=["overlay", "depth_diff"],
-        default=["overlay", "depth_diff"]
     )
 
     subparsers = parser.add_subparsers(
@@ -135,6 +126,13 @@ def setup_parser():
         "--vis_path_template",
         default=gt_defs["vis_path_template"],
         help="Template path for output images",
+    )
+    parser_gt.add_argument(
+        "--vis_types",
+        nargs="*",
+        help="List of visualizations to generate.",
+        choices=["overlay", "depth_diff"],
+        default=["overlay", "depth_diff"]
     )
 
     est_defs = DEFAULTS["est"]

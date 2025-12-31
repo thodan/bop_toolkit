@@ -70,9 +70,9 @@ def main(args):
 
     # hot3d does not contain depth modality, some visualizations are not available
     if dataset in ["hot3d"]:
-        args.vis_rgb = True
+        vis_rgb = True
         args.vis_rgb_resolve_visib = False
-        args.vis_depth_diff = False
+        vis_depth_diff = False
     #######################
 
     # Load dataset parameters.
@@ -264,7 +264,7 @@ def main(args):
                 cam = scene_camera[im_id]["cam_K"]
 
             rgb = None
-            if vis_rgb:
+            if vis_rgb or do_extra_vis:
                 # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
                 im_tpath = tpath_keys["rgb_tpath"]
                 # check for BOP classic (itodd)
@@ -342,7 +342,7 @@ def main(args):
                 vis_depth_diff=vis_depth_diff,
             )
             if vis_rgb or vis_depth_diff or do_extra_vis:
-                misc.ensure_dir(os.path.dirname(vis_rgb_path))
+                misc.ensure_dir(os.path.dirname(vis_path_base(suffix="")))
             if vis_rgb:
                 inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
             if vis_depth_diff:
@@ -373,7 +373,7 @@ def main(args):
                 bres_est = get_depth_map_and_obj_masks_from_renderings(res_per_obj_est)
                 mask_objs = bres_est["mask_objs"]
 
-                if "depth_heatmap" in args.extra_vis_types:
+                if "depth_heatmap" in args.vis_types:
 
                     depth_diff_meshs = []
                     for obj_idx, obj_res_gt in res_per_obj_gt.items():
@@ -409,7 +409,7 @@ def main(args):
                     )
                     save_path = vis_path_base(suffix="_depth_heatmap")
                     plt.savefig(save_path, dpi=100, bbox_inches="tight")
-                if "contour" in args.extra_vis_types:
+                if "contour" in args.vis_types:
                     contour_img = copy.deepcopy(rgb)
                     for idx in range(len(res_per_obj_est)):
                         depth_obj_gt = res_per_obj_gt[idx]["depth"]
@@ -436,7 +436,7 @@ def main(args):
                         )
                     save_path = vis_path_base(suffix="_contour")
                     inout.save_im(save_path, contour_img)
-                if "bbox3d" in args.extra_vis_types:
+                if "bbox3d" in args.vis_types:
                     bbox_img = copy.deepcopy(rgb)
                     for idx in range(len(res_per_obj_est)):
 
