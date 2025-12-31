@@ -164,7 +164,8 @@ def setup_parser():
         "--extra_vis_types",
         nargs="*",
         help="List of extra visualizations to generate.",
-        choices=["depth_heatmap", "bbox3d", "contour"]
+        choices=["depth_heatmap", "bbox3d", "contour"],
+        default=[]
     )
     return parser
 
