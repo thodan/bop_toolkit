@@ -67,6 +67,16 @@ p = {
             "n_top": -1, 
             "type": "adi",
             "correct_th": [[0.1]] # 10% of objects diameter
+        }, 
+        {
+            "n_top": -1, 
+            "type": "te",
+            "correct_th": [[10.0]] # cm 
+        },
+        {
+            "n_top": -1,
+            "type": "re",
+            "correct_th": [[10.0]] # deg
         }
     ],
     # Minimum visible surface fraction of a valid GT pose.

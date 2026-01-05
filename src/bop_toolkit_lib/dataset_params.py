@@ -197,7 +197,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
     # has to be set if sensor_modalities_have_separate_annotations is True
     exts = None
 
-    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj"]
+    supported_error_types = ["ad", "add", "adi", "vsd", "mssd", "mspd", "cus", "proj", "te", "re"]
 
     # Linemod (LM).
     if dataset_name == "lm":
