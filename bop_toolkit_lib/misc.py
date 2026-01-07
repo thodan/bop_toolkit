@@ -515,6 +515,14 @@ def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
 
 
 def match_gt_poses_to_est(est_poses, gt_poses, models, syms_per_obj):
+    """
+    Matches GT poses to estimated poses using the Hungarian algorithm based on MSSD.
+    If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est.
+    The matching gracefully handles cases of having #est < #gt and #est > #gt.
+    """
+    
+    while len(est_poses) > len(gt_poses):
+        gt_poses += gt_poses
 
     cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
     for i, e in enumerate(est_poses):
