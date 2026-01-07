@@ -514,13 +514,19 @@ def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
     return poses
 
 
-def match_gt_poses_to_est(est_poses, gt_poses, models, syms_per_obj):
+def match_gt_poses_to_est(
+    est_poses: list[dict],
+    gt_poses: list[dict],
+    models: dict[str, dict],
+    syms_per_obj: dict[int, list],
+) -> list[dict]:
     """
     Matches GT poses to estimated poses using the Hungarian algorithm based on MSSD.
-    If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est.
     The matching gracefully handles cases of having #est < #gt and #est > #gt.
+    If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est.
+    In this case, the assignment returns #est GT poses matched to the respective estimated poses.
     """
-    
+
     while len(est_poses) > len(gt_poses):
         gt_poses += gt_poses
 
