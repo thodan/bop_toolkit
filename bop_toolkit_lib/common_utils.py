@@ -23,9 +23,27 @@ def adjust_img_for_plt(img):
     return img
 
 
+def adjust_depth_for_plt(img):
+    """Similarly to adjust_img_for_plt, converts a depth image to a plottable format.
+    
+    :param img: Depth image in CHW or HWC format, numpy array or torch tensor.
+    :return: Depth image in HW or HWC format.
+    """
+
+    img = cast_to_numpy(img)
+    if len(img.shape) == 4:
+        if img.shape[0] == 1:
+            img = img[0]
+        else:
+            raise RuntimeError(f"Expected 1 image, got {img.shape[0]}")
+    if img.shape[0] == 1:
+        img = img.transpose(1, 2, 0)
+    return img
+
+
 def cast_to_numpy(x, dtype=None) -> np.ndarray:
     """Casts input to numpy array of a given type.
-    
+
     :param x: Input data. Can be a numpy array, a torch tensor, a PIL image, a list/tuple/dict with the aforementioned types.
     :return: Numpy array or the same structure as input with numpy arrays.
     """

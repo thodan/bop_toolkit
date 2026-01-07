@@ -489,6 +489,7 @@ def reorganize_targets(targets, organize_by_obj_ids=False):
 
 
 def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
+    """Parses GT poses from scene_gt for an img for the specified gt_ids."""
     poses = []
     gt_ids = list(range(len(scene_gt_img))) if gt_ids is None else gt_ids
     for gt_id in gt_ids:
