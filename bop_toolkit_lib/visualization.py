@@ -116,8 +116,8 @@ def vis_object_poses(
     """Visualizes 3D object models in specified poses in a single image.
 
     Two visualizations are created:
-    1. An RGB visualization (if vis_rgb_path is not None).
-    2. A Depth-difference visualization (if vis_depth_diff_path is not None).
+    1. An RGB visualization (if vis_rgb).
+    2. A Depth-difference visualization (if vis_depth_diff).
 
     :param poses: List of dictionaries, each with info about one pose:
       - 'obj_id': Object ID.
@@ -128,8 +128,8 @@ def vis_object_poses(
     :param renderer: Instance of the Renderer class (see renderer.py).
     :param rgb: ndarray with the RGB input image.
     :param depth: ndarray with the depth input image.
-    :param vis_rgb_path: Path to the output RGB visualization.
-    :param vis_depth_diff_path: Path to the output depth-difference visualization.
+    :param vis_rgb: Whether to create the RGB visualization.
+    :param vis_depth_diff: Whether to create the depth-difference visualization.
     :param vis_rgb_resolve_visib: Whether to resolve visibility of the objects
       (i.e. only the closest object is visualized at each pixel).
     """
@@ -266,7 +266,15 @@ def vis_object_poses(
     return res
 
 
-def render_poses(poses, renderer, K):
+def render_poses(poses: list[dict], renderer, K) -> list[dict]:
+    """Renders object models in specified poses.
+    
+    :param poses: List of dictionaries, each with info about one pose.
+    :param renderer: Instance of the Renderer class (see renderer.py).
+    :param K: Intrinsic camera model, either as a 3x3 ndarray or CameraModel.
+    :return: List of renderings, each as a dictionary with rendered RGB, depth, etc.
+    """
+
     renderings = []
     for pose in poses:
         if htt_available and isinstance(K, CameraModel): # hand_tracking_toolkit is used for rendering.
