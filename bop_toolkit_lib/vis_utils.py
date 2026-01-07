@@ -4,12 +4,24 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from bop_toolkit_lib import misc
-from bop_toolkit_lib.common_utils import adjust_img_for_plt, cast_to_numpy
-from bop_toolkit_lib.geom_utils import backproj_depth
+from bop_toolkit_lib.common_utils import (
+    adjust_depth_for_plt,
+    adjust_img_for_plt,
+    cast_to_numpy,
+)
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def get_depth_diff_img(gt_depth, est_pose, gt_pose, cam, syms=None):
+    """Computes a depth difference heatmap at ground truth and estimated poses. If symmetries are provided, the lowest-error pose under symmetry transformations is used.
+
+    :param gt_depth: Ground truth depth image (H, W).
+    :param est_pose: Estimated pose dictionary with 'R' (3x3) and 't' (3x1) keys.
+    :param gt_pose: Ground truth pose dictionary with 'R' (3x3) and 't' (3x1) keys.
+    :param cam: Camera parameters.
+    :param syms: List of symmetry transformations with 'R' (3x3) and 't' (3x1).
+    :return: Depth difference heatmap (H, W) showing per-pixel distance between the ground truth and estimated depths.
+    """
     hw = gt_depth.shape[-2:]
     gt_depth_xyz, _ = backproj_depth(gt_depth, cam)
     dists = compute_per_point_dists(
@@ -25,6 +37,14 @@ def get_depth_diff_img(gt_depth, est_pose, gt_pose, cam, syms=None):
 
 
 def combine_depth_diffs(masks, diffs, use_clip=False, clip_val=None):
+    """Combines multiple depth difference heatmaps using corresponding masks.
+
+    :param masks: List of N binary masks (H, W) for each object.
+    :param diffs: List of N depth difference heatmaps (H, W).
+    :param use_clip: Whether to clip the combined values.
+    :param clip_val: Maximum clip value, defaults to 99.7 percentile.
+    :return: Dictionary with 'combined' image (H, W) and list of intermediate 'imgs'.
+    """
     combined = np.zeros_like(diffs[0], dtype=np.float32)
     imgs = []
     for i, mask in enumerate(masks):
@@ -47,8 +67,18 @@ def draw_pose_contour(
     mask_visib=None,
     use_depth=False,
 ):
-    # based on: https://github.com/megapose6d/megapose6d/blob/master/src/megapose/visualization/utils.py
+    """Draws pose contour on an image using rendered depth.
 
+    Based on: https://github.com/megapose6d/megapose6d/blob/master/src/megapose/visualization/utils.py
+
+    :param cv_img: Input image (H, W) or (H, W, 3) in OpenCV format.
+    :param rendered_depth: Rendered depth map (H, W).
+    :param contour_color: RGB color tuple for the contour.
+    :param thickness: Thickness of the contour line.
+    :param mask_visib: Visibility mask (H, W) to apply.
+    :param use_depth: Whether to use depth edges for contouring.
+    :return: Image (H, W, 3) with drawn contour overlay.
+    """
     mask = ((rendered_depth > 0).astype(np.uint8)) * 255
 
     if mask_visib is not None:
@@ -83,6 +113,13 @@ def draw_pose_contour(
 
 
 def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
+    """Generates a composite depth map and object masks from per-object renderings with only foreground pixels.
+
+    :param render_out_per_obj: Dictionary mapping object IDs to rendering outputs,
+                               each containing a 'depth' key.
+    :return: Dictionary with 'depth_map' (composite depth) and 'mask_objs' (list of
+             binary masks for each object).
+    """
     depth_map = np.zeros_like(list(render_out_per_obj.values())[0]["depth"])
     for idx, obj_res in render_out_per_obj.items():
         depth_obj = obj_res["depth"]
@@ -118,6 +155,20 @@ def draw_pose_on_img(
     final_frame=None,
     extra_text=None,
 ):
+    """Draws predicted pose as a 3D bbox on an RGB image.
+
+    :param rgb: Input RGB image (H, W, 3).
+    :param K: 3x3 camera intrinsic matrix.
+    :param pose_pred: Predicted 4x4 pose matrix or (N, 4, 4) array of poses.
+    :param mesh_bbox: 3D bounding box vertices (Nx3) of the mesh.
+    :param bbox_color: RGB color tuple for predicted pose bounding box.
+    :param bbox_color_gt: RGB color tuple for ground truth bounding box.
+    :param axes_scale: Scale factor for coordinate axes.
+    :param pose_gt: Ground truth 4x4 pose matrix or (N, 4, 4) array.
+    :param final_frame: Frame (H, W, 3) to draw on, if None creates new.
+    :param extra_text: Text string or list of strings to display on image.
+    :return: Image (H, W, 3) with pose visualization drawn.
+    """
     if mesh_bbox is not None:
         mesh_bbox = np.array(mesh_bbox) if isinstance(mesh_bbox, list) else mesh_bbox
     if (
@@ -181,10 +232,20 @@ def draw_xyz_axis(
     thickness=4,
     transparency=0,
     is_input_rgb=False,
-    do_add_text=False,
 ):
-    """
-    based on: https://github.com/NVlabs/FoundationPose/blob/main/Utils.py
+    """Draws XYZ coordinate axes on an image.
+
+    Based on: https://github.com/NVlabs/FoundationPose/blob/main/Utils.py
+
+    :param rgb: Input image (H, W, 3).
+    :param rt: 4x4 pose transformation matrix.
+    :param K: 3x3 camera intrinsic matrix.
+    :param scale: Scale factor for axis length.
+    :param thickness: Line thickness in pixels.
+    :param transparency: Transparency level 0-1.
+    :param is_input_rgb: Whether input is RGB (True) or BGR (False).
+    :param do_add_text: Whether to add text labels.
+    :return: Image (H, W, 3) with drawn coordinate axes.
     """
     if is_input_rgb:
         rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
@@ -253,8 +314,17 @@ def draw_xyz_axis(
 
 
 def draw_posed_3d_box(img, rt, K, bbox, line_color=(0, 255, 0), linewidth=2):
-    """
-    based on: https://github.com/NVlabs/FoundationPose/blob/main/Utils.py
+    """Draws a 3D bounding box on an image given a pose.
+
+    Based on: https://github.com/NVlabs/FoundationPose/blob/main/Utils.py
+
+    :param img: Input image (H, W, 3).
+    :param rt: 4x4 pose transformation matrix.
+    :param K: 3x3 camera intrinsic matrix.
+    :param bbox: 3D bounding box vertices (Nx3) array.
+    :param line_color: RGB color tuple for box lines.
+    :param linewidth: Width of the box lines.
+    :return: Image (H, W, 3) with drawn 3D bounding box.
     """
     bbox = cast_to_numpy(bbox)
     if bbox.ndim == 3:
@@ -303,6 +373,12 @@ def draw_posed_3d_box(img, rt, K, bbox, line_color=(0, 255, 0), linewidth=2):
 
 
 def calc_mask_visib_percent(mask_visib, valid_mask):
+    """Calculates the percentage of visible pixels.
+
+    :param mask_visib: Binary visibility mask (H, W).
+    :param valid_mask: Binary mask (H, W) of valid pixels.
+    :return: Percentage of visible pixels (0-100).
+    """
     total_pixels = np.sum(valid_mask)
     visible_pixels = np.sum(mask_visib)
     percent_visible = (visible_pixels / total_pixels) * 100
@@ -312,6 +388,16 @@ def calc_mask_visib_percent(mask_visib, valid_mask):
 def draw_text_in_ul(
     rgb, extra_text, size=1, thickness=3, start_pos=(10, 30), color=(255, 0, 0)
 ):
+    """Draws text in the upper-left corner of an image.
+
+    :param rgb: Input RGB image (H, W, 3).
+    :param extra_text: Text string to draw.
+    :param size: Font size scale factor.
+    :param thickness: Text thickness in pixels.
+    :param start_pos: (x, y) starting position tuple.
+    :param color: RGB color tuple for text.
+    :return: Image (H, W, 3) with drawn text.
+    """
     rgb = cv2.putText(
         copy.deepcopy(rgb),
         extra_text,
@@ -327,14 +413,30 @@ def draw_text_in_ul(
 
 
 def merge_masks(masks):
+    """Merges multiple binary masks into a single mask.
+
+    :param masks: Array of binary masks with shape (N, H, W).
+    :return: Single merged binary mask where any pixel is True if it's True in any input mask.
+    """
     return np.any(masks, axis=0)
 
 
 def get_pose_mat_from_dict(pose):
+    """Converts a pose dictionary to a 4x4 transformation matrix.
+
+    :param pose: Dictionary with 'R' (3x3) rotation and 't' (3x1) translation keys.
+    :return: 4x4 homogeneous transformation matrix.
+    """
     return get_pose_mat_from_rt(pose["R"], pose["t"])
 
 
 def get_pose_mat_from_rt(rot, t):
+    """Creates a 4x4 transformation matrix from rotation and translation.
+
+    :param rot: 3x3 rotation matrix.
+    :param t: 3x1 or 3-element translation vector.
+    :return: 4x4 homogeneous transformation matrix.
+    """
     pose_mat = np.eye(4)
     pose_mat[:3, :3] = rot
     pose_mat[:3, 3] = t.squeeze()
@@ -342,7 +444,16 @@ def get_pose_mat_from_rt(rot, t):
 
 
 def compute_per_point_dists(pts_gt_cam, pose_gt, pose_est, syms=None):
-    # pts=pts transformed via gt pose, poses=obj->cam
+    """Computes per-point distances between ground truth and estimated poses.
+
+    Points are transformed via ground truth pose, poses are object-to-camera.
+
+    :param pts_gt_cam: (N, 3) array of points in camera frame under ground truth pose.
+    :param pose_gt: 4x4 ground truth pose matrix.
+    :param pose_est: 4x4 estimated pose matrix.
+    :param syms: List of symmetry transformations with 'R' (3x3) and 't' (3x1) keys.
+    :return: (N,) array of per-point distances.
+    """
     pose_gt_inv = np.linalg.inv(pose_gt)
     # gt -> est
     if syms is not None:
@@ -386,6 +497,26 @@ def plot_depth(
     use_white_bg=False,
     mask=None,
 ):
+    """Plots a depth map with colorbar and RGB overlay.
+
+    :param depth: Depth image array (H, W).
+    :param ax: Matplotlib axis to plot on, creates new if None.
+    :param include_colorbar: Whether to include a colorbar.
+    :param disable_axis: Whether to turn off axis display.
+    :param cmap: Colormap name for depth visualization.
+    :param cbar_title: Title for the colorbar.
+    :param rgb: RGB image (H, W, 3) to overlay on depth.
+    :param rgb_alpha: Alpha transparency for RGB overlay.
+    :param use_horiz_cbar: Use horizontal colorbar instead of vertical.
+    :param title: Title for the plot.
+    :param use_fixed_cbar: Use fixed colorbar range.
+    :param vmin: Minimum value for fixed colorbar.
+    :param vmax: Maximum value for fixed colorbar.
+    :param fontsize: Font size for labels.
+    :param use_white_bg: Use white background for invalid pixels.
+    :param mask: Binary mask (H, W) indicating valid pixels.
+    :return: Matplotlib axis object with the plot.
+    """
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(10, 5))
         if disable_axis:
@@ -432,13 +563,27 @@ def plot_depth(
     return ax
 
 
-def adjust_depth_for_plt(img):
-    img = cast_to_numpy(img)
-    if len(img.shape) == 4:
-        if img.shape[0] == 1:
-            img = img[0]
-        else:
-            raise RuntimeError(f"Expected 1 image, got {img.shape[0]}")
-    if img.shape[0] == 1:
-        img = img.transpose(1, 2, 0)
-    return img
+def backproj_depth(depth, intrinsics, mask=None):
+    """Backprojects a depth image to 3D points in camera coordinates.
+
+    :param depth: Depth image array (H, W).
+    :param intrinsics: 3x3 camera intrinsic matrix.
+    :param mask: Binary mask (H, W) of pixels to back-project.
+    :return: Tuple of (pts, idxs) where pts is (N, 3) array of 3D points and
+             idxs is tuple of (row, col) arrays of valid pixel indices.
+    """
+    intrinsics_inv = np.linalg.inv(intrinsics)
+    val_depth = depth > 0
+    if mask is None:
+        val_mask = val_depth
+    else:
+        val_mask = np.logical_and(mask, val_depth)
+    idxs = np.where(val_mask)
+    grid = np.array([idxs[1], idxs[0]])
+    ones = np.ones([1, grid.shape[1]])
+    uv_grid = np.concatenate((grid, ones), axis=0)
+    xyz = intrinsics_inv @ uv_grid
+    xyz = np.transpose(xyz).squeeze()
+    z = depth[idxs[0], idxs[1]]
+    pts = xyz * z[:, np.newaxis] / xyz[:, -1:]
+    return pts, idxs
