@@ -1,4 +1,5 @@
 import copy
+from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import matplotlib.pyplot as plt
@@ -12,7 +13,13 @@ from bop_toolkit_lib.common_utils import (
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
-def get_depth_diff_img(gt_depth, est_pose, gt_pose, cam, syms=None):
+def get_depth_diff_img(
+    gt_depth: np.ndarray,
+    est_pose: Dict,
+    gt_pose: Dict,
+    cam: np.ndarray,
+    syms: Optional[List[Dict]] = None,
+) -> np.ndarray:
     """Computes a depth difference heatmap at ground truth and estimated poses. If symmetries are provided, the lowest-error pose under symmetry transformations is used.
 
     :param gt_depth: Ground truth depth image (H, W).
@@ -36,7 +43,12 @@ def get_depth_diff_img(gt_depth, est_pose, gt_pose, cam, syms=None):
     return depth_diff_img
 
 
-def combine_depth_diffs(masks, diffs, use_clip=False, clip_val=None):
+def combine_depth_diffs(
+    masks: List[np.ndarray],
+    diffs: List[np.ndarray],
+    use_clip: bool = False,
+    clip_val: Optional[float] = None,
+) -> Dict[str, Union[np.ndarray, List[np.ndarray]]]:
     """Combines multiple depth difference heatmaps using corresponding masks.
 
     :param masks: List of N binary masks (H, W) for each object.
@@ -60,13 +72,13 @@ def combine_depth_diffs(masks, diffs, use_clip=False, clip_val=None):
 
 
 def draw_pose_contour(
-    cv_img,
-    rendered_depth,
-    contour_color=(255, 0, 0),
-    thickness=3,
-    mask_visib=None,
-    use_depth=False,
-):
+    cv_img: np.ndarray,
+    rendered_depth: np.ndarray,
+    contour_color: Tuple[int, int, int] = (255, 0, 0),
+    thickness: int = 3,
+    mask_visib: Optional[np.ndarray] = None,
+    use_depth: bool = False,
+) -> np.ndarray:
     """Draws pose contour on an image using rendered depth.
 
     Based on: https://github.com/megapose6d/megapose6d/blob/master/src/megapose/visualization/utils.py
@@ -112,7 +124,9 @@ def draw_pose_contour(
     return overlay
 
 
-def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
+def get_depth_map_and_obj_masks_from_renderings(
+    render_out_per_obj: Dict,
+) -> Dict[str, Union[np.ndarray, List[np.ndarray]]]:
     """Generates a composite depth map and object masks from per-object renderings with only foreground pixels.
 
     :param render_out_per_obj: Dictionary mapping object IDs to rendering outputs,
@@ -144,17 +158,17 @@ def get_depth_map_and_obj_masks_from_renderings(render_out_per_obj):
 
 
 def draw_pose_on_img(
-    rgb,
-    K,
-    pose_pred,
-    mesh_bbox=None,
-    bbox_color=(255, 255, 0),
-    bbox_color_gt=(0, 255, 0),
-    axes_scale=50.0,
-    pose_gt=None,
-    final_frame=None,
-    extra_text=None,
-):
+    rgb: np.ndarray,
+    K: np.ndarray,
+    pose_pred: np.ndarray,
+    mesh_bbox: Optional[np.ndarray] = None,
+    bbox_color: Tuple[int, int, int] = (255, 255, 0),
+    bbox_color_gt: Tuple[int, int, int] = (0, 255, 0),
+    axes_scale: float = 50.0,
+    pose_gt: Optional[np.ndarray] = None,
+    final_frame: Optional[np.ndarray] = None,
+    extra_text: Optional[Union[str, List[str]]] = None,
+) -> np.ndarray:
     """Draws predicted pose as a 3D bbox on an RGB image.
 
     :param rgb: Input RGB image (H, W, 3).
@@ -225,14 +239,14 @@ def draw_pose_on_img(
 
 
 def draw_xyz_axis(
-    rgb,
-    rt,
-    K,
-    scale=10.0,
-    thickness=4,
-    transparency=0,
-    is_input_rgb=False,
-):
+    rgb: np.ndarray,
+    rt: np.ndarray,
+    K: np.ndarray,
+    scale: float = 10.0,
+    thickness: int = 4,
+    transparency: float = 0,
+    is_input_rgb: bool = False,
+) -> np.ndarray:
     """Draws XYZ coordinate axes on an image.
 
     Based on: https://github.com/NVlabs/FoundationPose/blob/main/Utils.py
@@ -313,7 +327,14 @@ def draw_xyz_axis(
     return tmp
 
 
-def draw_posed_3d_box(img, rt, K, bbox, line_color=(0, 255, 0), linewidth=2):
+def draw_posed_3d_box(
+    img: np.ndarray,
+    rt: np.ndarray,
+    K: np.ndarray,
+    bbox: np.ndarray,
+    line_color: Tuple[int, int, int] = (0, 255, 0),
+    linewidth: int = 2,
+) -> np.ndarray:
     """Draws a 3D bounding box on an image given a pose.
 
     Based on: https://github.com/NVlabs/FoundationPose/blob/main/Utils.py
@@ -372,7 +393,7 @@ def draw_posed_3d_box(img, rt, K, bbox, line_color=(0, 255, 0), linewidth=2):
     return img
 
 
-def calc_mask_visib_percent(mask_visib, valid_mask):
+def calc_mask_visib_percent(mask_visib: np.ndarray, valid_mask: np.ndarray) -> float:
     """Calculates the percentage of visible pixels.
 
     :param mask_visib: Binary visibility mask (H, W).
@@ -386,8 +407,13 @@ def calc_mask_visib_percent(mask_visib, valid_mask):
 
 
 def draw_text_in_ul(
-    rgb, extra_text, size=1, thickness=3, start_pos=(10, 30), color=(255, 0, 0)
-):
+    rgb: np.ndarray,
+    extra_text: str,
+    size: int = 1,
+    thickness: int = 3,
+    start_pos: Tuple[int, int] = (10, 30),
+    color: Tuple[int, int, int] = (255, 0, 0),
+) -> np.ndarray:
     """Draws text in the upper-left corner of an image.
 
     :param rgb: Input RGB image (H, W, 3).
@@ -412,7 +438,7 @@ def draw_text_in_ul(
     return rgb
 
 
-def merge_masks(masks):
+def merge_masks(masks: np.ndarray) -> np.ndarray:
     """Merges multiple binary masks into a single mask.
 
     :param masks: Array of binary masks with shape (N, H, W).
@@ -421,7 +447,7 @@ def merge_masks(masks):
     return np.any(masks, axis=0)
 
 
-def get_pose_mat_from_dict(pose):
+def get_pose_mat_from_dict(pose: Dict) -> np.ndarray:
     """Converts a pose dictionary to a 4x4 transformation matrix.
 
     :param pose: Dictionary with 'R' (3x3) rotation and 't' (3x1) translation keys.
@@ -430,7 +456,7 @@ def get_pose_mat_from_dict(pose):
     return get_pose_mat_from_rt(pose["R"], pose["t"])
 
 
-def get_pose_mat_from_rt(rot, t):
+def get_pose_mat_from_rt(rot: np.ndarray, t: np.ndarray) -> np.ndarray:
     """Creates a 4x4 transformation matrix from rotation and translation.
 
     :param rot: 3x3 rotation matrix.
@@ -443,7 +469,12 @@ def get_pose_mat_from_rt(rot, t):
     return pose_mat
 
 
-def compute_per_point_dists(pts_gt_cam, pose_gt, pose_est, syms=None):
+def compute_per_point_dists(
+    pts_gt_cam: np.ndarray,
+    pose_gt: np.ndarray,
+    pose_est: np.ndarray,
+    syms: Optional[List[Dict]] = None,
+) -> np.ndarray:
     """Computes per-point distances between ground truth and estimated poses.
 
     Points are transformed via ground truth pose, poses are object-to-camera.
@@ -480,23 +511,23 @@ def compute_per_point_dists(pts_gt_cam, pose_gt, pose_est, syms=None):
 
 
 def plot_depth(
-    depth,
-    ax=None,
-    include_colorbar=True,
-    disable_axis=True,
-    cmap="viridis",
-    cbar_title=None,
-    rgb=None,
-    rgb_alpha=0.3,
-    use_horiz_cbar=False,
-    title=None,
-    use_fixed_cbar=False,
-    vmin=None,
-    vmax=None,
-    fontsize=14,
-    use_white_bg=False,
-    mask=None,
-):
+    depth: np.ndarray,
+    ax: Optional[plt.Axes] = None,
+    include_colorbar: bool = True,
+    disable_axis: bool = True,
+    cmap: str = "viridis",
+    cbar_title: Optional[str] = None,
+    rgb: Optional[np.ndarray] = None,
+    rgb_alpha: float = 0.3,
+    use_horiz_cbar: bool = False,
+    title: Optional[str] = None,
+    use_fixed_cbar: bool = False,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    fontsize: int = 14,
+    use_white_bg: bool = False,
+    mask: Optional[np.ndarray] = None,
+) -> plt.Axes:
     """Plots a depth map with colorbar and RGB overlay.
 
     :param depth: Depth image array (H, W).
@@ -563,7 +594,9 @@ def plot_depth(
     return ax
 
 
-def backproj_depth(depth, intrinsics, mask=None):
+def backproj_depth(
+    depth: np.ndarray, intrinsics: np.ndarray, mask: Optional[np.ndarray] = None
+) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """Backprojects a depth image to 3D points in camera coordinates.
 
     :param depth: Depth image array (H, W).
