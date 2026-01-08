@@ -5,15 +5,11 @@ from bop_toolkit_lib import config, misc
 
 DEFAULTS = {
     "common": {
-        # Indicates whether to render RGB image.
-        "vis_rgb": True,
         # Indicates whether to resolve visibility in the rendered RGB images (using
         # depth renderings). If True, only the part of object surface, which is not
         # occluded by any other modeled object, is visible. If False, RGB renderings
         # of individual objects are blended together.
         "vis_rgb_resolve_visib": True,
-        # Indicates whether to render depth image (or save images of depth differences).
-        "vis_depth_diff": True,
         # Whether to use the original model color.
         "vis_orig_color": False,
         # Type of the renderer (used for the VSD pose error function).
@@ -49,15 +45,8 @@ DEFAULTS = {
         "im_ids": None,
         "gt_ids": None,
         # Path templates for output images.
-        "vis_rgb_tpath": os.path.join(
-            "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}.jpg"
-        ),
-        "vis_depth_diff_tpath": os.path.join(
-            "{vis_path}",
-            "{dataset}",
-            "{split}",
-            "{scene_id:06d}",
-            "{im_id:06d}_depth_diff.jpg",
+        "vis_path_template": os.path.join(
+            "{vis_path}", "{dataset}", "{split}", "{scene_id:06d}", "{im_id:06d}{suffix}.jpg"
         ),
     },
     "est": {
@@ -71,12 +60,9 @@ DEFAULTS = {
         "result_filename": None,
         # Folder with results to be evaluated.
         "results_path": config.results_path,
-        "vis_rgb_tpath": os.path.join(
-            "{vis_path}", "{result_name}", "{scene_id:06d}", "{vis_name}.jpg"
-        ),
-        "vis_depth_diff_tpath": os.path.join(
-            "{vis_path}", "{result_name}", "{scene_id:06d}", "{vis_name}_depth_diff.jpg"
-        ),
+        "vis_path_template": os.path.join(
+            "{vis_path}", "{result_name}", "{scene_id:06d}", "{im_id:06d}{suffix}.jpg"
+        )
     },
 }
 ################################################################################
@@ -90,11 +76,9 @@ def setup_parser():
     common_parser = argparse.ArgumentParser(add_help=False)
     c_defs = DEFAULTS["common"]
 
-    misc.add_argument_bool(common_parser, "vis_rgb", c_defs["vis_rgb"])
     misc.add_argument_bool(
         common_parser, "vis_rgb_resolve_visib", c_defs["vis_rgb_resolve_visib"]
     )
-    misc.add_argument_bool(common_parser, "vis_depth_diff", c_defs["vis_depth_diff"])
     misc.add_argument_bool(common_parser, "vis_orig_color", c_defs["vis_orig_color"])
 
     common_parser.add_argument(
@@ -139,14 +123,16 @@ def setup_parser():
     parser_gt.add_argument("--gt_ids", help="Comma-separated GT object IDs")
 
     parser_gt.add_argument(
-        "--vis_rgb_tpath",
-        default=gt_defs["vis_rgb_tpath"],
-        help="Template path for output RGB images",
+        "--vis_path_template",
+        default=gt_defs["vis_path_template"],
+        help="Template path for output images",
     )
     parser_gt.add_argument(
-        "--vis_depth_diff_tpath",
-        default=gt_defs["vis_depth_diff_tpath"],
-        help="Template path for output depth difference images",
+        "--vis_types",
+        nargs="*",
+        help="List of visualizations to generate.",
+        choices=["overlay", "depth_diff"],
+        default=["overlay", "depth_diff"]
     )
 
     est_defs = DEFAULTS["est"]
@@ -160,6 +146,18 @@ def setup_parser():
         help="Top N estimates to visualize (0=all, -1=match GT)",
     )
     parser_est.add_argument(
+        "--min_obj_visib_percent_to_draw_contour",
+        type=int,
+        default=20,
+        help="Minimum visibility of an object to include it in the contour visual",
+    )
+    parser_est.add_argument(
+        "--min_obj_visib_percent_to_draw_bbox3d",
+        type=int,
+        default=35,
+        help="Minimum visibility of an object to include it in the bbox3d visual",
+    )
+    parser_est.add_argument(
         "--result_filename",
         default=est_defs["result_filename"],
         required=True,
@@ -171,14 +169,16 @@ def setup_parser():
         help="Path to results folder",
     )
     parser_est.add_argument(
-        "--vis_rgb_tpath",
-        default=est_defs["vis_rgb_tpath"],
-        help="Template path for output RGB images",
+        "--vis_path_template",
+        default=est_defs["vis_path_template"],
+        help="Template path for output images",
     )
     parser_est.add_argument(
-        "--vis_depth_diff_tpath",
-        default=est_defs["vis_depth_diff_tpath"],
-        help="Template path for output depth difference images",
+        "--vis_types",
+        nargs="*",
+        help="List of visualizations to generate. 'depth_heatmap' requires GT poses.",
+        choices=["overlay", "depth_diff", "depth_heatmap", "bbox3d", "contour"],
+        default=["overlay", "depth_diff"]
     )
     return parser
 

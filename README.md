@@ -116,7 +116,7 @@ python scripts/eval_bop22_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESU
 
 ### Visualize results
 
-`vis_poses.py` in the `scripts/` folder allows visualizing estimated and groundtruth poses. See `vis_poses_cli.py` for available CLI arguments.
+`vis_poses.py` in the `scripts/` folder allows visualizing estimated and groundtruth poses. See `vis_poses_cli.py` for available CLI arguments for `gt` (groundtruth) and `est` (predictions) visualization modes. `vis_object_symmetries.py` renders object symmetries.
 
 Sample commands:
 
@@ -126,19 +126,19 @@ python vis_poses.py gt --dataset ycbv --scene_ids 48 --vis_orig_color
 python vis_poses.py est --result_filename /bop/results/gt-equivalent_ycbv-test.csv --n_top 2
 ```
 
-`vis_object_symmetries.py` renders object symmetries.
+Pass `--vis_types overlay depth_diff depth_heatmap contour bbox3d` when calling `vis_poses.py est` to get a full suite of visuals for a given set of predicted poses.
+
+A demo notebook at `./bop_toolkit_lib/notebooks/demo_vis_poses.ipynb` showcases several visualization types.
+
 
 #### Available Visuals
 
 - [x] rendering of objects onto an image
 - [x] depth error based on rendering with groundtruth and predicted poses
 - [x] rendering of object symmetries
-- [ ] depth error heatmaps based on rendering with groundtruth and predicted poses
-- [ ] rendering of object contour
-- [ ] 3D bounding boxes
-- [ ] depth maps
-- [ ] joint groundtruth-prediction visuals
-- [ ] NOCS
+- [x] depth error heatmaps based on rendering with groundtruth and predicted poses
+- [x] rendering of object contour
+- [x] 3D bounding boxes
 
 ## Convert BOP to COCO format
 

@@ -3,14 +3,28 @@ Visualizes object models in the GT/estimated poses.
 The script visualize datasets in the classical BOP19 format as well as the HOT3D dataset in H3 BOP24 format.
 """
 
+import copy
+import functools
 import itertools
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
+import trimesh
 from bop_toolkit_lib import config, dataset_params, inout, misc, visualization
 from bop_toolkit_lib.rendering import renderer
+from bop_toolkit_lib.vis_utils import (
+    calc_mask_visib_percent,
+    combine_depth_diffs,
+    draw_pose_contour,
+    draw_pose_on_img,
+    get_depth_diff_img,
+    get_depth_map_and_obj_masks_from_renderings,
+    get_pose_mat_from_dict,
+    merge_masks,
+    plot_depth,
+)
 from tqdm import tqdm
-
 from vis_poses_cli import postprocess_args, setup_parser
 
 file_name = os.path.splitext(os.path.basename(__file__))[0]
@@ -35,6 +49,8 @@ def main(args):
         result_name, method, dataset, split, split_type, _ = (
             inout.parse_result_filename(result_filename)
         )
+    vis_rgb = "overlay" in args.vis_types
+    vis_depth_diff = "depth_diff" in args.vis_types
 
     #######################
     # hot3d specific checks
@@ -54,9 +70,9 @@ def main(args):
 
     # hot3d does not contain depth modality, some visualizations are not available
     if dataset in ["hot3d"]:
-        args.vis_rgb = True
+        vis_rgb = True
         args.vis_rgb_resolve_visib = False
-        args.vis_depth_diff = False
+        vis_depth_diff = False
     #######################
 
     # Load dataset parameters.
@@ -110,10 +126,26 @@ def main(args):
     colors_path = os.path.join(os.path.dirname(visualization.__file__), "colors.json")
     colors = inout.load_json(colors_path)
 
+    extra_vis_types = ["depth_heatmap", "bbox3d", "contour"]
+    do_extra_vis = args.mode == "est" and any(
+        x in args.vis_types for x in extra_vis_types
+    )
+    if do_extra_vis:
+        models_info = inout.load_json(dp_model["models_info_path"], keys_to_int=True)
+        models = {}
+        syms_per_obj = {}
+        for obj_id in dp_model["obj_ids"]:
+            models[obj_id] = inout.load_ply(
+                dp_model["model_tpath"].format(obj_id=obj_id)
+            )
+            syms_per_obj[obj_id] = misc.get_symmetry_transformations(
+                models_info[obj_id], max_sym_disc_step=0.01
+            )
+
     renderer_modalities = []
-    if args.vis_rgb:
+    if vis_rgb:
         renderer_modalities.append("rgb")
-    if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
+    if vis_depth_diff or (vis_rgb and args.vis_rgb_resolve_visib) or do_extra_vis:
         renderer_modalities.append("depth")
     renderer_mode = "+".join(renderer_modalities)
 
@@ -180,27 +212,9 @@ def main(args):
                 if args.gt_ids:
                     gt_ids_curr = set(gt_ids_curr).intersection(args.gt_ids)
 
-                # Collect the GT poses.
-                poses = []
-                for gt_id in gt_ids_curr:
-                    gt = scene_gt[im_id][gt_id]
-                    # skip fully occluded masks - all values are -1
-                    if all(val == -1 for val in gt["cam_t_m2c"]):
-                        continue
-                    poses.append(
-                        {
-                            "obj_id": gt["obj_id"],
-                            "R": gt["cam_R_m2c"],
-                            "t": gt["cam_t_m2c"],
-                            "text_info": [
-                                {
-                                    "name": "",
-                                    "val": "{}:{}".format(gt["obj_id"], gt_id),
-                                    "fmt": "",
-                                }
-                            ],
-                        }
-                    )
+                poses = misc.parse_gt_poses_from_scene_im(
+                    scene_gt[im_id], gt_ids=gt_ids_curr
+                )
                 poses_scene_vis[im_id] = poses
         else:
             poses_scene = ests_org[scene_id]
@@ -241,6 +255,7 @@ def main(args):
                 poses = list(itertools.chain.from_iterable(im_ests_vis))
                 poses_scene_vis[im_id] = poses
 
+        vis_save_dir = None
         for im_id, poses_img in tqdm(poses_scene_vis.items(), desc=f"Scene {scene_id}"):
 
             # Retrieve camera intrinsics.
@@ -250,7 +265,7 @@ def main(args):
                 cam = scene_camera[im_id]["cam_K"]
 
             rgb = None
-            if args.vis_rgb:
+            if vis_rgb or do_extra_vis:
                 # rgb_tpath is an alias refering to the sensor|modality image paths on which the poses are rendered
                 im_tpath = tpath_keys["rgb_tpath"]
                 # check for BOP classic (itodd)
@@ -270,7 +285,7 @@ def main(args):
                     rgb = rgb[:, :, :3]
 
             depth = None
-            if args.vis_depth_diff or (args.vis_rgb and args.vis_rgb_resolve_visib):
+            if vis_depth_diff or (vis_rgb and args.vis_rgb_resolve_visib):
                 depth_available = dataset_params.sensor_has_modality(
                     dp_split, scene_sensor, "depth"
                 )
@@ -278,7 +293,7 @@ def main(args):
                     misc.log(
                         f"{scene_sensor} has no depth data, skipping depth visualization"
                     )
-                    args.vis_depth_diff = False
+                    vis_depth_diff = False
                     args.vis_rgb_resolve_visib = False
                 else:
                     depth = inout.load_depth(
@@ -296,49 +311,194 @@ def main(args):
                     if scene_sensor
                     else args.dataset_split
                 )
-                if args.vis_rgb:
-                    vis_rgb_path = args.vis_rgb_tpath.format(
-                        vis_path=args.vis_path,
-                        dataset=args.dataset,
-                        split=split,
-                        scene_id=scene_id,
-                        im_id=im_id,
-                    )
-                if args.vis_depth_diff:
-                    vis_depth_diff_path = args.vis_depth_diff_tpath.format(
-                        vis_path=args.vis_path,
-                        dataset=args.dataset,
-                        split=split,
-                        scene_id=scene_id,
-                        im_id=im_id,
-                    )
+                vis_path_base = functools.partial(
+                    args.vis_path_template.format,
+                    vis_path=args.vis_path,
+                    dataset=args.dataset,
+                    split=split,
+                    scene_id=scene_id,
+                    im_id=im_id,
+                )
             else:
-                vis_name = "{im_id:06d}".format(im_id=im_id)
-                if args.vis_rgb:
-                    vis_rgb_path = args.vis_rgb_tpath.format(
-                        vis_path=args.vis_path,
-                        result_name=result_name,
-                        scene_id=scene_id,
-                        vis_name=vis_name,
-                    )
-                if args.vis_depth_diff:
-                    vis_depth_diff_path = args.vis_depth_diff_tpath.format(
-                        vis_path=args.vis_path,
-                        result_name=result_name,
-                        scene_id=scene_id,
-                        vis_name=vis_name,
-                    )
+                vis_path_base = functools.partial(
+                    args.vis_path_template.format,
+                    vis_path=args.vis_path,
+                    result_name=result_name,
+                    scene_id=scene_id,
+                    im_id=im_id,
+                )
+            if vis_rgb:
+                vis_rgb_path = vis_path_base(suffix="_overlay")
+            if vis_depth_diff:
+                vis_depth_diff_path = vis_path_base(suffix="_depth_diff")
 
-            visualization.vis_object_poses(
+            vis_res = visualization.vis_object_poses(
                 poses=poses_img,
                 K=cam,
                 renderer=ren,
                 rgb=rgb,
                 depth=depth,
-                vis_rgb_path=vis_rgb_path,
-                vis_depth_diff_path=vis_depth_diff_path,
                 vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
+                vis_rgb=vis_rgb,
+                vis_depth_diff=vis_depth_diff,
             )
+            if vis_rgb or vis_depth_diff or do_extra_vis:
+                vis_save_dir = os.path.dirname(vis_path_base(suffix=""))
+                misc.ensure_dir(vis_save_dir)
+            if vis_rgb:
+                inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
+            if vis_depth_diff:
+                inout.save_im(vis_depth_diff_path, vis_res["depth_diff_vis"])
+
+            if do_extra_vis:
+
+                gt_poses = misc.parse_gt_poses_from_scene_im(scene_gt[im_id])
+                gt_poses_matched = misc.match_gt_poses_to_est(
+                    est_poses=poses_img,
+                    gt_poses=gt_poses,
+                    models=models,
+                    syms_per_obj=syms_per_obj,
+                )
+                res_per_obj_est = vis_res["res_per_obj"]
+                res_per_obj_gt = visualization.vis_object_poses(
+                    poses=gt_poses_matched,
+                    K=cam,
+                    renderer=ren,
+                    rgb=rgb,
+                    depth=depth,
+                    vis_rgb_resolve_visib=args.vis_rgb_resolve_visib,
+                    vis_rgb=False,
+                    vis_depth_diff=False,
+                )["res_per_obj"]
+                bres_gt = get_depth_map_and_obj_masks_from_renderings(res_per_obj_gt)
+                mask_objs_gt = bres_gt["mask_objs"]
+                bres_est = get_depth_map_and_obj_masks_from_renderings(res_per_obj_est)
+                mask_objs = bres_est["mask_objs"]
+
+                if "depth_heatmap" in args.vis_types:
+
+                    depth_diff_meshs = []
+                    for obj_idx, obj_res_gt in res_per_obj_gt.items():
+                        obj_res = res_per_obj_est[obj_idx]
+                        gt_depth = obj_res_gt["depth"]
+                        obj_id = obj_res_gt["pose"]["obj_id"]
+                        pose = obj_res["pose"]
+                        depth_diff_mesh = get_depth_diff_img(
+                            gt_depth=gt_depth,
+                            est_pose=pose,
+                            gt_pose=obj_res_gt["pose"],
+                            cam=cam,
+                            syms=syms_per_obj[obj_id],
+                        )
+                        depth_diff_meshs.append(depth_diff_mesh)
+
+                    dres = combine_depth_diffs(
+                        mask_objs_gt,
+                        depth_diff_meshs,
+                    )
+                    depth_diff_img = dres["combined"]
+                    mask_objs_gt_merged = merge_masks(mask_objs_gt)
+                    plot_depth(
+                        depth_diff_img,
+                        cbar_title="Error (mm)",
+                        ax=None,
+                        cmap="turbo",
+                        use_horiz_cbar=True,
+                        use_white_bg=True,
+                        include_colorbar=True,
+                        use_fixed_cbar=True,
+                        mask=mask_objs_gt_merged,
+                    )
+                    save_path = vis_path_base(suffix="_depth_heatmap")
+                    plt.savefig(save_path, dpi=100, bbox_inches="tight")
+                    plt.close()
+                if "contour" in args.vis_types:
+                    contour_img = copy.deepcopy(rgb)
+                    for idx in range(len(res_per_obj_est)):
+                        depth_obj_gt = res_per_obj_gt[idx]["depth"]
+                        depth_obj = res_per_obj_est[idx]["depth"]
+                        depth_obj_mask = depth_obj_gt > 0
+                        mask_obj = mask_objs[idx]
+                        mask_obj_gt = mask_objs_gt[idx]
+
+                        percent = calc_mask_visib_percent(mask_obj, depth_obj_mask)
+                        if percent < args.min_obj_visib_percent_to_draw_contour:
+                            continue
+
+                        contour_img = draw_pose_contour(
+                            contour_img,
+                            rendered_depth=depth_obj_gt,
+                            mask_visib=mask_obj_gt,
+                            contour_color=(0, 255, 0),
+                        )
+                        contour_img = draw_pose_contour(
+                            contour_img,
+                            rendered_depth=depth_obj,
+                            contour_color=(255, 0, 0),
+                            mask_visib=mask_obj,
+                        )
+                    save_path = vis_path_base(suffix="_contour")
+                    inout.save_im(save_path, contour_img)
+                if "bbox3d" in args.vis_types:
+                    bbox_img = copy.deepcopy(rgb)
+                    for idx in range(len(res_per_obj_est)):
+
+                        obj_id = res_per_obj_gt[idx]["pose"]["obj_id"]
+                        pose_gt = res_per_obj_gt[idx]["pose"]
+                        pose_est = res_per_obj_est[idx]["pose"]
+                        model = models[obj_id]
+                        pts = model["pts"]
+                        mesh = trimesh.Trimesh(vertices=pts, faces=model["faces"])
+                        bbox_3d = trimesh.bounds.corners(
+                            mesh.bounding_box_oriented.bounds
+                        )
+                        depth_obj_gt = res_per_obj_gt[idx]["depth"]
+                        depth_obj_mask = depth_obj_gt > 0
+                        mask_obj = mask_objs[idx]
+                        percent = calc_mask_visib_percent(mask_obj, depth_obj_mask)
+                        if percent < args.min_obj_visib_percent_to_draw_bbox3d:
+                            continue
+
+                        pts_est = misc.transform_pts_Rt(
+                            pts, pose_est["R"], pose_est["t"].squeeze()
+                        )
+                        gt_poses_syms = []
+                        es = []
+                        for sym in syms_per_obj[obj_id]:
+                            R_gt_sym = pose_gt["R"].dot(sym["R"])
+                            t_gt_sym = (
+                                pose_gt["R"].dot(sym["t"].squeeze())
+                                + pose_gt["t"].squeeze()
+                            )
+                            pts_gt_sym = misc.transform_pts_Rt(pts, R_gt_sym, t_gt_sym)
+                            gt_poses_syms.append(
+                                {"R": R_gt_sym, "t": t_gt_sym, "obj_id": obj_id}
+                            )
+                            es.append(
+                                np.linalg.norm(pts_est - pts_gt_sym, axis=1).max()
+                            )
+                        best_idx = np.argmin(es)
+                        pose_gt_sym = gt_poses_syms[best_idx]
+                        pose_gt_sym_mat = get_pose_mat_from_dict(pose_gt_sym)
+
+                        est_pose_mat = get_pose_mat_from_dict(
+                            res_per_obj_est[idx]["pose"]
+                        )
+                        bbox_img = draw_pose_on_img(
+                            bbox_img,
+                            pose_pred=est_pose_mat,
+                            pose_gt=pose_gt_sym_mat,
+                            K=cam,
+                            axes_scale=50 // 2,
+                            mesh_bbox=bbox_3d,
+                            bbox_color=(255, 0, 0),
+                            bbox_color_gt=(0, 255, 0),
+                            include_obj_center=False,
+                        )
+                    save_path = vis_path_base(suffix="_bbox3d")
+                    inout.save_im(save_path, bbox_img)
+
+        misc.log(f"\nVisualization results saved to: {vis_save_dir}")
 
 
 if __name__ == "__main__":
