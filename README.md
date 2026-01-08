@@ -116,7 +116,7 @@ python scripts/eval_bop22_coco.py --result_filenames=NAME_OF_JSON_WITH_COCO_RESU
 
 ### Visualize results
 
-`vis_poses.py` in the `scripts/` folder allows visualizing estimated and groundtruth poses. See `vis_poses_cli.py` for available CLI arguments.
+`vis_poses.py` in the `scripts/` folder allows visualizing estimated and groundtruth poses. See `vis_poses_cli.py` for available CLI arguments for `gt` (groundtruth) and `est` (predictions) visualization modes. `vis_object_symmetries.py` renders object symmetries.
 
 Sample commands:
 
@@ -126,9 +126,10 @@ python vis_poses.py gt --dataset ycbv --scene_ids 48 --vis_orig_color
 python vis_poses.py est --result_filename /bop/results/gt-equivalent_ycbv-test.csv --n_top 2
 ```
 
-Pass `--extra_vis_types depth_heatmap contour bbox3d` when calling `vis_poses.py est` to extend the default visuals.
+Pass `--vis_types overlay depth_diff depth_heatmap contour bbox3d` when calling `vis_poses.py est` to get a full suite of visuals for a given set of predicted poses.
 
-`vis_object_symmetries.py` renders object symmetries.
+A demo notebook at `./bop_toolkit_lib/notebooks/demo_vis_poses.ipynb` showcases several visualization types.
+
 
 #### Available Visuals
 
