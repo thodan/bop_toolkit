@@ -540,7 +540,11 @@ def match_gt_poses_to_est(
         raise ValueError(f"Invalid matching method: {matching_method}")
 
     if matching_method == "greedy":
-        est_poses = sorted(est_poses, key=lambda x: x.get("score", 1.0), reverse=True)
+        # est_poses should be sorted by the 'score' in decreasing order
+        assert all(
+            est_poses[i]["score"] >= est_poses[i + 1]["score"]
+            for i in range(len(est_poses) - 1)
+        )
 
     if matching_method == "hungarian":
         while len(est_poses) > len(gt_poses):
@@ -562,13 +566,13 @@ def match_gt_poses_to_est(
         gt_idxs = []
         num_gt = cost_mat.shape[1]
         cost_mat_copy = cost_mat.copy()
-        
+
         # match first #gt estimates without replacement
         for i in range(min(cost_mat.shape[0], num_gt)):
             min_j = np.argmin(cost_mat_copy[i, :]).item()
             gt_idxs.append(min_j)
             cost_mat_copy[:, min_j] = float("inf")
-        
+
         # match remaining estimates with replacement
         for i in range(num_gt, cost_mat.shape[0]):
             min_j = np.argmin(cost_mat[i, :]).item()
