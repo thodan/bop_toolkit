@@ -255,6 +255,7 @@ def main(args):
                 poses = list(itertools.chain.from_iterable(im_ests_vis))
                 poses_scene_vis[im_id] = poses
 
+        vis_save_dir = None
         for im_id, poses_img in tqdm(poses_scene_vis.items(), desc=f"Scene {scene_id}"):
 
             # Retrieve camera intrinsics.
@@ -342,7 +343,8 @@ def main(args):
                 vis_depth_diff=vis_depth_diff,
             )
             if vis_rgb or vis_depth_diff or do_extra_vis:
-                misc.ensure_dir(os.path.dirname(vis_path_base(suffix="")))
+                vis_save_dir = os.path.dirname(vis_path_base(suffix=""))
+                misc.ensure_dir(vis_save_dir)
             if vis_rgb:
                 inout.save_im(vis_rgb_path, vis_res["vis_im_rgb"], jpg_quality=95)
             if vis_depth_diff:
@@ -494,6 +496,8 @@ def main(args):
                         )
                     save_path = vis_path_base(suffix="_bbox3d")
                     inout.save_im(save_path, bbox_img)
+
+        misc.log(f"\nVisualization results saved to: {vis_save_dir}")
 
 
 if __name__ == "__main__":
