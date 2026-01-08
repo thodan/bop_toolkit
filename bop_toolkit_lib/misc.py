@@ -541,9 +541,10 @@ def match_gt_poses_to_est(
 
     if matching_method == "greedy":
         est_poses = sorted(est_poses, key=lambda x: x.get("score", 1.0), reverse=True)
-    
-    while len(est_poses) > len(gt_poses):
-        gt_poses += gt_poses
+
+    if matching_method == "hungarian":
+        while len(est_poses) > len(gt_poses):
+            gt_poses += gt_poses
 
     cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
     for i, e in enumerate(est_poses):
@@ -559,15 +560,24 @@ def match_gt_poses_to_est(
 
     if matching_method == "greedy":
         gt_idxs = []
-        for i in range(cost_mat.shape[0]):
+        num_gt = cost_mat.shape[1]
+        cost_mat_copy = cost_mat.copy()
+        
+        # match first #gt estimates without replacement
+        for i in range(min(cost_mat.shape[0], num_gt)):
+            min_j = np.argmin(cost_mat_copy[i, :]).item()
+            gt_idxs.append(min_j)
+            cost_mat_copy[:, min_j] = float("inf")
+        
+        # match remaining estimates with replacement
+        for i in range(num_gt, cost_mat.shape[0]):
             min_j = np.argmin(cost_mat[i, :]).item()
             gt_idxs.append(min_j)
-            cost_mat[:, min_j] = float("inf")  # prevent selecting this gt again
     else:
         _, gt_idxs = scipy.optimize.linear_sum_assignment(cost_mat)
-    
-    gt_poses_ordered = [gt_poses[j] for j in gt_idxs]
-    return gt_poses_ordered
+
+    gt_poses_matched = [gt_poses[j] for j in gt_idxs]
+    return gt_poses_matched
 
 
 def add_argument_bool(parser: argparse.ArgumentParser, arg_name: str, default: bool):
