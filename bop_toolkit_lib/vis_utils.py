@@ -168,6 +168,7 @@ def draw_pose_on_img(
     pose_gt: Optional[np.ndarray] = None,
     final_frame: Optional[np.ndarray] = None,
     extra_text: Optional[Union[str, List[str]]] = None,
+    include_obj_center: bool = False,
 ) -> np.ndarray:
     """Draws predicted pose as a 3D bbox on an RGB image.
 
@@ -219,9 +220,12 @@ def draw_pose_on_img(
     if np.all(pose_pred == np.eye(4)):
         print("Estimated pose is identity. Not drawing")
         return rgb
-    final_frame = draw_xyz_axis(
-        rgb, scale=axes_scale, K=K, rt=pose_pred, is_input_rgb=True
-    )
+    if include_obj_center:
+        final_frame = draw_xyz_axis(
+            rgb, scale=axes_scale, K=K, rt=pose_pred, is_input_rgb=True
+        )
+    else:
+        final_frame = rgb
     if mesh_bbox is not None:
         final_frame = draw_posed_3d_box(
             final_frame, rt=pose_pred, K=K, bbox=mesh_bbox, line_color=bbox_color

@@ -490,6 +490,7 @@ def main(args):
                             mesh_bbox=bbox_3d,
                             bbox_color=(255, 0, 0),
                             bbox_color_gt=(0, 255, 0),
+                            include_obj_center=False,
                         )
                     save_path = vis_path_base(suffix="_bbox3d")
                     inout.save_im(save_path, bbox_img)
