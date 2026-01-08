@@ -520,16 +520,27 @@ def match_gt_poses_to_est(
     gt_poses: list[dict],
     models: dict[str, dict],
     syms_per_obj: dict[int, list],
+    matching_method: str = "greedy",
 ) -> list[dict]:
     """
     Matches GT poses to estimated poses using the Hungarian algorithm based on MSSD.
     The matching gracefully handles cases of having #est < #gt and #est > #gt.
     If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est.
     In this case, the assignment returns #est GT poses matched to the respective estimated poses.
+
+    :param est_poses: List of estimated poses.
+    :param gt_poses: List of ground truth poses.
+    :param models: Dictionary of object models.
+    :param syms_per_obj: Dictionary of symmetry transformations per object.
+    :param matching_method: Matching method to use.
     """
 
-    while len(est_poses) > len(gt_poses):
-        gt_poses += gt_poses
+    if matching_method not in ["greedy", "hungarian"]:
+        raise ValueError(f"Invalid matching method: {matching_method}")
+
+    if matching_method == "hungarian":
+        while len(est_poses) > len(gt_poses):
+            gt_poses += gt_poses
 
     cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
     for i, e in enumerate(est_poses):
@@ -542,8 +553,13 @@ def match_gt_poses_to_est(
                 pts=models[e["obj_id"]]["pts"],
                 syms=syms_per_obj[e["obj_id"]],
             )
-    row_ind, col_ind = scipy.optimize.linear_sum_assignment(cost_mat)
-    gt_poses_ordered = [gt_poses[j] for j in col_ind]
+
+    if matching_method == "greedy":
+        gt_idxs = [np.argmin(cost_mat[i, :]).item() for i in range(cost_mat.shape[0])]
+    else:
+        _, gt_idxs = scipy.optimize.linear_sum_assignment(cost_mat)
+    
+    gt_poses_ordered = [gt_poses[j] for j in gt_idxs]
     return gt_poses_ordered
 
 
