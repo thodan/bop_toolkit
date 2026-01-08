@@ -411,6 +411,7 @@ def main(args):
                     )
                     save_path = vis_path_base(suffix="_depth_heatmap")
                     plt.savefig(save_path, dpi=100, bbox_inches="tight")
+                    plt.close()
                 if "contour" in args.vis_types:
                     contour_img = copy.deepcopy(rgb)
                     for idx in range(len(res_per_obj_est)):
