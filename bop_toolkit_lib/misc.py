@@ -11,9 +11,7 @@ import math
 import subprocess
 import logging
 import argparse
-from typing import Tuple
 
-import pytz
 import numpy as np
 from scipy.spatial import distance
 import scipy.optimize
@@ -524,7 +522,7 @@ def match_gt_poses_to_est_per_obj(
     models: dict[str, dict],
     syms_per_obj: dict[int, list],
     matching_method: str = "greedy",
-) -> Tuple[list[dict], list[int]]:
+) -> list[dict]:
     """
     Matches GT poses to estimated poses for objects of the same class using the Greedy or Hungarian approach based on MSSD.
     The matching gracefully handles cases of having #est < #gt and #est > #gt.
@@ -537,9 +535,7 @@ def match_gt_poses_to_est_per_obj(
     :param models: Dictionary of object models.
     :param syms_per_obj: Dictionary of symmetry transformations per object.
     :param matching_method: Matching method to use.
-    :return: Tuple (gt_poses_matched, gt_idxs)
-        - gt_poses_matched: List of matched GT poses.
-        - gt_idxs: List of indices of the matched GT poses in the original gt_poses list.
+    :return: List of matched GT poses corresponding to the estimated poses.
     """
 
     if matching_method not in ["greedy", "hungarian"]:
@@ -590,7 +586,7 @@ def match_gt_poses_to_est_per_obj(
         _, gt_idxs = scipy.optimize.linear_sum_assignment(cost_mat)
 
     gt_poses_matched = [gt_poses[j] for j in gt_idxs]
-    return gt_poses_matched, gt_idxs
+    return gt_poses_matched
 
 
 def match_gt_poses_to_est(
@@ -625,7 +621,7 @@ def match_gt_poses_to_est(
             )
             continue
 
-        gt_poses_obj_matched, _ = match_gt_poses_to_est_per_obj(
+        gt_poses_obj_matched = match_gt_poses_to_est_per_obj(
             est_poses=est_poses_obj,
             gt_poses=gt_poses_obj,
             models=models,
