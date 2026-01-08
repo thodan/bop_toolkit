@@ -525,8 +525,9 @@ def match_gt_poses_to_est(
     """
     Matches GT poses to estimated poses using the Hungarian algorithm based on MSSD.
     The matching gracefully handles cases of having #est < #gt and #est > #gt.
-    If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est.
-    In this case, the assignment returns #est GT poses matched to the respective estimated poses.
+    When the matching method is set to 'greedy', the estimated poses are sorted by their 'score' field from highest to lowest. As a result, GT poses are matched to higher scored estimated poses first.
+    If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est. In this case, multiple estimated poses may be matched to the same GT pose.
+    The resulting matched GT poses have #est elements, matched to the respective estimated poses.
 
     :param est_poses: List of estimated poses.
     :param gt_poses: List of ground truth poses.
@@ -538,9 +539,11 @@ def match_gt_poses_to_est(
     if matching_method not in ["greedy", "hungarian"]:
         raise ValueError(f"Invalid matching method: {matching_method}")
 
-    if matching_method == "hungarian":
-        while len(est_poses) > len(gt_poses):
-            gt_poses += gt_poses
+    if matching_method == "greedy":
+        est_poses = sorted(est_poses, key=lambda x: x.get("score", 1.0), reverse=True)
+    
+    while len(est_poses) > len(gt_poses):
+        gt_poses += gt_poses
 
     cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
     for i, e in enumerate(est_poses):
@@ -555,7 +558,11 @@ def match_gt_poses_to_est(
             )
 
     if matching_method == "greedy":
-        gt_idxs = [np.argmin(cost_mat[i, :]).item() for i in range(cost_mat.shape[0])]
+        gt_idxs = []
+        for i in range(cost_mat.shape[0]):
+            min_j = np.argmin(cost_mat[i, :]).item()
+            gt_idxs.append(min_j)
+            cost_mat[:, min_j] = float("inf")  # prevent selecting this gt again
     else:
         _, gt_idxs = scipy.optimize.linear_sum_assignment(cost_mat)
     
