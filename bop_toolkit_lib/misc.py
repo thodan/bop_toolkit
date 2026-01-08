@@ -544,7 +544,7 @@ def match_gt_poses_to_est(
         assert all(
             est_poses[i]["score"] >= est_poses[i + 1]["score"]
             for i in range(len(est_poses) - 1)
-        )
+        ), [x["score"] for x in est_poses]
 
     if matching_method == "hungarian":
         while len(est_poses) > len(gt_poses):
