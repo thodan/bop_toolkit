@@ -95,9 +95,6 @@ for scene_id in tqdm(dp_split["scene_ids"], colour="green"):
     scene_gt_info = inout.load_json(
         dp_split[tpath_keys["scene_gt_info_tpath"]].format(scene_id=scene_id), keys_to_int=True
     )
-    scene_camera = inout.load_scene_camera(
-        dp_split[tpath_keys["scene_camera_tpath"]].format(scene_id=scene_id)
-    )
     # Output coco path
     coco_gt_path = dp_split[tpath_keys["scene_gt_coco_tpath"]].format(scene_id=scene_id)
     if args.bbox_type == "modal":
