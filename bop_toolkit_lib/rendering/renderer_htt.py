@@ -1,16 +1,13 @@
-
 # Author: Mederic Fourmy (mederic.fourmy@gmail.com)
 # Czech Technical University in Prague
 
 """A wrapper around Hand Tracking Toolkit rasterizer."""
 
 import trimesh
-
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
-
-from hand_tracking_toolkit.rasterizer import rasterize_mesh
+from bop_toolkit_lib.rendering import renderer
 from hand_tracking_toolkit.camera import CameraModel
+from hand_tracking_toolkit.rasterizer import rasterize_mesh
 
 
 def subdivide_mesh(
@@ -42,7 +39,6 @@ def subdivide_mesh(
         print(f"Remeshing: {len(mesh.vertices)} -> {len(new_mesh.vertices)}")
 
     return new_mesh
-
 
 
 class RendererHtt(renderer.Renderer):
@@ -79,7 +75,7 @@ class RendererHtt(renderer.Renderer):
         # Make sure there are no large triangles (the rasterizer
         # from hand_tracking_toolkit becomes slow if some triangles
         # are much larger than others)
-        model = subdivide_mesh(model, max_edge=5.0) 
+        model = subdivide_mesh(model, max_edge=5.0)
         self.models[obj_id] = model
 
     def remove_object(self, obj_id):

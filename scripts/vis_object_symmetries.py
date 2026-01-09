@@ -16,9 +16,12 @@ from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
-from bop_toolkit_lib import renderer
 from bop_toolkit_lib import transform as tr
+<<<<<<< HEAD
 from bop_toolkit_lib import pycoco_utils
+=======
+from bop_toolkit_lib.rendering import renderer
+>>>>>>> master
 
 
 def generate_candidate_orientations(dist):
@@ -101,6 +104,7 @@ for obj_id in tqdm(dp_model["obj_ids"], desc="Selecting best views"):
             best_view_id, best_surface = view_id, bbox_area
     best_views[obj_id] = views[best_view_id]
 
+<<<<<<< HEAD
 # Render objects under all symmetry transformations.
 for obj_id in tqdm(dp_model["obj_ids"], desc="Rendering object symmetries"):
     view = best_views[obj_id]
@@ -115,3 +119,17 @@ for obj_id in tqdm(dp_model["obj_ids"], desc="Rendering object symmetries"):
         inout.save_im(vis_rgb_path, vis_rgb)
 
 misc.log(f"Saved all symmetries in {vis_dir / args.dataset}")
+=======
+            # Path to the output RGB visualization.
+            vis_rgb_path = p["vis_rgb_tpath"].format(
+                vis_path=p["vis_path"],
+                dataset=p["dataset"],
+                obj_id=obj_id,
+                view_id=view_id,
+                pose_id=pose_id,
+            )
+            misc.ensure_dir(os.path.dirname(vis_rgb_path))
+            inout.save_im(vis_rgb_path, vis_rgb)
+            misc.log(vis_rgb_path)
+misc.log("Done.")
+>>>>>>> master

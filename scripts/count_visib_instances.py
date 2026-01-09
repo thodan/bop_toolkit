@@ -3,10 +3,10 @@
 
 """Generating estimation from GT for debugging/unit tests purposes."""
 
+from tqdm import tqdm
 from bop_toolkit_lib import config
 from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
-from tqdm import tqdm
 # PARAMETERS.
 ################################################################################
 p = {

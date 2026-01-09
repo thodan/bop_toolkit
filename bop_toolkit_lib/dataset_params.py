@@ -544,6 +544,7 @@ def get_split_params(datasets_path, dataset_name, split, split_type=None):
         p["im_modalities"] = {"3dlong": ["gray", "depth"], "cam0": ["gray"], "cam1": ["gray"], "cam2": ["gray"]}
         p["scene_ids"] = {
             "test": [1],
+            "val": [1],
             "train": list(range(50)),
         }[split]
 

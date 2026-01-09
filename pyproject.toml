@@ -23,6 +23,8 @@ dependencies = [
     "scikit-image>=0.21.0",
     "scipy>=1.10.1",
     "vispy>=0.14.2",
+    "opencv-python>=4.11.0.86",
+    "matplotlib>=3.7.5",
     "tqdm>=4.67.1",
 ]
 
@@ -33,8 +35,6 @@ eval_gpu = ["torch"]
 eval_hot3d = ["hand_tracking_toolkit@git+https://github.com/facebookresearch/hand_tracking_toolkit"]
 scripts = [
     "open3d>=0.19.0",
-    "opencv-python>=4.11.0.86",
-    "matplotlib>=3.7.5",
     "trimesh>=4.6.11",
 ]
 
