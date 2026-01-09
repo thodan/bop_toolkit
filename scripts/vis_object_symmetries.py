@@ -17,11 +17,8 @@ from bop_toolkit_lib import dataset_params
 from bop_toolkit_lib import inout
 from bop_toolkit_lib import misc
 from bop_toolkit_lib import transform as tr
-<<<<<<< HEAD
 from bop_toolkit_lib import pycoco_utils
-=======
-from bop_toolkit_lib.rendering import renderer
->>>>>>> master
+from bop_toolkit_lib.rendering.renderer import create_renderer
 
 
 def generate_candidate_orientations(dist):
@@ -49,6 +46,7 @@ parser.add_argument("--datasets_path", default=config.datasets_path, help="Path 
 parser.add_argument("--vis_dir", default=os.path.join(config.output_path, "vis_object_symmetries"), help="Path to the folder for output visualisations.")
 parser.add_argument("--render_res", type=int, default=640, help="Resolution of the symmetry renders.")
 parser.add_argument("--fov_deg", type=int, default=60, help="FOV of the camera used for renders (degrees).")
+parser.add_argument("--max_portion", type=float, default=0.9, help="Porportion of the image height/width covered by the biggest object.")
 args = parser.parse_args()
 
 vis_dir = Path(args.vis_dir)
@@ -73,7 +71,7 @@ symmetry_poses = {obj_id: misc.get_symmetry_transformations(models_info[obj_id],
 
 
 # Create a renderer and add objects.
-ren = renderer.create_renderer(
+ren = create_renderer(
     args.render_res, args.render_res, args.renderer_type, mode="rgb", shading="flat"
 )
 obj_models = {}
@@ -87,24 +85,24 @@ for obj_id in tqdm(dp_model["obj_ids"], desc="Adding objects to the renderer"):
 # so that the biggest object fits in the view.
 max_vertex_distance_from_origin = max(np.max(np.linalg.norm(obj_models[obj_id].vertices, axis=1))
                                       for obj_id in dp_model["obj_ids"])
-diameter_pix = 0.99 * args.render_res  # portion of the image covered by the biggest object
+diameter_pix = args.max_portion * args.render_res  # portion of the image covered by the biggest object
 distance = 2*max_vertex_distance_from_origin * fx / diameter_pix
 views = generate_candidate_orientations(distance)
 
 # select the best view for each object: maximize visible surface area
 best_views = {}
 for obj_id in tqdm(dp_model["obj_ids"], desc="Selecting best views"):
-    best_view_id, best_bbox = None, -1
+    best_view_id, best_surface = None, -1
     for view_id, view in enumerate(views):
         rgb = ren.render_object(obj_id, view["R"], view["t"], fx, fy, cx, cy)["rgb"]
         mask = np.any(rgb > 0, axis=2)
         x, y, w, h = pycoco_utils.bbox_from_binary_mask(mask)
         bbox_area = w * h
-        if bbox_area > best_bbox:
+        if bbox_area > best_surface:
             best_view_id, best_surface = view_id, bbox_area
     best_views[obj_id] = views[best_view_id]
+    print("best_view_id", best_view_id)
 
-<<<<<<< HEAD
 # Render objects under all symmetry transformations.
 for obj_id in tqdm(dp_model["obj_ids"], desc="Rendering object symmetries"):
     view = best_views[obj_id]
@@ -119,17 +117,3 @@ for obj_id in tqdm(dp_model["obj_ids"], desc="Rendering object symmetries"):
         inout.save_im(vis_rgb_path, vis_rgb)
 
 misc.log(f"Saved all symmetries in {vis_dir / args.dataset}")
-=======
-            # Path to the output RGB visualization.
-            vis_rgb_path = p["vis_rgb_tpath"].format(
-                vis_path=p["vis_path"],
-                dataset=p["dataset"],
-                obj_id=obj_id,
-                view_id=view_id,
-                pose_id=pose_id,
-            )
-            misc.ensure_dir(os.path.dirname(vis_rgb_path))
-            inout.save_im(vis_rgb_path, vis_rgb)
-            misc.log(vis_rgb_path)
-misc.log("Done.")
->>>>>>> master
