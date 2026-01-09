@@ -128,7 +128,7 @@ python vis_poses.py est --result_filename /bop/results/gt-equivalent_ycbv-test.c
 
 Pass `--vis_types overlay depth_diff depth_heatmap contour bbox3d` when calling `vis_poses.py est` to get a full suite of visuals for a given set of predicted poses.
 
-A demo notebook at `./bop_toolkit_lib/notebooks/demo_vis_poses.ipynb` showcases several visualization types.
+A demo notebook at [demo_vis_poses.ipynb](https://github.com/thodan/bop_toolkit/blob/master/notebooks/demo_vis_poses.ipynb) showcases several visualization types.
 
 
 #### Available Visuals
