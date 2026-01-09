@@ -256,10 +256,12 @@ for result_filename in result_filenames:
                     f"mAP, {error['type']}, {obj_id}: {mAP_over_correct_th:.3f}"
                 )
                 mAP_over_correct_ths.append(mAP_over_correct_th)
+
+            error_type = error["type"]
             if "threshold_unit" in error:
-                error["type"] = error["type"] + "_" + error["threshold_unit"]
-                
-            mAP_per_error_type[error["type"]] = np.mean(mAP_over_correct_ths)
+                error_type = error_type + "_" + error["threshold_unit"]
+
+            mAP_per_error_type[error_type] = np.mean(mAP_over_correct_ths)
             logger.info(
                 f"{error['type']}, Final mAP: {mAP_per_error_type[error['type']]:.3f}"
             )
