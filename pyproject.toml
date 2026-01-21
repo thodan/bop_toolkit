@@ -30,7 +30,7 @@ dependencies = [
 
 
 [project.optional-dependencies]
-eval_coco = ["pycocotools@git+https://github.com/MartinSmeyer/cocoapi.git#subdirectory=PythonAPI"]
+eval_coco = ["pycocotools>=2.0.1"]
 eval_gpu = ["torch"]
 eval_hot3d = ["hand_tracking_toolkit@git+https://github.com/facebookresearch/hand_tracking_toolkit"]
 scripts = [
