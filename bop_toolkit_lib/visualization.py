@@ -4,7 +4,7 @@
 """Visualization utilities."""
 
 import os
-from typing import List
+from typing import List, Tuple
 
 # import cv2
 import numpy as np
@@ -81,11 +81,30 @@ def write_text_on_image(im, txt_list, loc=(3, 0), color=(1.0, 1.0, 1.0), size=20
             txt_tpl = "{}{" + info["fmt"] + "}"
         txt = txt_tpl.format(info["name"], info["val"])
         draw.text(loc, txt, fill=tuple([int(c * 255) for c in color]), font=font)
-        text_width, text_height = font.getsize(txt)
+        text_width, text_height = get_text_dimensions(font, txt)
         loc = (loc[0], loc[1] + text_height)
     del draw
 
     return np.array(im_pil)
+
+
+def get_text_dimensions(font: ImageFont.FreeTypeFont, text: str) -> Tuple[int, int]:
+    """
+    Get the width and height of a text string using a given font.
+    Works with both Pillow < 10.0.0 and Pillow >= 10.0.0.
+
+    :param font: PIL.ImageFont.FreeTypeFont instance
+    :param text: Text string to measure
+
+    :return: Tuple of (width, height) in pixels
+    """
+    try:
+        # Pillow < 10.0.0
+        return font.getsize(text)
+    except AttributeError:
+        # Pillow >= 10.0.0
+        bbox = font.getbbox(text)
+        return (bbox[2] - bbox[0], bbox[3] - bbox[1])
 
 
 def depth_for_vis(depth, valid_start=0.2, valid_end=1.0):
