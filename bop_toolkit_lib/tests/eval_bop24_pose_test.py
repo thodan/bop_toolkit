@@ -49,10 +49,10 @@ os.makedirs(LOGS_PATH, exist_ok=True)
 
 # Define the dataset dictionary
 FILE_DICTIONARY = {
-    "lmo_megaPose": ("cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv", "test_targets_bop19.json"),
+    # "lmo_megaPose": ("cnos-fastsammegapose_lmo-test_16ab01bd-f020-4194-9750-d42fc7f875d2.csv", "test_targets_bop19.json"),
     "lmo_gt": ("gt-pbrreal-rgb-mmodel_lmo-test_lmo.csv", "test_targets_bop19.json"),
-    "tless_megaPose": ("cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv", "test_targets_bop19.json"),
-    "tless_gt": ("gt-pbrreal-rgb-mmodel_tless-test_tless.csv", "test_targets_bop19.json"),
+    # "tless_megaPose": ("cnos-fastsammegapose_tless-test_94e046a0-42af-495f-8a35-11ce8ee6f217.csv", "test_targets_bop19.json"),
+    # "tless_gt": ("gt-pbrreal-rgb-mmodel_tless-test_tless.csv", "test_targets_bop19.json"),
 }
 
 # Define the expected scores (from bop24 bop_toolkit commit e7ba9f2)
@@ -152,7 +152,7 @@ for dataset_method_name, (file_name, test_targets_name) in tqdm(
     command_str = " ".join(command)
     misc.log(f"Executing: {command_str}")
     start_time = time.perf_counter()
-    with open(log_file_path, "a") as output_file:
+    with open(log_file_path, "a") as output_file: 
         returncode = subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT).returncode
         if returncode != 0:
             misc.log('FAILED: '+command_str)    
@@ -170,7 +170,7 @@ if args.num_false_positives == 0:
 
             # Read the content of the log file
             with open(log_file_path, "r") as log_file:
-                last_lines = log_file.readlines()[-7:]
+                last_lines = log_file.readlines()[-9:]
 
             # Combine the last lines into a single string
             log_content = "".join(last_lines)
