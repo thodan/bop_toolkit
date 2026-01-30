@@ -3,7 +3,6 @@
 
 """Miscellaneous functions."""
 
-from collections import defaultdict
 import os
 import sys
 import datetime
@@ -11,15 +10,11 @@ import math
 import subprocess
 import logging
 import argparse
-from typing import Dict, List
 
 import numpy as np
 from scipy.spatial import distance
-import scipy.optimize
 
 from bop_toolkit_lib import transform
-from bop_toolkit_lib import misc
-from bop_toolkit_lib.pose_error import mssd
 
 logging.basicConfig()
 
@@ -515,133 +510,6 @@ def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
         )
 
     return poses
-
-
-def match_gt_poses_to_est_per_obj(
-    est_poses: List[dict],
-    gt_poses: List[dict],
-    models: Dict[str, dict],
-    syms_per_obj: Dict[int, list],
-    matching_method: str = "greedy",
-) -> List[dict]:
-    """
-    Matches GT poses to estimated poses for objects of the same class using the Greedy or Hungarian approach based on MSSD.
-    The matching gracefully handles cases of having #est < #gt and #est > #gt.
-    When the matching method is set to 'greedy', the estimated poses are sorted by their 'score' field from highest to lowest. As a result, GT poses are matched to higher scored estimated poses first.
-    If there are fewer GT poses (#gt) than estimated poses (#est), the GT poses are duplicated until #gt >= #est. In this case, multiple estimated poses may be matched to the same GT pose.
-    The resulting matched GT poses have #est elements, matched to the respective estimated poses.
-
-    :param est_poses: List of estimated poses.
-    :param gt_poses: List of ground truth poses.
-    :param models: Dictionary of object models.
-    :param syms_per_obj: Dictionary of symmetry transformations per object.
-    :param matching_method: Matching method to use.
-    :return: List of matched GT poses corresponding to the estimated poses.
-    """
-
-    if matching_method not in ["greedy", "hungarian"]:
-        raise ValueError(f"Invalid matching method: {matching_method}")
-
-    if matching_method == "greedy":
-        assert (
-            "score" in est_poses[0]
-        ), "Estimated poses must have 'score' field for greedy matching."
-        # est_poses should come in sorted by the 'score' in decreasing order
-        assert all(
-            est_poses[i]["score"] >= est_poses[i + 1]["score"]
-            for i in range(len(est_poses) - 1)
-        ), [x["score"] for x in est_poses]
-
-    if matching_method == "hungarian":
-        while len(est_poses) > len(gt_poses):
-            gt_poses += gt_poses
-
-    cost_mat = np.zeros((len(est_poses), len(gt_poses)), dtype=np.float32)
-    for i, e in enumerate(est_poses):
-        for j, g in enumerate(gt_poses):
-            cost_mat[i, j] = mssd(
-                R_est=e["R"],
-                t_est=e["t"],
-                R_gt=g["R"],
-                t_gt=g["t"],
-                pts=models[e["obj_id"]]["pts"],
-                syms=syms_per_obj[e["obj_id"]],
-            )
-
-    if matching_method == "greedy":
-        gt_idxs = []
-        num_gt = cost_mat.shape[1]
-        cost_mat_copy = cost_mat.copy()
-
-        # match first #gt estimates without replacement
-        for i in range(min(cost_mat.shape[0], num_gt)):
-            min_j = np.argmin(cost_mat_copy[i, :]).item()
-            gt_idxs.append(min_j)
-            cost_mat_copy[:, min_j] = float("inf")
-
-        # match remaining estimates with replacement
-        for i in range(num_gt, cost_mat.shape[0]):
-            min_j = np.argmin(cost_mat[i, :]).item()
-            gt_idxs.append(min_j)
-    else:
-        _, gt_idxs = scipy.optimize.linear_sum_assignment(cost_mat)
-
-    gt_poses_matched = [gt_poses[j] for j in gt_idxs]
-    return gt_poses_matched
-
-
-def match_gt_poses_to_est(
-    est_poses: List[dict],
-    gt_poses: List[dict],
-    models: Dict[str, dict],
-    syms_per_obj: Dict[int, list],
-    matching_method: str = "greedy",
-) -> List[dict]:
-    """Matches a flattened list of GT and estimated poses with potentially different objects. See match_gt_poses_to_est_per_obj for details on the matching procedure.
-    """
-
-    # Group poses by obj_id
-    est_by_obj = defaultdict(list)
-    for idx, est in enumerate(est_poses):
-        est_by_obj[est["obj_id"]].append((idx, est))
-
-    gt_by_obj = defaultdict(list)
-    for gt in gt_poses:
-        gt_by_obj[gt["obj_id"]].append(gt)
-
-    # match each obj_id separately
-    est_idx_to_matched_gt_pose = {}
-    for obj_id, est_list in est_by_obj.items():
-        est_indices = [idx for idx, _ in est_list]
-        est_poses_obj = [est for _, est in est_list]
-        gt_poses_obj = gt_by_obj.get(obj_id, [])
-
-        if len(gt_poses_obj) == 0:
-            misc.log(
-                f"No GT poses for obj_id {obj_id}, skipping matching for this object."
-            )
-            continue
-
-        gt_poses_obj_matched = match_gt_poses_to_est_per_obj(
-            est_poses=est_poses_obj,
-            gt_poses=gt_poses_obj,
-            models=models,
-            syms_per_obj=syms_per_obj,
-            matching_method=matching_method,
-        )
-
-        for i, gt_pose in enumerate(gt_poses_obj_matched):
-            original_idx = est_indices[i]
-            est_idx_to_matched_gt_pose[original_idx] = gt_pose
-
-    # combine matched GT poses in the order of corresponding estimated poses
-    gt_poses_matched = [
-        est_idx_to_matched_gt_pose[i]
-        for i in range(len(est_poses))
-        if i in est_idx_to_matched_gt_pose
-    ]
-
-    return gt_poses_matched
 
 
 def add_argument_bool(parser: argparse.ArgumentParser, arg_name: str, default: bool):

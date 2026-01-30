@@ -23,6 +23,7 @@ from bop_toolkit_lib.vis_utils import (
     get_pose_mat_from_dict,
     merge_masks,
     plot_depth,
+    match_gt_poses_to_est
 )
 from tqdm import tqdm
 from vis_poses_cli import postprocess_args, setup_parser
@@ -353,7 +354,7 @@ def main(args):
             if do_extra_vis:
 
                 gt_poses = misc.parse_gt_poses_from_scene_im(scene_gt[im_id])
-                gt_poses_matched = misc.match_gt_poses_to_est(
+                gt_poses_matched = match_gt_poses_to_est(
                     est_poses=poses_img,
                     gt_poses=gt_poses,
                     models=models,
