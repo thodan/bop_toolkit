@@ -152,7 +152,7 @@ for dataset_method_name, (file_name, test_targets_name) in tqdm(
     command_str = " ".join(command)
     misc.log(f"Executing: {command_str}")
     start_time = time.perf_counter()
-    with open(log_file_path, "a") as output_file:
+    with open(log_file_path, "a") as output_file: 
         returncode = subprocess.run(command, stdout=output_file, stderr=subprocess.STDOUT).returncode
         if returncode != 0:
             misc.log('FAILED: '+command_str)    
@@ -170,7 +170,7 @@ if args.num_false_positives == 0:
 
             # Read the content of the log file
             with open(log_file_path, "r") as log_file:
-                last_lines = log_file.readlines()[-7:]
+                last_lines = log_file.readlines()[-9:]
 
             # Combine the last lines into a single string
             log_content = "".join(last_lines)
