@@ -4,6 +4,7 @@
 """Visualization utilities."""
 
 import os
+from typing import List
 
 # import cv2
 import numpy as np
@@ -266,7 +267,7 @@ def vis_object_poses(
     return res
 
 
-def render_poses(poses: list[dict], renderer, K) -> list[dict]:
+def render_poses(poses: List[dict], renderer, K) -> List[dict]:
     """Renders object models in specified poses.
     
     :param poses: List of dictionaries, each with info about one pose.

@@ -11,6 +11,7 @@ import math
 import subprocess
 import logging
 import argparse
+from typing import Dict, List
 
 import numpy as np
 from scipy.spatial import distance
@@ -517,12 +518,12 @@ def parse_gt_poses_from_scene_im(scene_gt_img, gt_ids=None):
 
 
 def match_gt_poses_to_est_per_obj(
-    est_poses: list[dict],
-    gt_poses: list[dict],
-    models: dict[str, dict],
-    syms_per_obj: dict[int, list],
+    est_poses: List[dict],
+    gt_poses: List[dict],
+    models: Dict[str, dict],
+    syms_per_obj: Dict[int, list],
     matching_method: str = "greedy",
-) -> list[dict]:
+) -> List[dict]:
     """
     Matches GT poses to estimated poses for objects of the same class using the Greedy or Hungarian approach based on MSSD.
     The matching gracefully handles cases of having #est < #gt and #est > #gt.
@@ -590,12 +591,12 @@ def match_gt_poses_to_est_per_obj(
 
 
 def match_gt_poses_to_est(
-    est_poses: list[dict],
-    gt_poses: list[dict],
-    models: dict[str, dict],
-    syms_per_obj: dict[int, list],
+    est_poses: List[dict],
+    gt_poses: List[dict],
+    models: Dict[str, dict],
+    syms_per_obj: Dict[int, list],
     matching_method: str = "greedy",
-) -> list[dict]:
+) -> List[dict]:
     """Matches a flattened list of GT and estimated poses with potentially different objects. See match_gt_poses_to_est_per_obj for details on the matching procedure.
     """
 
