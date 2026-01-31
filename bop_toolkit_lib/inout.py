@@ -1060,7 +1060,7 @@ def create_pose_result_filename(
     return _create_result_filename(method, dataset, split, "csv", split_type, optional_id)
 
 
-def delete_error_folders(dir_path: str, logger: logging.Logger):
+def cleanup_eval(dir_path: str, logger: logging.Logger):
     """Remove all folders in dir_path that start with "error"."""
     if os.path.isdir(dir_path):
         for name in os.listdir(dir_path):

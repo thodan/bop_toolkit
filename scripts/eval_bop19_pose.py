@@ -100,7 +100,7 @@ parser.add_argument("--targets_filename", type=str, default=p["targets_filename"
 parser.add_argument("--num_workers", type=int, default=p["num_workers"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 parser.add_argument("--device", type=str, default=p["device"])
-parser.add_argument("--delete_error_folders", action="store_true", default=False, help="Delete error folders after evaluation (default: False)")
+parser.add_argument("--cleanup_eval", action="store_true", default=False, help="Delete error folders after evaluation (default: False)")
 args = parser.parse_args()
 
 result_filenames = args.result_filenames.split(",")
@@ -246,12 +246,12 @@ for result_filename in result_filenames:
     time_total = time.time() - time_start
     logger.info("Evaluation of {} took {}s.".format(result_filename, time_total))
 
-    if args.delete_error_folders:
+    if args.cleanup_eval:
         sub_eval_dir = os.path.join(args.eval_path, result_name)
-        logger.info(f"Deleting error folders in {sub_eval_dir}")
-        inout.delete_error_folders(sub_eval_dir, logger)
+        logger.info(f"Cleaning up eval folder {sub_eval_dir}")
+        inout.cleanup_eval(sub_eval_dir, logger)
     else:
-        logger.info("Skipping deletion of error folders (use --delete_error_folders to enable).")
+        logger.info("Skipping deletion of error folders (use --cleanup_eval to enable).")
 
     # Calculate the final scores.
     final_scores = {}
