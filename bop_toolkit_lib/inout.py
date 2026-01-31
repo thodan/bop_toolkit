@@ -6,6 +6,9 @@
 import os
 import gzip
 import struct
+import shutil
+import logging
+
 import numpy as np
 import numpy.typing as npt
 import imageio.v2 as iio
@@ -1055,3 +1058,17 @@ def create_pose_result_filename(
     :param: optional_id: id that may be attached to uniquely identify result file. Optional.
     """
     return _create_result_filename(method, dataset, split, "csv", split_type, optional_id)
+
+
+def delete_error_folders(dir_path: str, logger: logging.Logger):
+    """Remove all folders in dir_path that start with "error"."""
+    if os.path.isdir(dir_path):
+        for name in os.listdir(dir_path):
+            if name.startswith("error"):
+                path = os.path.join(dir_path, name)
+                if os.path.isdir(path):
+                    try:
+                        shutil.rmtree(path)
+                        logger.info(f"Deleted error folder: {path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete {path}: {e}")

@@ -135,6 +135,7 @@ for dataset_method_name, file_name in tqdm(
         str(p["num_workers"]),
         "--targets_filename",
         p["targets_filename"],
+        "--delete_error_folders",
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
