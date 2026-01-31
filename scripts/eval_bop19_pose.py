@@ -18,6 +18,7 @@ from bop_toolkit_lib import misc
 file_name = os.path.splitext(os.path.basename(__file__))[0]
 logger = misc.get_logger(file_name)
 
+
 # PARAMETERS (some can be overwritten by the command line arguments below).
 ################################################################################
 p = {
@@ -99,6 +100,7 @@ parser.add_argument("--targets_filename", type=str, default=p["targets_filename"
 parser.add_argument("--num_workers", type=int, default=p["num_workers"])
 parser.add_argument("--use_gpu", action="store_true", default=p["use_gpu"])
 parser.add_argument("--device", type=str, default=p["device"])
+parser.add_argument("--cleanup_eval", action="store_true", default=False, help="Delete error folders after evaluation (default: False)")
 args = parser.parse_args()
 
 result_filenames = args.result_filenames.split(",")
@@ -244,6 +246,13 @@ for result_filename in result_filenames:
     time_total = time.time() - time_start
     logger.info("Evaluation of {} took {}s.".format(result_filename, time_total))
 
+    if args.cleanup_eval:
+        sub_eval_dir = os.path.join(args.eval_path, result_name)
+        logger.info(f"Cleaning up eval folder {sub_eval_dir}")
+        inout.cleanup_eval(sub_eval_dir, logger)
+    else:
+        logger.info("Skipping deletion of error folders (use --cleanup_eval to enable).")
+
     # Calculate the final scores.
     final_scores = {}
     for error in p["errors"]:
@@ -267,6 +276,8 @@ for result_filename in result_filenames:
     logger.info("FINAL SCORES:")
     for score_name, score_value in final_scores.items():
         logger.info("- {}: {}".format(score_name, score_value))
+
+    
 
 total_eval_time = time.time() - eval_time_start
 logger.info("Evaluation took {}s.".format(total_eval_time))

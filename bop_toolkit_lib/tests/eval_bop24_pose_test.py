@@ -145,7 +145,8 @@ for dataset_method_name, (file_name, test_targets_name) in tqdm(
         "--num_worker",
         str(p["num_workers"]),
         "--targets_filename",
-        test_targets_name
+        test_targets_name,
+        "--cleanup_eval",
     ]
     if p["use_gpu"]:
         command.append("--use_gpu")
