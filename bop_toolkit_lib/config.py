@@ -53,7 +53,6 @@ meshlab_server_path = get_env_default("BOP_MESHLAB_PATH")
 
 # Number of workers for the parallel evaluation of pose errors.
 num_workers = int(get_env_default("BOP_NUM_WORKERS"))
-breakpoint()
 
 # use torch to calculate the errors
 use_gpu = False
