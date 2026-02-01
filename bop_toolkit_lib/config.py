@@ -19,6 +19,7 @@ default_paths = {
     "BOP_OUTPUT_PATH": rf"{ROOT_DIR}/outputs",
     "BOP_RENDERER_PATH": rf"{ROOT_DIR}/bop_renderer/build",
     "BOP_MESHLAB_PATH": r"/path/to/meshlabserver.exe",
+    "BOP_NUM_WORKERS": "8",
 }
 
 
@@ -51,7 +52,7 @@ meshlab_server_path = get_env_default("BOP_MESHLAB_PATH")
 ######## Other ########
 
 # Number of workers for the parallel evaluation of pose errors.
-num_workers = 10
+num_workers = int(get_env_default("BOP_NUM_WORKERS"))
 
 # use torch to calculate the errors
 use_gpu = False
