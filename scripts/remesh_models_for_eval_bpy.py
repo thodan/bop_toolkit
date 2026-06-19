@@ -16,7 +16,7 @@ import bpy
 import argparse
 import os
 import sys
-
+import shutil
 
 
 def parse_args():
@@ -87,10 +87,7 @@ def process_files(input_folder, output_folder, voxel_size):
 
     files_in_dir = os.listdir(input_folder)
     files_to_process = [f for f in files_in_dir if f.lower().endswith(".ply")]
-    if not files_to_process:
-        print(f"Warning: No .ply files were found in '{input_folder}'. Please check the folder and file extensions.")
-        return
-
+    assert len(files_to_process), "No .ply files were found in '{input_folder}'. Please check the folder and file extensions."
     print(f"Found {len(files_to_process)} .ply file(s) to process.")
 
     for filename in files_to_process:
@@ -100,11 +97,7 @@ def process_files(input_folder, output_folder, voxel_size):
 
         print(f"\nProcessing: {filename}")
 
-        try:
-            bpy.ops.wm.ply_import(filepath=input_path)
-        except Exception as e:
-            print(f"  - Failed to import {filename}. Error: {e}")
-            continue
+        bpy.ops.wm.ply_import(filepath=input_path)
 
         obj = bpy.context.view_layer.objects.active
         if not obj or obj.type != 'MESH':
@@ -115,34 +108,32 @@ def process_files(input_folder, output_folder, voxel_size):
                         obj = o
                         break
             if not obj:
-                print(f"  - Could not find a valid mesh object after importing {filename}.")
-                continue
+                raise ValueError(f"Could not find a valid mesh object after importing {filename}.")
             
         bpy.ops.object.select_all(action='DESELECT')
         obj.select_set(True)
         bpy.context.view_layer.objects.active = obj
 
-        print(f"  - Applying Voxel Remesh with size: {voxel_size}")
-        remesh_mod = obj.modifiers.new(name="VoxelRemesh", type='REMESH')
-        remesh_mod.mode = 'VOXEL'
-        remesh_mod.voxel_size = voxel_size
-        remesh_mod.use_smooth_shade = True
 
-        try:
-            bpy.ops.object.modifier_apply(modifier=remesh_mod.name)
-        except Exception as e:
-            print(f"  - Failed to apply modifier to {filename}. Error: {e}")
-            bpy.data.objects.remove(obj, do_unlink=True)
-            continue
+        obj.data.remesh_voxel_size = voxel_size
+        obj.data.use_remesh_preserve_volume = True
 
-        try:
-            bpy.ops.wm.ply_export(filepath=output_path)
-            print(f"  - Successfully saved to: {output_path}")
-        except Exception as e:
-            print(f"  - Failed to export {filename}. Error: {e}")
+        bpy.ops.object.voxel_remesh()
+        bpy.ops.object.shade_smooth() 
+        tri_mod = obj.modifiers.new(name="Triangulate", type='TRIANGULATE')
+        bpy.ops.object.modifier_apply(modifier=tri_mod.name)
+
+        bpy.ops.wm.ply_export(filepath=output_path)
+
+        print(f"Remeshed and exported {output_path}")
 
     clear_scene()
     print("\n--- Batch processing complete! ---")
+
+    input_models_info = os.path.join(input_folder, "models_info.json")
+    output_models_info = os.path.join(output_folder, "models_info.json")
+    print(f"Copy {input_models_info} -> {output_models_info}")
+    shutil.copy(input_models_info, output_models_info)
 
 if __name__ == "__main__":
     args = parse_args()

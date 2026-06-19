@@ -19,6 +19,8 @@ DEFAULTS = {
         "datasets_path": config.datasets_path,
         # Folder for output visualisations. The default value depends on script's mode
         "vis_path": None,
+        # Type of model to be used during visualization
+        "model_type": "eval",
     },
     "gt": {
         # See dataset_params.py for options.
@@ -90,6 +92,11 @@ def setup_parser():
         "--datasets_path",
         default=c_defs["datasets_path"],
         help="Path to BOP datasets",
+    )
+    common_parser.add_argument(
+        "--model_type",
+        default=c_defs["model_type"],
+        help="Type of model to be used during visualization",
     )
     common_parser.add_argument(
         "--vis_path",
