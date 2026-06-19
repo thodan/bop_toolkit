@@ -8,6 +8,8 @@ import functools
 import itertools
 import os
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import trimesh
@@ -81,8 +83,7 @@ def main(args):
         args.datasets_path, dataset, split, split_type
     )
 
-    model_type = "eval"
-    dp_model = dataset_params.get_model_params(args.datasets_path, dataset, model_type)
+    dp_model = dataset_params.get_model_params(args.datasets_path, dataset, args.model_type)
 
     if args.mode == "gt":
         if args.modality is not None:
